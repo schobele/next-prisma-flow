@@ -133,10 +133,12 @@ export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete }: TodoIte
 							)}
 
 							{/* Assignee */}
-							<Badge variant="outline" className="border-gray-200">
-								<User className="h-3 w-3 mr-1" />
-								{todo.user.name}
-							</Badge>
+							{todo.user && (
+								<Badge variant="outline" className="border-gray-200">
+									<User className="h-3 w-3 mr-1" />
+									{todo.user.name}
+								</Badge>
+							)}
 						</div>
 
 						{/* Completion Info */}

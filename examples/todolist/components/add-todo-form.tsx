@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Category, TodoCreateInput } from "@/generated/flow";
+import { useUsers, type Category, type TodoCreateInput } from "@/generated/flow";
 import { Plus, X } from "lucide-react";
 import { useState } from "react";
 
@@ -23,6 +23,7 @@ export function AddTodoForm({ categories, onSubmit, onClose, isSubmitting }: Add
 		categoryId: undefined,
 		dueDate: undefined,
 	});
+	const { users } = useUsers();
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
@@ -32,7 +33,7 @@ export function AddTodoForm({ categories, onSubmit, onClose, isSubmitting }: Add
 		onSubmit({
 			user: {
 				connect: {
-					id: "cmbdwdp890001ofnlwabfv009",
+					id: users[0].id,
 				},
 			},
 			title: formData.title.trim(),
