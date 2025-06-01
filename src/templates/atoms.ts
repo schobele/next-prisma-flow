@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ModelInfo, GeneratorContext } from "../types.js";
+import type { GeneratorContext, ModelInfo } from "../types.js";
 import { formatGeneratedFileHeader } from "../utils.js";
 
 export async function generateJotaiAtoms(
@@ -65,16 +65,24 @@ export const optimisticCreate${modelName}Atom = atom(
   null,
   async (get, set, ${lowerName}Data: Parameters<typeof ${modelName}Actions.create${modelName}>[0]) => {
     const tempId = \`temp-\${Date.now()}-\${Math.random()}\`;
+    
+    // Create optimistic model with defaults for required fields
+    const scalarFields = Object.fromEntries(
+      Object.entries(${lowerName}Data).filter(([key, value]) => 
+        typeof value !== 'object' || value instanceof Date || value === null
+      )
+    );
+    
     const optimistic${modelName} = { 
-      ...${lowerName}Data, 
+      ...scalarFields,
       id: tempId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as ${modelName};
+    } as any; // Will be replaced with server response
     
     // Optimistic update
     set(base${pluralName}Atom, (draft) => {
-      draft[tempId] = optimistic${modelName};
+      draft[tempId] = optimistic${modelName} as ${modelName};
     });
     set(${lowerName}CreatingAtom, true);
     set(${lowerPluralName}ErrorAtom, null);
@@ -111,13 +119,7 @@ export const optimisticUpdate${modelName}Atom = atom(
       throw new Error('${modelName} not found');
     }
     
-    // Store original for rollback
-    const original${modelName} = { ...current${modelName} };
-    
-    // Optimistic update
-    set(base${pluralName}Atom, (draft) => {
-      draft[id] = { ...draft[id], ...data, updatedAt: new Date() };
-    });
+    // Set loading state
     set(${lowerName}UpdatingAtom, (prev) => ({ ...prev, [id]: true }));
     set(${lowerPluralName}ErrorAtom, null);
     
@@ -131,10 +133,6 @@ export const optimisticUpdate${modelName}Atom = atom(
       
       return updated${modelName};
     } catch (error) {
-      // Rollback to original state
-      set(base${pluralName}Atom, (draft) => {
-        draft[id] = original${modelName};
-      });
       set(${lowerPluralName}ErrorAtom, error instanceof Error ? error.message : 'Failed to update ${lowerName}');
       throw error;
     } finally {

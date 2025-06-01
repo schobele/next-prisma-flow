@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import type { Todo } from "@/generated/statex";
+import type { Todo } from "@/generated/flow";
 import { format } from "date-fns";
 import { AlertTriangle, Calendar, CheckCircle, Circle, Clock, Edit, Tag, Trash2, User } from "lucide-react";
 

@@ -64,7 +64,6 @@ export type ${modelName} = Prisma.${modelName}GetPayload<{
 export type ${modelName}Id = ${modelName}['id'];
 
 export type ${modelName}Input = ${modelName}CreateInput;
-export type ${modelName}UpdateInput = ${modelName}UpdateInput;
 export type ${modelName}WhereInput = Prisma.${modelName}WhereInput;
 export type ${modelName}WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
 export type ${modelName}OrderByInput = Prisma.${modelName}OrderByWithRelationInput;

@@ -1340,8 +1340,8 @@ var require_dist2 = __commonJS((exports, module) => {
 
 // index.ts
 var import_generator_helper = __toESM(require_dist2(), 1);
-import path8 from "node:path";
 import fs7 from "node:fs/promises";
+import path8 from "node:path";
 
 // src/errors.ts
 class FlowGeneratorError extends Error {
@@ -1447,6 +1447,10 @@ function validateConfig(config, modelNames) {
   }
 }
 
+// src/templates/actions.ts
+import fs from "node:fs/promises";
+import path2 from "node:path";
+
 // src/utils.ts
 import path from "node:path";
 function createGeneratorContext(config, dmmf, outputPath) {
@@ -1476,7 +1480,7 @@ function createSelectObjectWithRelations(modelInfo, context, visited = new Set) 
         continue;
       }
       const relatedModelConfig = getModelConfigFromContext(relatedModelName, context);
-      if (relatedModelConfig && relatedModelConfig.selectFields) {
+      if (relatedModelConfig?.selectFields) {
         const filteredFields = filterFieldsForCircularReference(relatedModelConfig.selectFields, relatedModelConfig, modelInfo.name);
         if (filteredFields.length > 0) {
           const nestedSelect = createSelectObjectWithCircularPrevention(filteredFields, relatedModelConfig, context, new Set(visited));
@@ -1585,143 +1589,29 @@ function pluralize(word) {
   }
   if (lowerWord.endsWith("y")) {
     if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
-      return word.slice(0, -1) + "ies";
+      return `${word.slice(0, -1)}ies`;
     }
-    return word + "s";
+    return `${word}s`;
   }
   if (lowerWord.endsWith("s") || lowerWord.endsWith("sh") || lowerWord.endsWith("ch") || lowerWord.endsWith("x") || lowerWord.endsWith("z")) {
-    return word + "es";
+    return `${word}es`;
   }
   if (lowerWord.endsWith("f")) {
-    return word.slice(0, -1) + "ves";
+    return `${word.slice(0, -1)}ves`;
   }
   if (lowerWord.endsWith("fe")) {
-    return word.slice(0, -2) + "ves";
+    return `${word.slice(0, -2)}ves`;
   }
   if (lowerWord.endsWith("o")) {
     if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
-      return word + "es";
+      return `${word}es`;
     }
-    return word + "s";
+    return `${word}s`;
   }
-  return word + "s";
-}
-
-// src/templates/routes.ts
-import fs from "node:fs/promises";
-import path2 from "node:path";
-async function generateApiRoutes(modelInfo, context, modelDir) {
-  const { name: modelName, lowerName, pluralName } = modelInfo;
-  const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
-import * as ${modelName}Actions from './actions';
-
-async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (id) {
-      const result = await ${modelName}Actions.get${modelName}(id);
-      if (!result) {
-        return NextResponse.json(
-          { error: '${modelName} not found' },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json(result);
-    } else {
-      const results = await ${modelName}Actions.getAll${pluralName}();
-      return NextResponse.json(results);
-    }
-  } catch (error) {
-    console.error('GET /${lowerName} error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-async function POST(request: NextRequest) {
-  try {
-    const data = await request.json();
-    const result = await ${modelName}Actions.create${modelName}(data);
-    return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error('POST /${lowerName} error:', error);
-    const status = (error as any)?.code === 'P2002' ? 409 : 400;
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid request' },
-      { status }
-    );
-  }
-}
-
-async function PATCH(request: NextRequest) {
-  try {
-    const data = await request.json();
-    const { id, ...updateData } = data;
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Missing id in request body' },
-        { status: 400 }
-      );
-    }
-    
-    const result = await ${modelName}Actions.update${modelName}(id, updateData);
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('PATCH /${lowerName} error:', error);
-    let status = 400;
-    if ((error as any)?.code === 'P2025') status = 404;
-    if ((error as any)?.code === 'P2002') status = 409;
-    
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Update failed' },
-      { status }
-    );
-  }
-}
-
-async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Missing id parameter' },
-        { status: 400 }
-      );
-    }
-    
-    await ${modelName}Actions.delete${modelName}(id);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('DELETE /${lowerName} error:', error);
-    const status = (error as any)?.code === 'P2025' ? 404 : 500;
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Delete failed' },
-      { status }
-    );
-  }
-}
-
-export const routesHandlers = {
-	GET,
-	POST,
-	PATCH,
-	DELETE,
-};
-`;
-  const filePath = path2.join(modelDir, "routes.ts");
-  await fs.writeFile(filePath, template, "utf-8");
+  return `${word}s`;
 }
 
 // src/templates/actions.ts
-import fs2 from "node:fs/promises";
-import path3 from "node:path";
 async function generateServerActions(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -1821,13 +1711,13 @@ export async function deleteMany${pluralName}(ids: string[]): Promise<{ count: n
   return result;
 }
 `;
-  const filePath = path3.join(modelDir, "actions.ts");
-  await fs2.writeFile(filePath, template, "utf-8");
+  const filePath = path2.join(modelDir, "actions.ts");
+  await fs.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/atoms.ts
-import fs3 from "node:fs/promises";
-import path4 from "node:path";
+import fs2 from "node:fs/promises";
+import path3 from "node:path";
 async function generateJotaiAtoms(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from 'jotai';
@@ -1885,16 +1775,24 @@ export const optimisticCreate${modelName}Atom = atom(
   null,
   async (get, set, ${lowerName}Data: Parameters<typeof ${modelName}Actions.create${modelName}>[0]) => {
     const tempId = \`temp-\${Date.now()}-\${Math.random()}\`;
+    
+    // Create optimistic model with defaults for required fields
+    const scalarFields = Object.fromEntries(
+      Object.entries(${lowerName}Data).filter(([key, value]) => 
+        typeof value !== 'object' || value instanceof Date || value === null
+      )
+    );
+    
     const optimistic${modelName} = { 
-      ...${lowerName}Data, 
+      ...scalarFields,
       id: tempId,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as ${modelName};
+    } as any; // Will be replaced with server response
     
     // Optimistic update
     set(base${pluralName}Atom, (draft) => {
-      draft[tempId] = optimistic${modelName};
+      draft[tempId] = optimistic${modelName} as ${modelName};
     });
     set(${lowerName}CreatingAtom, true);
     set(${lowerPluralName}ErrorAtom, null);
@@ -1931,13 +1829,7 @@ export const optimisticUpdate${modelName}Atom = atom(
       throw new Error('${modelName} not found');
     }
     
-    // Store original for rollback
-    const original${modelName} = { ...current${modelName} };
-    
-    // Optimistic update
-    set(base${pluralName}Atom, (draft) => {
-      draft[id] = { ...draft[id], ...data, updatedAt: new Date() };
-    });
+    // Set loading state
     set(${lowerName}UpdatingAtom, (prev) => ({ ...prev, [id]: true }));
     set(${lowerPluralName}ErrorAtom, null);
     
@@ -1951,10 +1843,6 @@ export const optimisticUpdate${modelName}Atom = atom(
       
       return updated${modelName};
     } catch (error) {
-      // Rollback to original state
-      set(base${pluralName}Atom, (draft) => {
-        draft[id] = original${modelName};
-      });
       set(${lowerPluralName}ErrorAtom, error instanceof Error ? error.message : 'Failed to update ${lowerName}');
       throw error;
     } finally {
@@ -2011,7 +1899,283 @@ export const is${pluralName}EmptyAtom = atom((get) => {
   return count === 0;
 });
 `;
-  const filePath = path4.join(modelDir, "atoms.ts");
+  const filePath = path3.join(modelDir, "atoms.ts");
+  await fs2.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/barrel.ts
+import fs3 from "node:fs/promises";
+import path4 from "node:path";
+async function generateBarrelExports(config, context) {
+  await Promise.all([
+    generateMainIndex(config, context),
+    generateActionsIndex(config, context),
+    generateHooksIndex(config, context),
+    generateAtomsIndex(config, context),
+    generateTypesIndex(config, context),
+    generateStoreSetup(config, context)
+  ]);
+}
+async function generateMainIndex(config, context) {
+  const exports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `// ${modelName} exports
+export * from './${lowerName}/types';
+export * from './${lowerName}/actions';
+export * from './${lowerName}/atoms';
+export * from './${lowerName}/hooks';`;
+  }).join(`
+
+`);
+  const template = `${formatGeneratedFileHeader()}// Main barrel export file for Next Prisma Flow
+// This file re-exports all generated code for easy importing
+
+${exports}
+
+// Store setup
+export * from './store';
+`;
+  const filePath = path4.join(context.outputDir, "index.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateActionsIndex(config, context) {
+  const exports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `export * as ${modelName}Actions from './${lowerName}/actions';`;
+  }).join(`
+`);
+  const namedExports = config.models.flatMap((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    return [
+      `getAll${pluralName}`,
+      `get${modelName}`,
+      `create${modelName}`,
+      `update${modelName}`,
+      `delete${modelName}`,
+      `createMany${pluralName}`,
+      `deleteMany${pluralName}`
+    ].map((action) => `${action} as ${lowerName}${action.replace(modelName, "").replace(pluralName, "")}`);
+  });
+  const template = `${formatGeneratedFileHeader()}// Server Actions barrel exports
+// Import all server actions for convenient access
+
+${exports}
+
+// Named exports for direct import
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    return `export {
+  getAll${pluralName},
+  get${modelName},
+  create${modelName},
+  update${modelName},
+  delete${modelName},
+  createMany${pluralName},
+  deleteMany${pluralName},
+} from './${lowerName}/actions';`;
+  }).join(`
+
+`)}
+`;
+  const filePath = path4.join(context.outputDir, "actions.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateHooksIndex(config, context) {
+  const exports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `export * from './${lowerName}/hooks';`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// React Hooks barrel exports
+// Import all hooks for convenient access
+
+${exports}
+
+// Type exports for hook return types
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    return `export type {
+  Use${pluralName}Result,
+  Use${modelName}Result,
+  UseCreate${modelName}Result,
+  UseUpdate${modelName}Result,
+  UseDelete${modelName}Result,
+  Use${modelName}MutationsResult,
+  UseBatch${modelName}OperationsResult,
+} from './${lowerName}/hooks';`;
+  }).join(`
+
+`)}
+`;
+  const filePath = path4.join(context.outputDir, "hooks.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateAtomsIndex(config, context) {
+  const exports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `export * from './${lowerName}/atoms';`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// Jotai Atoms barrel exports
+// Import all atoms for convenient access
+
+${exports}
+
+// Convenient re-exports for common atoms
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `export {
+  base${pluralName}Atom,
+  ${lowerName}ListAtom,
+  ${lowerPluralName}LoadingAtom,
+  ${lowerPluralName}ErrorAtom,
+  refresh${pluralName}Atom,
+  ${lowerName}CountAtom,
+  is${pluralName}EmptyAtom,
+} from './${lowerName}/atoms';`;
+  }).join(`
+
+`)}
+`;
+  const filePath = path4.join(context.outputDir, "atoms.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateTypesIndex(config, context) {
+  const exports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `export * from './${lowerName}/types';`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// TypeScript Types barrel exports
+// Import all types for convenient access
+
+${exports}
+
+// Common type aliases for convenience
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `export type {
+  ${modelName},
+  ${modelName}Input,
+  ${modelName}UpdateInput,
+  ${modelName}ApiResponse,
+  ${modelName}ListApiResponse,
+  ${modelName}MutationResponse,
+  ${modelName}FormData,
+} from './${lowerName}/types';`;
+  }).join(`
+
+`)}
+`;
+  const filePath = path4.join(context.outputDir, "types.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateStoreSetup(config, context) {
+  const atomImports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `  base${pluralName}Atom,
+  ${lowerPluralName}LoadingAtom,
+  ${lowerPluralName}ErrorAtom,`;
+  }).join(`
+`);
+  const atomExports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `  base${pluralName}Atom,
+  ${lowerPluralName}LoadingAtom,
+  ${lowerPluralName}ErrorAtom,`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// Central store setup for all Flow atoms
+// This file provides utilities for global state management
+
+import { createStore } from 'jotai';
+import {
+${atomImports}
+} from './atoms';
+
+// Create a store instance for SSR/testing if needed
+export const flowStore = createStore();
+
+// Export all base atoms for external access
+export const flowAtoms = {
+${atomExports}
+};
+
+// Utility function to clear all data (useful for logout, testing, etc.)
+export function clearAllFlowData() {
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `  flowStore.set(base${pluralName}Atom, {});
+  flowStore.set(${lowerPluralName}LoadingAtom, false);
+  flowStore.set(${lowerPluralName}ErrorAtom, null);`;
+  }).join(`
+`)}
+}
+
+// Utility function to check if any data is loading
+export function isAnyFlowDataLoading(): boolean {
+  return [
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const lowerPluralName = pluralize(lowerName);
+    return `    flowStore.get(${lowerPluralName}LoadingAtom),`;
+  }).join(`
+`)}
+  ].some(Boolean);
+}
+
+// Utility function to get all errors
+export function getAllFlowErrors(): Record<string, string | null> {
+  return {
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const lowerPluralName = pluralize(lowerName);
+    return `    ${lowerName}: flowStore.get(${lowerPluralName}ErrorAtom),`;
+  }).join(`
+`)}
+  };
+}
+
+// Type for the complete state shape
+export interface FlowState {
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `  ${lowerPluralName}: ReturnType<typeof base${pluralName}Atom['read']>;
+  ${lowerPluralName}Loading: boolean;
+  ${lowerPluralName}Error: string | null;`;
+  }).join(`
+`)}
+}
+
+// Utility to get complete state snapshot
+export function getFlowSnapshot(): FlowState {
+  return {
+${config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `    ${lowerPluralName}: flowStore.get(base${pluralName}Atom),
+    ${lowerPluralName}Loading: flowStore.get(${lowerPluralName}LoadingAtom),
+    ${lowerPluralName}Error: flowStore.get(${lowerPluralName}ErrorAtom),`;
+  }).join(`
+`)}
+  };
+}
+`;
+  const filePath = path4.join(context.outputDir, "store.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 
@@ -2264,9 +2428,121 @@ export function use${modelName}Exists(id: string): boolean {
   await fs4.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/types.ts
+// src/templates/routes.ts
 import fs5 from "node:fs/promises";
 import path6 from "node:path";
+async function generateApiRoutes(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
+import * as ${modelName}Actions from './actions';
+
+async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (id) {
+      const result = await ${modelName}Actions.get${modelName}(id);
+      if (!result) {
+        return NextResponse.json(
+          { error: '${modelName} not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(result);
+    } else {
+      const results = await ${modelName}Actions.getAll${pluralName}();
+      return NextResponse.json(results);
+    }
+  } catch (error) {
+    console.error('GET /${lowerName} error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const result = await ${modelName}Actions.create${modelName}(data);
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    console.error('POST /${lowerName} error:', error);
+    const status = (error as any)?.code === 'P2002' ? 409 : 400;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid request' },
+      { status }
+    );
+  }
+}
+
+async function PATCH(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const { id, ...updateData } = data;
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing id in request body' },
+        { status: 400 }
+      );
+    }
+    
+    const result = await ${modelName}Actions.update${modelName}(id, updateData);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('PATCH /${lowerName} error:', error);
+    let status = 400;
+    if ((error as any)?.code === 'P2025') status = 404;
+    if ((error as any)?.code === 'P2002') status = 409;
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Update failed' },
+      { status }
+    );
+  }
+}
+
+async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing id parameter' },
+        { status: 400 }
+      );
+    }
+    
+    await ${modelName}Actions.delete${modelName}(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /${lowerName} error:', error);
+    const status = (error as any)?.code === 'P2025' ? 404 : 500;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Delete failed' },
+      { status }
+    );
+  }
+}
+
+export const routesHandlers = {
+	GET,
+	POST,
+	PATCH,
+	DELETE,
+};
+`;
+  const filePath = path6.join(modelDir, "routes.ts");
+  await fs5.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/types.ts
+import fs6 from "node:fs/promises";
+import path7 from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -2314,7 +2590,6 @@ export type ${modelName} = Prisma.${modelName}GetPayload<{
 export type ${modelName}Id = ${modelName}['id'];
 
 export type ${modelName}Input = ${modelName}CreateInput;
-export type ${modelName}UpdateInput = ${modelName}UpdateInput;
 export type ${modelName}WhereInput = Prisma.${modelName}WhereInput;
 export type ${modelName}WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
 export type ${modelName}OrderByInput = Prisma.${modelName}OrderByWithRelationInput;
@@ -2411,283 +2686,7 @@ export interface ${modelName}ValidationErrors {
   message: string;
 }
 `;
-  const filePath = path6.join(modelDir, "types.ts");
-  await fs5.writeFile(filePath, template, "utf-8");
-}
-
-// src/templates/barrel.ts
-import fs6 from "node:fs/promises";
-import path7 from "node:path";
-async function generateBarrelExports(config, context) {
-  await Promise.all([
-    generateMainIndex(config, context),
-    generateActionsIndex(config, context),
-    generateHooksIndex(config, context),
-    generateAtomsIndex(config, context),
-    generateTypesIndex(config, context),
-    generateStoreSetup(config, context)
-  ]);
-}
-async function generateMainIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `// ${modelName} exports
-export * from './${lowerName}/types';
-export * from './${lowerName}/actions';
-export * from './${lowerName}/atoms';
-export * from './${lowerName}/hooks';`;
-  }).join(`
-
-`);
-  const template = `${formatGeneratedFileHeader()}// Main barrel export file for Next Prisma Flow
-// This file re-exports all generated code for easy importing
-
-${exports}
-
-// Store setup
-export * from './store';
-`;
-  const filePath = path7.join(context.outputDir, "index.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-async function generateActionsIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * as ${modelName}Actions from './${lowerName}/actions';`;
-  }).join(`
-`);
-  const namedExports = config.models.flatMap((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return [
-      `getAll${pluralName}`,
-      `get${modelName}`,
-      `create${modelName}`,
-      `update${modelName}`,
-      `delete${modelName}`,
-      `createMany${pluralName}`,
-      `deleteMany${pluralName}`
-    ].map((action) => `${action} as ${lowerName}${action.replace(modelName, "").replace(pluralName, "")}`);
-  });
-  const template = `${formatGeneratedFileHeader()}// Server Actions barrel exports
-// Import all server actions for convenient access
-
-${exports}
-
-// Named exports for direct import
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return `export {
-  getAll${pluralName},
-  get${modelName},
-  create${modelName},
-  update${modelName},
-  delete${modelName},
-  createMany${pluralName},
-  deleteMany${pluralName},
-} from './${lowerName}/actions';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path7.join(context.outputDir, "actions.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-async function generateHooksIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * from './${lowerName}/hooks';`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// React Hooks barrel exports
-// Import all hooks for convenient access
-
-${exports}
-
-// Type exports for hook return types
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return `export type {
-  Use${pluralName}Result,
-  Use${modelName}Result,
-  UseCreate${modelName}Result,
-  UseUpdate${modelName}Result,
-  UseDelete${modelName}Result,
-  Use${modelName}MutationsResult,
-  UseBatch${modelName}OperationsResult,
-} from './${lowerName}/hooks';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path7.join(context.outputDir, "hooks.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-async function generateAtomsIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * from './${lowerName}/atoms';`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// Jotai Atoms barrel exports
-// Import all atoms for convenient access
-
-${exports}
-
-// Convenient re-exports for common atoms
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `export {
-  base${pluralName}Atom,
-  ${lowerName}ListAtom,
-  ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,
-  refresh${pluralName}Atom,
-  ${lowerName}CountAtom,
-  is${pluralName}EmptyAtom,
-} from './${lowerName}/atoms';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path7.join(context.outputDir, "atoms.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-async function generateTypesIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * from './${lowerName}/types';`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// TypeScript Types barrel exports
-// Import all types for convenient access
-
-${exports}
-
-// Common type aliases for convenience
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export type {
-  ${modelName},
-  ${modelName}Input,
-  ${modelName}UpdateInput,
-  ${modelName}ApiResponse,
-  ${modelName}ListApiResponse,
-  ${modelName}MutationResponse,
-  ${modelName}FormData,
-} from './${lowerName}/types';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path7.join(context.outputDir, "types.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-async function generateStoreSetup(config, context) {
-  const atomImports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `  base${pluralName}Atom,
-  ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,`;
-  }).join(`
-`);
-  const atomExports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `  base${pluralName}Atom,
-  ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// Central store setup for all Flow atoms
-// This file provides utilities for global state management
-
-import { createStore } from 'jotai';
-import {
-${atomImports}
-} from './atoms';
-
-// Create a store instance for SSR/testing if needed
-export const flowStore = createStore();
-
-// Export all base atoms for external access
-export const flowAtoms = {
-${atomExports}
-};
-
-// Utility function to clear all data (useful for logout, testing, etc.)
-export function clearAllFlowData() {
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `  flowStore.set(base${pluralName}Atom, {});
-  flowStore.set(${lowerPluralName}LoadingAtom, false);
-  flowStore.set(${lowerPluralName}ErrorAtom, null);`;
-  }).join(`
-`)}
-}
-
-// Utility function to check if any data is loading
-export function isAnyFlowDataLoading(): boolean {
-  return [
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const lowerPluralName = pluralize(lowerName);
-    return `    flowStore.get(${lowerPluralName}LoadingAtom),`;
-  }).join(`
-`)}
-  ].some(Boolean);
-}
-
-// Utility function to get all errors
-export function getAllFlowErrors(): Record<string, string | null> {
-  return {
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const lowerPluralName = pluralize(lowerName);
-    return `    ${lowerName}: flowStore.get(${lowerPluralName}ErrorAtom),`;
-  }).join(`
-`)}
-  };
-}
-
-// Type for the complete state shape
-export interface FlowState {
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `  ${lowerPluralName}: ReturnType<typeof base${pluralName}Atom['read']>;
-  ${lowerPluralName}Loading: boolean;
-  ${lowerPluralName}Error: string | null;`;
-  }).join(`
-`)}
-}
-
-// Utility to get complete state snapshot
-export function getFlowSnapshot(): FlowState {
-  return {
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `    ${lowerPluralName}: flowStore.get(base${pluralName}Atom),
-    ${lowerPluralName}Loading: flowStore.get(${lowerPluralName}LoadingAtom),
-    ${lowerPluralName}Error: flowStore.get(${lowerPluralName}ErrorAtom),`;
-  }).join(`
-`)}
-  };
-}
-`;
-  const filePath = path7.join(context.outputDir, "store.ts");
+  const filePath = path7.join(modelDir, "types.ts");
   await fs6.writeFile(filePath, template, "utf-8");
 }
 

@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Category } from "@/generated/statex";
+import type { Category } from "@/generated/flow";
 
 interface CategoryFilterProps {
 	categories: Category[];
