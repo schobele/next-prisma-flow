@@ -20,7 +20,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/schobele/next-prisma-flow.git"
+		"url": "git+https://github.com/schobele/next-prisma-flow.git"
 	},
 	"homepage": "https://github.com/schobele/next-prisma-flow#readme",
 	"bugs": {
