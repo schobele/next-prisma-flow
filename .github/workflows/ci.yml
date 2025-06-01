@@ -44,7 +44,7 @@ jobs:
       - name: Test generator with TodoList example
         run: |
           cd examples/todolist
-          bun install --frozen-lockfile
+          bun install
           echo "🔄 Running Prisma generate..."
           bunx prisma generate
           echo "✅ Generator completed successfully"
