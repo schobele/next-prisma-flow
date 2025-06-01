@@ -1,0 +1,30 @@
+{
+	"name": "next-prisma-flow",
+	"version": "1.0.0",
+	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js",
+	"main": "dist/index.js",
+	"module": "index.ts",
+	"type": "module",
+	"bin": {
+		"next-prisma-flow": "dist/index.js"
+	},
+	"scripts": {
+		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
+		"dev": "bun run index.ts",
+		"test": "bun test"
+	},
+	"keywords": ["prisma", "generator", "nextjs", "jotai", "fullstack", "typescript"],
+	"dependencies": {
+		"@prisma/client": "^5.0.0",
+		"@prisma/generator-helper": "^5.0.0",
+		"zod": "^3.25.46"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@types/node": "^20.0.0"
+	},
+	"peerDependencies": {
+		"typescript": "^5",
+		"prisma": "^5.0.0"
+	}
+}

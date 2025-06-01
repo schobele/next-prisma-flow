@@ -1,0 +1,133 @@
+#!/usr/bin/env node
+
+import { generatorHandler, type GeneratorOptions } from "@prisma/generator-helper";
+import path from "node:path";
+import fs from "node:fs/promises";
+
+import { parseGeneratorConfig, validateConfig } from "./src/config.js";
+import { createGeneratorContext, pluralize, capitalize } from "./src/utils.js";
+import {
+	handleGeneratorError,
+	FlowGeneratorError,
+	ModelNotFoundError,
+	TemplateGenerationError,
+	FileSystemError,
+} from "./src/errors.js";
+import { generateApiRoutes } from "./src/templates/routes.js";
+import { generateServerActions } from "./src/templates/actions.js";
+import { generateJotaiAtoms } from "./src/templates/atoms.js";
+import { generateReactHooks } from "./src/templates/hooks.js";
+import { generateTypes } from "./src/templates/types.js";
+import { generateBarrelExports } from "./src/templates/barrel.js";
+
+generatorHandler({
+	onManifest() {
+		return {
+			version: "1.0.0",
+			defaultOutput: "./generated/flow",
+			prettyName: "Next Prisma Flow Generator",
+			requiresGenerators: ["prisma-client-js"],
+		};
+	},
+
+	async onGenerate(options: GeneratorOptions) {
+		try {
+			console.log("🚀 Starting Next Prisma Flow Generator...");
+
+			// Parse and validate configuration
+			const config = parseGeneratorConfig(options);
+			const modelNames = options.dmmf.datamodel.models.map((m) => m.name);
+			validateConfig(config, modelNames);
+
+			// Create generator context
+			const context = createGeneratorContext(config, options.dmmf, config.output);
+
+			// Ensure output directory exists
+			try {
+				await fs.mkdir(context.outputDir, { recursive: true });
+			} catch (error) {
+				throw new FileSystemError("create directory", context.outputDir, error);
+			}
+
+			// Generate code for each model
+			for (const modelName of config.models) {
+				console.log(`📝 Generating code for model: ${modelName}`);
+
+				const model = options.dmmf.datamodel.models.find((m) => m.name === modelName);
+				if (!model) {
+					throw new ModelNotFoundError(modelName);
+				}
+
+				const lowerModelName = modelName.toLowerCase();
+				const modelConfig = config[lowerModelName] || {};
+				const pluralName = capitalize(pluralize(modelName));
+				const lowerPluralName = pluralize(lowerModelName);
+
+				const modelInfo = {
+					name: modelName,
+					lowerName: lowerModelName,
+					pluralName,
+					lowerPluralName,
+					config: modelConfig,
+					model,
+					selectFields:
+						modelConfig.select ||
+						model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
+				};
+
+				// Create model-specific directory
+				const modelDir = path.join(context.outputDir, lowerModelName);
+				try {
+					await fs.mkdir(modelDir, { recursive: true });
+				} catch (error) {
+					throw new FileSystemError("create directory", modelDir, error);
+				}
+
+				// Generate all template files for this model
+				try {
+					await Promise.all([
+						generateApiRoutes(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("routes", modelName, error);
+						}),
+						generateServerActions(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("actions", modelName, error);
+						}),
+						generateJotaiAtoms(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("atoms", modelName, error);
+						}),
+						generateReactHooks(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("hooks", modelName, error);
+						}),
+						generateTypes(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("types", modelName, error);
+						}),
+					]);
+				} catch (error) {
+					if (error instanceof TemplateGenerationError) {
+						throw error;
+					}
+					throw new TemplateGenerationError("unknown", modelName, error);
+				}
+			}
+
+			// Generate barrel exports
+			try {
+				await generateBarrelExports(config, context);
+			} catch (error) {
+				throw new TemplateGenerationError("barrel exports", "all models", error);
+			}
+
+			console.log("✅ Next Prisma Flow Generator completed successfully!");
+		} catch (error) {
+			if (error instanceof FlowGeneratorError) {
+				console.error(`❌ ${error.name}: ${error.message}`);
+				if (error.cause) {
+					console.error(`Caused by: ${error.cause}`);
+				}
+			} else {
+				console.error(`❌ Unexpected error: ${error}`);
+			}
+			throw error;
+		}
+	},
+});
