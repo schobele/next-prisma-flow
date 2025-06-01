@@ -6,6 +6,10 @@ on:
       - 'v*.*.*'  # Trigger on version tags like v1.0.0, v1.2.3
   workflow_dispatch:  # Allow manual triggering
 
+permissions:
+  contents: write  # Required for creating releases
+  id-token: write  # Required for npm publishing
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -123,51 +127,47 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
+        run: |
+          gh release create ${{ github.ref_name }} \
+            --title "Release ${{ steps.extract_version.outputs.version }}" \
+            --notes "## What's Changed
+
+          Release ${{ steps.extract_version.outputs.version }} of Next Prisma Flow Generator
+
+          ### Features
+          - 🚀 Full-stack type-safe code generation from Prisma schema
+          - ⚡ Server actions, Jotai atoms, React hooks, and API routes
+          - 🔒 End-to-end type safety with Zod validation
+          - 🎯 Smart relationship handling with circular reference prevention
+          - 📦 Optimized batch operations with proper schemas
+
+          ### Installation
+          \`\`\`bash
+          npm install next-prisma-flow
+          # or
+          yarn add next-prisma-flow
+          # or
+          pnpm add next-prisma-flow
+          \`\`\`
+
+          ### Usage
+          Add to your \`schema.prisma\`:
+          \`\`\`prisma
+          generator flow {
+            provider = \"next-prisma-flow\"
+            output   = \"./generated/flow\"
+            models   = [\"User\", \"Post\", \"Category\"]
+          }
+          \`\`\`
+
+          Then run:
+          \`\`\`bash
+          npx prisma generate
+          \`\`\`
+
+          See the [README](https://github.com/schobele/next-prisma-flow#readme) for full documentation."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.extract_version.outputs.version }}
-          body: |
-            ## What's Changed
-            
-            Release ${{ steps.extract_version.outputs.version }} of Next Prisma Flow Generator
-            
-            ### Features
-            - 🚀 Full-stack type-safe code generation from Prisma schema
-            - ⚡ Server actions, Jotai atoms, React hooks, and API routes
-            - 🔒 End-to-end type safety with Zod validation
-            - 🎯 Smart relationship handling with circular reference prevention
-            - 📦 Optimized batch operations with proper schemas
-            
-            ### Installation
-            ```bash
-            npm install next-prisma-flow
-            # or
-            yarn add next-prisma-flow
-            # or
-            pnpm add next-prisma-flow
-            ```
-            
-            ### Usage
-            Add to your `schema.prisma`:
-            ```prisma
-            generator flow {
-              provider = "next-prisma-flow"
-              output   = "./generated/flow"
-              models   = ["User", "Post", "Category"]
-            }
-            ```
-            
-            Then run:
-            ```bash
-            npx prisma generate
-            ```
-            
-            See the [README](https://github.com/your-org/next-prisma-flow#readme) for full documentation.
-          draft: false
-          prerelease: false
 
   publish-preview:
     needs: test
