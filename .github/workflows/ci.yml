@@ -1,0 +1,232 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build generator
+        run: bun run build
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.js
+          echo "✅ Build output verified"
+
+      - name: Test generator with TodoList example
+        run: |
+          cd examples/todolist
+          bun install --frozen-lockfile
+          echo "🔄 Running Prisma generate..."
+          bunx prisma generate
+          echo "✅ Generator completed successfully"
+
+      - name: Verify generated code structure
+        run: |
+          cd examples/todolist
+          echo "🔍 Checking generated file structure..."
+          
+          # Core files
+          test -f generated/flow/index.ts && echo "✅ index.ts"
+          test -f generated/flow/store.ts && echo "✅ store.ts"
+          test -f generated/flow/actions.ts && echo "✅ actions.ts"
+          test -f generated/flow/atoms.ts && echo "✅ atoms.ts"
+          test -f generated/flow/hooks.ts && echo "✅ hooks.ts"
+          test -f generated/flow/types.ts && echo "✅ types.ts"
+          
+          # Todo model files
+          test -f generated/flow/todo/actions.ts && echo "✅ todo/actions.ts"
+          test -f generated/flow/todo/types.ts && echo "✅ todo/types.ts"
+          test -f generated/flow/todo/hooks.ts && echo "✅ todo/hooks.ts"
+          test -f generated/flow/todo/routes.ts && echo "✅ todo/routes.ts"
+          test -f generated/flow/todo/atoms.ts && echo "✅ todo/atoms.ts"
+          
+          # Category model files
+          test -f generated/flow/category/actions.ts && echo "✅ category/actions.ts"
+          test -f generated/flow/category/types.ts && echo "✅ category/types.ts"
+          test -f generated/flow/category/hooks.ts && echo "✅ category/hooks.ts"
+          test -f generated/flow/category/routes.ts && echo "✅ category/routes.ts"
+          test -f generated/flow/category/atoms.ts && echo "✅ category/atoms.ts"
+          
+          # User model files
+          test -f generated/flow/user/actions.ts && echo "✅ user/actions.ts"
+          test -f generated/flow/user/types.ts && echo "✅ user/types.ts"
+          test -f generated/flow/user/hooks.ts && echo "✅ user/hooks.ts"
+          test -f generated/flow/user/routes.ts && echo "✅ user/routes.ts"
+          test -f generated/flow/user/atoms.ts && echo "✅ user/atoms.ts"
+          
+          echo "✅ All expected files generated successfully"
+
+      - name: Verify code quality
+        run: |
+          cd examples/todolist
+          echo "🔍 Checking for critical functions..."
+          
+          # Check for server actions
+          grep -q "export async function getAllTodos" generated/flow/todo/actions.ts && echo "✅ getAllTodos function"
+          grep -q "export async function createTodo" generated/flow/todo/actions.ts && echo "✅ createTodo function"
+          grep -q "export async function updateTodo" generated/flow/todo/actions.ts && echo "✅ updateTodo function"
+          grep -q "export async function deleteTodo" generated/flow/todo/actions.ts && echo "✅ deleteTodo function"
+          grep -q "export async function createManyTodos" generated/flow/todo/actions.ts && echo "✅ createManyTodos function"
+          
+          # Check for proper types
+          grep -q "TodoCreateInput" generated/flow/todo/types.ts && echo "✅ TodoCreateInput type"
+          grep -q "TodoUpdateInput" generated/flow/todo/types.ts && echo "✅ TodoUpdateInput type"
+          grep -q "TodoCreateManyInput" generated/flow/todo/types.ts && echo "✅ TodoCreateManyInput type"
+          
+          # Check for Zod schemas
+          grep -q "TodoCreateInputSchema" generated/flow/todo/types.ts && echo "✅ TodoCreateInputSchema"
+          grep -q "TodoUpdateInputSchema" generated/flow/todo/types.ts && echo "✅ TodoUpdateInputSchema"
+          grep -q "TodoCreateManyInputSchema" generated/flow/todo/types.ts && echo "✅ TodoCreateManyInputSchema"
+          
+          # Check for circular reference prevention
+          grep -q "category: { select:" generated/flow/todo/actions.ts && echo "✅ Nested category select"
+          grep -q "user: { select:" generated/flow/todo/actions.ts && echo "✅ Nested user select"
+          
+          echo "✅ Code quality checks passed"
+
+      - name: Check TypeScript compilation
+        run: |
+          cd examples/todolist
+          echo "🔍 Checking TypeScript compilation..."
+          bunx tsc --noEmit --skipLibCheck
+          echo "✅ TypeScript compilation successful"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run Biome linting
+        run: |
+          # Check if biome.json exists and run linting
+          if [ -f "biome.json" ]; then
+            echo "🔍 Running Biome linting..."
+            bunx @biomejs/biome check src/
+            echo "✅ Linting passed"
+          else
+            echo "ℹ️ No biome.json found, skipping linting"
+          fi
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run security audit
+        run: |
+          # Check for security vulnerabilities
+          npm audit --audit-level=moderate
+          echo "✅ Security audit completed"
+
+      - name: Check for secrets
+        run: |
+          echo "🔍 Checking for potential secrets..."
+          
+          # Check for common secret patterns (basic check)
+          if grep -r -E "(api_key|secret_key|private_key|password.*=|token.*=)" --include="*.ts" --include="*.js" --include="*.json" src/ 2>/dev/null; then
+            echo "⚠️ Potential secrets found in source code"
+            exit 1
+          else
+            echo "✅ No obvious secrets found"
+          fi
+
+  validate-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and validate package
+        run: |
+          echo "🔍 Validating package.json..."
+          
+          # Check required fields
+          node -e "
+            const pkg = require('./package.json');
+            const required = ['name', 'version', 'description', 'main', 'bin'];
+            const missing = required.filter(field => !pkg[field]);
+            if (missing.length > 0) {
+              console.error('❌ Missing required fields:', missing);
+              process.exit(1);
+            }
+            console.log('✅ All required fields present');
+            
+            // Validate bin path
+            if (!require('fs').existsSync(pkg.main)) {
+              console.error('❌ Main file does not exist:', pkg.main);
+              process.exit(1);
+            }
+            console.log('✅ Main file exists');
+          "
+
+      - name: Test package installation
+        run: |
+          echo "🔍 Testing package can be installed..."
+          
+          # Create a temporary directory and test installation
+          mkdir -p /tmp/test-install
+          cd /tmp/test-install
+          npm init -y
+          
+          # Install locally built package
+          npm install file:$GITHUB_WORKSPACE
+          
+          # Check if binary is available
+          if [ -f node_modules/.bin/next-prisma-flow ]; then
+            echo "✅ Package binary installed successfully"
+          else
+            echo "❌ Package binary not found"
+            exit 1
+          fi

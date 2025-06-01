@@ -1,19 +1,53 @@
 {
 	"name": "next-prisma-flow",
 	"version": "1.0.0",
-	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js",
+	"description": "A Prisma generator that scaffolds full-stack typed code for Next.js with Jotai state management, server actions, and optimistic updates",
 	"main": "dist/index.js",
 	"module": "index.ts",
 	"type": "module",
 	"bin": {
 		"next-prisma-flow": "dist/index.js"
 	},
+	"files": [
+		"dist/",
+		"README.md",
+		"package.json"
+	],
 	"scripts": {
 		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
 		"dev": "bun run index.ts",
-		"test": "bun test"
+		"test": "bun test",
+		"prepublishOnly": "bun run build"
 	},
-	"keywords": ["prisma", "generator", "nextjs", "jotai", "fullstack", "typescript"],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/your-org/next-prisma-flow.git"
+	},
+	"homepage": "https://github.com/your-org/next-prisma-flow#readme",
+	"bugs": {
+		"url": "https://github.com/your-org/next-prisma-flow/issues"
+	},
+	"author": {
+		"name": "Your Name",
+		"email": "your.email@example.com"
+	},
+	"license": "MIT",
+	"keywords": [
+		"prisma", 
+		"generator", 
+		"nextjs", 
+		"jotai", 
+		"fullstack", 
+		"typescript", 
+		"server-actions",
+		"state-management",
+		"optimistic-updates",
+		"code-generation",
+		"type-safety"
+	],
+	"engines": {
+		"node": ">=18.0.0"
+	},
 	"dependencies": {
 		"@prisma/client": "^5.0.0",
 		"@prisma/generator-helper": "^5.0.0",
