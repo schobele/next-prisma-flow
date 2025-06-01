@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 
-import { generatorHandler, type GeneratorOptions } from "@prisma/generator-helper";
-import path from "node:path";
 import fs from "node:fs/promises";
+import path from "node:path";
+import { type GeneratorOptions, generatorHandler } from "@prisma/generator-helper";
 
 import { parseGeneratorConfig, validateConfig } from "./src/config.js";
-import { createGeneratorContext, pluralize, capitalize } from "./src/utils.js";
 import {
-	handleGeneratorError,
+	FileSystemError,
 	FlowGeneratorError,
 	ModelNotFoundError,
 	TemplateGenerationError,
-	FileSystemError,
+	handleGeneratorError,
 } from "./src/errors.js";
-import { generateApiRoutes } from "./src/templates/routes.js";
 import { generateServerActions } from "./src/templates/actions.js";
 import { generateJotaiAtoms } from "./src/templates/atoms.js";
-import { generateReactHooks } from "./src/templates/hooks.js";
-import { generateTypes } from "./src/templates/types.js";
 import { generateBarrelExports } from "./src/templates/barrel.js";
+import { generateReactHooks } from "./src/templates/hooks.js";
+import { generateApiRoutes } from "./src/templates/routes.js";
+import { generateTypes } from "./src/templates/types.js";
+import { capitalize, createGeneratorContext, pluralize } from "./src/utils.js";
 
 generatorHandler({
 	onManifest() {
@@ -71,8 +71,7 @@ generatorHandler({
 					config: modelConfig,
 					model,
 					selectFields:
-						modelConfig.select ||
-						model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
+						modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
 				};
 
 				// Create model-specific directory

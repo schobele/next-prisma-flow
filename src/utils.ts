@@ -1,6 +1,6 @@
-import type { DMMF } from "@prisma/generator-helper";
 import path from "node:path";
-import type { GeneratorContext, FlowGeneratorConfig } from "./types.js";
+import type { DMMF } from "@prisma/generator-helper";
+import type { FlowGeneratorConfig, GeneratorContext } from "./types.js";
 
 export function createGeneratorContext(
 	config: FlowGeneratorConfig,
@@ -39,48 +39,48 @@ export function createSelectObject(fields: string[]): string {
 export function createSelectObjectWithRelations(
 	modelInfo: ModelInfo,
 	context: GeneratorContext,
-	visited: Set<string> = new Set()
+	visited: Set<string> = new Set(),
 ): string {
 	const selectEntries: string[] = [];
-	
+
 	// Add current model to visited set to prevent circular references
 	visited.add(modelInfo.name);
-	
+
 	for (const fieldName of modelInfo.selectFields) {
-		const field = modelInfo.model.fields.find(f => f.name === fieldName);
-		
+		const field = modelInfo.model.fields.find((f) => f.name === fieldName);
+
 		if (!field) {
 			// Field not found in model, treat as simple select
 			selectEntries.push(`${fieldName}: true`);
 			continue;
 		}
-		
+
 		if (field.kind === "object") {
 			// This is a relationship field
 			const relatedModelName = field.type;
-			
+
 			// Check for circular reference
 			if (visited.has(relatedModelName)) {
 				// Skip this relationship to prevent circular reference
 				continue;
 			}
-			
+
 			const relatedModelConfig = getModelConfigFromContext(relatedModelName, context);
-			
-			if (relatedModelConfig && relatedModelConfig.selectFields) {
+
+			if (relatedModelConfig?.selectFields) {
 				// Create nested select for the relationship with filtered fields
 				const filteredFields = filterFieldsForCircularReference(
 					relatedModelConfig.selectFields,
 					relatedModelConfig,
-					modelInfo.name
+					modelInfo.name,
 				);
-				
+
 				if (filteredFields.length > 0) {
 					const nestedSelect = createSelectObjectWithCircularPrevention(
 						filteredFields,
 						relatedModelConfig,
 						context,
-						new Set(visited)
+						new Set(visited),
 					);
 					selectEntries.push(`${fieldName}: { select: ${nestedSelect} }`);
 				}
@@ -93,26 +93,26 @@ export function createSelectObjectWithRelations(
 			selectEntries.push(`${fieldName}: true`);
 		}
 	}
-	
+
 	return `{ ${selectEntries.join(", ")} }`;
 }
 
 function filterFieldsForCircularReference(
 	fields: string[],
 	relatedModelConfig: ModelInfo,
-	parentModelName: string
+	parentModelName: string,
 ): string[] {
-	return fields.filter(fieldName => {
-		const field = relatedModelConfig.model.fields.find(f => f.name === fieldName);
+	return fields.filter((fieldName) => {
+		const field = relatedModelConfig.model.fields.find((f) => f.name === fieldName);
 		if (!field || field.kind !== "object") {
 			return true; // Keep non-relationship fields
 		}
-		
+
 		// Check if this relationship field points back to the parent model
 		if (field.type === parentModelName) {
 			return false; // Remove circular reference
 		}
-		
+
 		// Check if this is a list relationship that could contain the parent model
 		if (field.isList) {
 			const relationshipModel = field.type;
@@ -120,7 +120,7 @@ function filterFieldsForCircularReference(
 			// and remove any list relationships that could potentially create cycles
 			return false;
 		}
-		
+
 		return true; // Keep other relationship fields
 	});
 }
@@ -129,33 +129,33 @@ function createSelectObjectWithCircularPrevention(
 	fields: string[],
 	modelInfo: ModelInfo,
 	context: GeneratorContext,
-	visited: Set<string>
+	visited: Set<string>,
 ): string {
 	const selectEntries: string[] = [];
-	
+
 	for (const fieldName of fields) {
-		const field = modelInfo.model.fields.find(f => f.name === fieldName);
-		
+		const field = modelInfo.model.fields.find((f) => f.name === fieldName);
+
 		if (!field) {
 			selectEntries.push(`${fieldName}: true`);
 			continue;
 		}
-		
+
 		if (field.kind === "object") {
 			const relatedModelName = field.type;
-			
+
 			// Skip if already visited (circular reference)
 			if (visited.has(relatedModelName)) {
 				continue;
 			}
-			
+
 			// For deeper relationships, just use simple select to avoid complexity
 			selectEntries.push(`${fieldName}: true`);
 		} else {
 			selectEntries.push(`${fieldName}: true`);
 		}
 	}
-	
+
 	return `{ ${selectEntries.join(", ")} }`;
 }
 
@@ -164,17 +164,17 @@ function getModelConfigFromContext(modelName: string, context: GeneratorContext)
 	if (!context.config.models.includes(modelName)) {
 		return null;
 	}
-	
+
 	// Get the model from DMMF
-	const model = context.dmmf.datamodel.models.find(m => m.name === modelName);
+	const model = context.dmmf.datamodel.models.find((m) => m.name === modelName);
 	if (!model) {
 		return null;
 	}
-	
+
 	// Get the model configuration
 	const lowerModelName = modelName.toLowerCase();
 	const modelConfig = context.config[lowerModelName] || {};
-	
+
 	// Create a minimal ModelInfo object for select field access
 	return {
 		name: modelName,
@@ -183,9 +183,8 @@ function getModelConfigFromContext(modelName: string, context: GeneratorContext)
 		lowerPluralName: pluralize(lowerModelName),
 		config: modelConfig,
 		model,
-		selectFields: modelConfig.select || model.fields
-			.filter((f) => f.kind === "scalar" || f.kind === "enum")
-			.map((f) => f.name),
+		selectFields:
+			modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
 	};
 }
 
@@ -251,51 +250,54 @@ export function pluralize(word: string): string {
 	};
 
 	const lowerWord = word.toLowerCase();
-	
+
 	// Check for irregular plurals
 	if (irregulars[lowerWord]) {
 		return irregulars[lowerWord];
 	}
-	
+
 	// Preserve original case for the irregular plural
-	const irregular = Object.entries(irregulars).find(([singular]) => 
-		singular.toLowerCase() === lowerWord
-	);
+	const irregular = Object.entries(irregulars).find(([singular]) => singular.toLowerCase() === lowerWord);
 	if (irregular) {
 		return irregular[1];
 	}
 
 	// Standard pluralization rules
-	if (lowerWord.endsWith('y')) {
+	if (lowerWord.endsWith("y")) {
 		// If preceded by a consonant, change y to ies
-		if (lowerWord.length > 1 && !'aeiou'.includes(lowerWord[lowerWord.length - 2])) {
-			return word.slice(0, -1) + 'ies';
+		if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
+			return `${word.slice(0, -1)}ies`;
 		}
 		// If preceded by a vowel, just add s
-		return word + 's';
+		return `${word}s`;
 	}
-	
-	if (lowerWord.endsWith('s') || lowerWord.endsWith('sh') || lowerWord.endsWith('ch') || 
-		lowerWord.endsWith('x') || lowerWord.endsWith('z')) {
-		return word + 'es';
+
+	if (
+		lowerWord.endsWith("s") ||
+		lowerWord.endsWith("sh") ||
+		lowerWord.endsWith("ch") ||
+		lowerWord.endsWith("x") ||
+		lowerWord.endsWith("z")
+	) {
+		return `${word}es`;
 	}
-	
-	if (lowerWord.endsWith('f')) {
-		return word.slice(0, -1) + 'ves';
+
+	if (lowerWord.endsWith("f")) {
+		return `${word.slice(0, -1)}ves`;
 	}
-	
-	if (lowerWord.endsWith('fe')) {
-		return word.slice(0, -2) + 'ves';
+
+	if (lowerWord.endsWith("fe")) {
+		return `${word.slice(0, -2)}ves`;
 	}
-	
-	if (lowerWord.endsWith('o')) {
+
+	if (lowerWord.endsWith("o")) {
 		// Most words ending in o preceded by a consonant add es
-		if (lowerWord.length > 1 && !'aeiou'.includes(lowerWord[lowerWord.length - 2])) {
-			return word + 'es';
+		if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
+			return `${word}es`;
 		}
-		return word + 's';
+		return `${word}s`;
 	}
-	
+
 	// Default: just add s
-	return word + 's';
+	return `${word}s`;
 }

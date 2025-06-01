@@ -13,7 +13,10 @@
 		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
 		"dev": "bun run index.ts",
 		"test": "bun test",
-		"prepublishOnly": "bun run build"
+		"prepublishOnly": "bun run build",
+		"lint": "biome check .",
+		"lint:fix": "biome check . --write",
+		"prepare": "husky"
 	},
 	"repository": {
 		"type": "git",
@@ -41,14 +44,27 @@
 	"dependencies": {
 		"@prisma/client": "^5.0.0",
 		"@prisma/generator-helper": "^5.0.0",
+		"lint-staged": "^16.1.0",
 		"zod": "^3.25.46"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
-		"@types/node": "^20.0.0"
+		"@types/node": "^20.0.0",
+		"husky": "^9.1.7"
 	},
 	"peerDependencies": {
 		"typescript": "^5",
 		"prisma": "^5.0.0"
+	},
+	"lint-staged": {
+		"*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
+			"biome check --files-ignore-unknown=true",
+			"biome check --write --no-errors-on-unmatched",
+			"biome check --write --organize-imports-enabled=true --no-errors-on-unmatched",
+			"biome check --write --unsafe --no-errors-on-unmatched",
+			"biome format --write --no-errors-on-unmatched",
+			"biome lint --write --no-errors-on-unmatched"
+		],
+		"*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
 	}
 }

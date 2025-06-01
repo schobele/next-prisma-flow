@@ -99,8 +99,7 @@ export default function TodoListPage() {
 		completed: todos?.filter((t) => t.status === "COMPLETED").length || 0,
 		pending: todos?.filter((t) => t.status === "PENDING").length || 0,
 		inProgress: todos?.filter((t) => t.status === "IN_PROGRESS").length || 0,
-		overdue:
-			todos?.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length || 0,
+		overdue: todos?.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length || 0,
 	};
 
 	return (

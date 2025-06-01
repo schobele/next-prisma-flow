@@ -5,37 +5,37 @@
 // Server Actions barrel exports
 // Import all server actions for convenient access
 
-export * as UserActions from './user/actions';
-export * as CategoryActions from './category/actions';
-export * as TodoActions from './todo/actions';
+export * as UserActions from "./user/actions";
+export * as CategoryActions from "./category/actions";
+export * as TodoActions from "./todo/actions";
 
 // Named exports for direct import
 export {
-  getAllUsers,
-  getUser,
-  createUser,
-  updateUser,
-  deleteUser,
-  createManyUsers,
-  deleteManyUsers,
-} from './user/actions';
+	getAllUsers,
+	getUser,
+	createUser,
+	updateUser,
+	deleteUser,
+	createManyUsers,
+	deleteManyUsers,
+} from "./user/actions";
 
 export {
-  getAllCategories,
-  getCategory,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  createManyCategories,
-  deleteManyCategories,
-} from './category/actions';
+	getAllCategories,
+	getCategory,
+	createCategory,
+	updateCategory,
+	deleteCategory,
+	createManyCategories,
+	deleteManyCategories,
+} from "./category/actions";
 
 export {
-  getAllTodos,
-  getTodo,
-  createTodo,
-  updateTodo,
-  deleteTodo,
-  createManyTodos,
-  deleteManyTodos,
-} from './todo/actions';
+	getAllTodos,
+	getTodo,
+	createTodo,
+	updateTodo,
+	deleteTodo,
+	createManyTodos,
+	deleteManyTodos,
+} from "./todo/actions";
