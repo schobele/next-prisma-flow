@@ -192,27 +192,34 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build and validate package
+      - name: Build project
+        run: bun run build
+
+      - name: Validate package
         run: |
           echo "🔍 Validating package.json..."
           
-          # Check required fields
+          # Check required fields and main file existence
           node -e "
-            const pkg = require('./package.json');
-            const required = ['name', 'version', 'description', 'main', 'bin'];
-            const missing = required.filter(field => !pkg[field]);
-            if (missing.length > 0) {
-              console.error('❌ Missing required fields:', missing);
+            import('fs').then(fs => {
+              const pkg = JSON.parse(fs.default.readFileSync('./package.json', 'utf8'));
+              const required = ['name', 'version', 'description', 'main', 'bin'];
+              const missing = required.filter(field => !pkg[field]);
+              if (missing.length > 0) {
+                console.error('❌ Missing required fields:', missing);
+                process.exit(1);
+              }
+              console.log('✅ All required fields present');
+              
+              if (!fs.default.existsSync(pkg.main)) {
+                console.error('❌ Main file does not exist:', pkg.main);
+                process.exit(1);
+              }
+              console.log('✅ Main file exists');
+            }).catch(err => {
+              console.error('❌ Validation failed:', err);
               process.exit(1);
-            }
-            console.log('✅ All required fields present');
-            
-            // Validate bin path
-            if (!require('fs').existsSync(pkg.main)) {
-              console.error('❌ Main file does not exist:', pkg.main);
-              process.exit(1);
-            }
-            console.log('✅ Main file exists');
+            });
           "
 
       - name: Test package installation
