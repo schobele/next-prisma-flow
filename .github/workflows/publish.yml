@@ -39,7 +39,7 @@ jobs:
       - name: Test generator with example
         run: |
           cd examples/todolist
-          bun install --frozen-lockfile
+          bun install
           # Test that generator runs without errors
           bunx prisma generate
 

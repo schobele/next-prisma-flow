@@ -1,6 +1,6 @@
 {
 	"name": "next-prisma-flow",
-	"version": "1.0.0",
+	"version": "0.1.1",
 	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js applications",
 	"main": "dist/index.js",
 	"module": "index.ts",
