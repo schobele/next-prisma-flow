@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { createSelectObjectWithRelations, formatGeneratedFileHeader, getZodPrismaImportPath } from "../utils.js";
+import { createSelectObjectWithRelations, formatGeneratedFileHeader, getZodImportPath } from "../utils.js";
 
 export async function generateTypes(modelInfo: ModelInfo, context: GeneratorContext, modelDir: string): Promise<void> {
 	const { name: modelName, lowerName, selectFields } = modelInfo;
 	const selectObject = createSelectObjectWithRelations(modelInfo, context);
 
-	// Get the correct relative path from the model subdirectory to zodPrismaImport
-	const zodImportPath = getZodPrismaImportPath(context, 1);
+	// Get the correct relative path from the model subdirectory to local zod directory
+	const zodImportPath = getZodImportPath(1);
 
 	const template = `${formatGeneratedFileHeader()}import type { Prisma } from '@prisma/client';
 import { z } from 'zod';

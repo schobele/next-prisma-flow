@@ -1340,8 +1340,8 @@ var require_dist2 = __commonJS((exports, module) => {
 
 // index.ts
 var import_generator_helper = __toESM(require_dist2(), 1);
-import fs7 from "node:fs/promises";
-import path9 from "node:path";
+import fs8 from "node:fs/promises";
+import path10 from "node:path";
 
 // src/config.ts
 import path from "node:path";
@@ -1399,10 +1399,8 @@ function parseGeneratorConfig(options) {
   }
   const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
   const resolvedPrismaImport = resolvePrismaImportPath(options, config.prismaImport || "@/lib/prisma");
-  const resolvedZodPrismaImport = resolvePrismaImportPath(options, config.zodPrismaImport || "./generated/zod");
   const parsedConfig = {
     output,
-    zodPrismaImport: resolvedZodPrismaImport,
     prismaImport: resolvedPrismaImport,
     models
   };
@@ -1480,15 +1478,16 @@ function createGeneratorContext(config, dmmf, outputPath) {
     config,
     dmmf,
     outputDir: path2.resolve(outputPath),
-    zodPrismaImport: config.zodPrismaImport || "./generated/zod",
+    zodDir: path2.join(path2.resolve(outputPath), "zod"),
     prismaImport: config.prismaImport || "@/lib/prisma"
   };
 }
 function getPrismaImportPath(context, nestingLevel = 0) {
   return getPrismaImportForNesting(context.prismaImport, nestingLevel);
 }
-function getZodPrismaImportPath(context, nestingLevel = 0) {
-  return getPrismaImportForNesting(context.zodPrismaImport, nestingLevel);
+function getZodImportPath(nestingLevel = 0) {
+  const relativePath = nestingLevel === 0 ? "./zod" : "../zod";
+  return relativePath;
 }
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -2574,7 +2573,7 @@ import path8 from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
-  const zodImportPath = getZodPrismaImportPath(context, 1);
+  const zodImportPath = getZodImportPath(1);
   const template = `${formatGeneratedFileHeader()}import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
@@ -2710,6 +2709,108 @@ export interface ${modelName}ValidationErrors {
   await fs6.writeFile(filePath, template, "utf-8");
 }
 
+// src/zod-generator.ts
+import fs7 from "node:fs/promises";
+import path9 from "node:path";
+import { spawn } from "node:child_process";
+class ZodGenerationError extends FlowGeneratorError {
+  constructor(message, cause) {
+    super(`Zod generation failed: ${message}`, cause);
+    this.name = "ZodGenerationError";
+  }
+}
+async function generateZodSchemas(options, outputDir, models) {
+  console.log("\uD83D\uDCE6 Generating integrated Zod schemas...");
+  const zodOutputDir = path9.join(outputDir, "zod");
+  try {
+    await fs7.mkdir(zodOutputDir, { recursive: true });
+  } catch (error) {
+    throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
+  }
+  const tempSchemaPath = await createTempSchemaWithZodGenerator(options, zodOutputDir, models);
+  try {
+    await executeZodPrismaTypes(tempSchemaPath);
+    await validateGeneratedSchemas(zodOutputDir, models);
+    console.log("✅ Integrated Zod schemas generated successfully");
+  } catch (error) {
+    throw new ZodGenerationError("Failed to generate Zod schemas", error);
+  } finally {
+    try {
+      await fs7.unlink(tempSchemaPath);
+    } catch {}
+  }
+}
+async function createTempSchemaWithZodGenerator(options, zodOutputDir, models) {
+  try {
+    const originalSchemaContent = await fs7.readFile(options.schemaPath, "utf-8");
+    const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
+    const zodGeneratorConfig = `
+generator zod {
+  provider = "zod-prisma-types"
+  output   = "${zodOutputDir}"
+}
+`;
+    const modifiedSchema = schemaWithoutFlowGenerator + `
+` + zodGeneratorConfig;
+    const tempSchemaPath = path9.join(path9.dirname(options.schemaPath), ".temp-zod-schema.prisma");
+    await fs7.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+    return tempSchemaPath;
+  } catch (error) {
+    throw new ZodGenerationError("Failed to create temporary schema file", error);
+  }
+}
+async function executeZodPrismaTypes(schemaPath) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("npx", ["prisma", "generate", "--schema", schemaPath], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: true
+    });
+    let stdout = "";
+    let stderr = "";
+    child.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Zod generation failed with code ${code}:
+STDOUT: ${stdout}
+STDERR: ${stderr}`));
+      }
+    });
+    child.on("error", (error) => {
+      reject(new Error(`Failed to spawn zod generation process: ${error.message}`));
+    });
+  });
+}
+async function validateGeneratedSchemas(zodOutputDir, models) {
+  try {
+    const indexPath = path9.join(zodOutputDir, "index.ts");
+    const indexExists = await fs7.access(indexPath).then(() => true).catch(() => false);
+    if (!indexExists) {
+      throw new Error("Zod index file was not generated");
+    }
+    const indexContent = await fs7.readFile(indexPath, "utf-8");
+    const missingSchemas = [];
+    for (const modelName of models) {
+      const hasCreateSchema = indexContent.includes(`${modelName}CreateInputSchema`);
+      const hasUpdateSchema = indexContent.includes(`${modelName}UpdateInputSchema`);
+      if (!hasCreateSchema || !hasUpdateSchema) {
+        missingSchemas.push(modelName);
+      }
+    }
+    if (missingSchemas.length > 0) {
+      throw new Error(`Missing Zod schemas for models: ${missingSchemas.join(", ")}`);
+    }
+  } catch (error) {
+    throw new ZodGenerationError("Generated Zod schemas validation failed", error);
+  }
+}
+
 // index.ts
 import_generator_helper.generatorHandler({
   onManifest() {
@@ -2728,9 +2829,14 @@ import_generator_helper.generatorHandler({
       validateConfig(config, modelNames);
       const context = createGeneratorContext(config, options.dmmf, config.output);
       try {
-        await fs7.mkdir(context.outputDir, { recursive: true });
+        await fs8.mkdir(context.outputDir, { recursive: true });
       } catch (error) {
         throw new FileSystemError("create directory", context.outputDir, error);
+      }
+      try {
+        await generateZodSchemas(options, context.outputDir, config.models);
+      } catch (error) {
+        throw new TemplateGenerationError("zod schemas", "all models", error);
       }
       for (const modelName of config.models) {
         console.log(`\uD83D\uDCDD Generating code for model: ${modelName}`);
@@ -2751,9 +2857,9 @@ import_generator_helper.generatorHandler({
           model,
           selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
         };
-        const modelDir = path9.join(context.outputDir, lowerModelName);
+        const modelDir = path10.join(context.outputDir, lowerModelName);
         try {
-          await fs7.mkdir(modelDir, { recursive: true });
+          await fs8.mkdir(modelDir, { recursive: true });
         } catch (error) {
           throw new FileSystemError("create directory", modelDir, error);
         }

@@ -5,17 +5,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
-generator zod {
-  provider = "zod-prisma-types"
-  output   = "../generated/zod"
-}
-
 generator flow {
-  provider        = "./generator.js"
-  output          = "../generated/flow"
-  zodPrismaImport = "../generated/zod"
-  prismaImport    = "../lib/db"
-  models          = ["User", "Category", "Todo"]
+  provider     = "./generator.js"
+  output       = "../generated/flow"
+  prismaImport = "../lib/db"
+  models       = ["User", "Category", "Todo"]
 
   // User configuration
   userSelect     = ["id", "email", "name", "createdAt", "updatedAt"]

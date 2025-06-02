@@ -12,7 +12,7 @@ export function createGeneratorContext(
 		config,
 		dmmf,
 		outputDir: path.resolve(outputPath),
-		zodPrismaImport: config.zodPrismaImport || "./generated/zod",
+		zodDir: path.join(path.resolve(outputPath), "zod"),
 		prismaImport: config.prismaImport || "@/lib/prisma",
 	};
 }
@@ -27,12 +27,13 @@ export function getPrismaImportPath(context: GeneratorContext, nestingLevel = 0)
 }
 
 /**
- * Gets the correct zodPrismaImport path for a specific file location.
- * @param context - The generator context
+ * Gets the correct local zod import path for a specific file location.
  * @param nestingLevel - How many directories deep from output root (0 = root, 1 = model subdirectory)
  */
-export function getZodPrismaImportPath(context: GeneratorContext, nestingLevel = 0): string {
-	return getPrismaImportForNesting(context.zodPrismaImport, nestingLevel);
+export function getZodImportPath(nestingLevel = 0): string {
+	// Local zod directory is always at ../zod from model subdirectories
+	const relativePath = nestingLevel === 0 ? "./zod" : "../zod";
+	return relativePath;
 }
 
 export function capitalize(str: string): string {

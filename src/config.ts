@@ -16,16 +16,11 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 
 	const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
 
-	// Resolve prismaImport and zodPrismaImport relative to schema file location
+	// Resolve prismaImport relative to schema file location
 	const resolvedPrismaImport = resolvePrismaImportPath(options, (config.prismaImport as string) || "@/lib/prisma");
-	const resolvedZodPrismaImport = resolvePrismaImportPath(
-		options,
-		(config.zodPrismaImport as string) || "./generated/zod",
-	);
 
 	const parsedConfig: FlowGeneratorConfig = {
 		output: output,
-		zodPrismaImport: resolvedZodPrismaImport,
 		prismaImport: resolvedPrismaImport,
 		models,
 	};

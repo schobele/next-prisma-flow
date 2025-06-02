@@ -19,6 +19,8 @@ import { generateReactHooks } from "./src/templates/hooks.js";
 import { generateApiRoutes } from "./src/templates/routes.js";
 import { generateTypes } from "./src/templates/types.js";
 import { capitalize, createGeneratorContext, pluralize } from "./src/utils.js";
+import { ZodGenerationError } from "./src/zod-generator.js";
+import { generateZodSchemas } from "./src/zod-generator.js";
 
 generatorHandler({
 	onManifest() {
@@ -47,6 +49,13 @@ generatorHandler({
 				await fs.mkdir(context.outputDir, { recursive: true });
 			} catch (error) {
 				throw new FileSystemError("create directory", context.outputDir, error);
+			}
+
+			// Generate Zod schemas first using zod-prisma-types
+			try {
+				await generateZodSchemas(options, context.outputDir, config.models);
+			} catch (error) {
+				throw new TemplateGenerationError("zod schemas", "all models", error);
 			}
 
 			// Generate code for each model

@@ -41,7 +41,9 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"dependencies": {},
+	"dependencies": {
+		"zod-prisma-types": "^3.2.4"
+	},
 	"devDependencies": {
 		"@prisma/client": "^5.0.0",
 		"@prisma/generator-helper": "^5.0.0",

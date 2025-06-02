@@ -2,7 +2,6 @@ import type { DMMF } from "@prisma/generator-helper";
 
 export interface FlowGeneratorConfig {
 	output: string;
-	zodPrismaImport?: string;
 	prismaImport?: string;
 	models: string[];
 	[modelName: string]: any;
@@ -19,7 +18,7 @@ export interface GeneratorContext {
 	config: FlowGeneratorConfig;
 	dmmf: DMMF.Document;
 	outputDir: string;
-	zodPrismaImport: string;
+	zodDir: string;
 	prismaImport: string;
 }
 
