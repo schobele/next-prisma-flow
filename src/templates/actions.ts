@@ -11,9 +11,20 @@ export async function generateServerActions(
 	const { name: modelName, lowerName, pluralName, lowerPluralName, selectFields } = modelInfo;
 	const selectObject = createSelectObjectWithRelations(modelInfo, context);
 
+	// Get the prisma import path for this nesting level
+	const prismaImportPath = getPrismaImportPath(context, 1);
+
+	// Determine if we're using the default @prisma/client or a custom prisma client
+	const isDefaultPrismaClient = prismaImportPath === "@prisma/client";
+
+	// Generate appropriate imports based on the prisma source
+	const prismaImport = isDefaultPrismaClient
+		? `import { prisma } from '../prisma-client';`
+		: `import { prisma } from '${prismaImportPath}';`;
+
 	const template = `${formatGeneratedFileHeader()}'use server';
 
-import { prisma } from '${getPrismaImportPath(context, 1)}';
+${prismaImport}
 import { revalidateTag } from 'next/cache';
 import { 
   ${lowerName}Schema, 

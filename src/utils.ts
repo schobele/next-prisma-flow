@@ -13,7 +13,7 @@ export function createGeneratorContext(
 		dmmf,
 		outputDir: path.resolve(outputPath),
 		zodDir: path.join(path.resolve(outputPath), "zod"),
-		prismaImport: config.prismaImport || "@/lib/prisma",
+		prismaImport: config.prismaImport || "@prisma/client",
 	};
 }
 

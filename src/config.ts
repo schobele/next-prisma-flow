@@ -17,7 +17,7 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 	const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
 
 	// Resolve prismaImport relative to schema file location
-	const resolvedPrismaImport = resolvePrismaImportPath(options, (config.prismaImport as string) || "@/lib/prisma");
+	const resolvedPrismaImport = resolvePrismaImportPath(options, (config.prismaImport as string) || "@prisma/client");
 
 	const parsedConfig: FlowGeneratorConfig = {
 		output: output,

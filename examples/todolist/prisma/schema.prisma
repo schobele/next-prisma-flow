@@ -8,8 +8,8 @@ generator client {
 generator flow {
   provider     = "./generator.js"
   output       = "../generated/flow"
-  prismaImport = "../lib/db"
   models       = ["User", "Category", "Todo"]
+  prismaImport = "../lib/db"
 
   // User configuration
   userSelect     = ["id", "email", "name", "createdAt", "updatedAt"]

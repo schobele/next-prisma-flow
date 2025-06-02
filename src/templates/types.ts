@@ -1,7 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { createSelectObjectWithRelations, formatGeneratedFileHeader, getZodImportPath } from "../utils.js";
+import {
+	createSelectObjectWithRelations,
+	formatGeneratedFileHeader,
+	getPrismaImportPath,
+	getZodImportPath,
+} from "../utils.js";
 
 export async function generateTypes(modelInfo: ModelInfo, context: GeneratorContext, modelDir: string): Promise<void> {
 	const { name: modelName, lowerName, selectFields } = modelInfo;
@@ -10,7 +15,19 @@ export async function generateTypes(modelInfo: ModelInfo, context: GeneratorCont
 	// Get the correct relative path from the model subdirectory to local zod directory
 	const zodImportPath = getZodImportPath(1);
 
-	const template = `${formatGeneratedFileHeader()}import type { Prisma } from '@prisma/client';
+	// Get the prisma import path for this nesting level
+	const prismaImportPath = getPrismaImportPath(context, 1);
+
+	// Determine if we're using the default @prisma/client or a custom prisma client
+	const isDefaultPrismaClient = prismaImportPath === "@prisma/client";
+
+	// Generate appropriate imports based on the prisma source
+	const prismaImports = isDefaultPrismaClient
+		? `import type { Prisma } from '@prisma/client';
+import { prisma } from '../prisma-client';`
+		: `import { prisma, type Prisma } from '${prismaImportPath}';`;
+
+	const template = `${formatGeneratedFileHeader()}${prismaImports}
 import { z } from 'zod';
 
 // Re-export Zod schemas from zod-prisma-types
