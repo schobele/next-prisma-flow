@@ -1341,7 +1341,10 @@ var require_dist2 = __commonJS((exports, module) => {
 // index.ts
 var import_generator_helper = __toESM(require_dist2(), 1);
 import fs7 from "node:fs/promises";
-import path8 from "node:path";
+import path9 from "node:path";
+
+// src/config.ts
+import path from "node:path";
 
 // src/errors.ts
 class FlowGeneratorError extends Error {
@@ -1395,10 +1398,12 @@ function parseGeneratorConfig(options) {
     throw new ConfigurationError('Missing required "models" configuration', "models");
   }
   const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
+  const resolvedPrismaImport = resolvePrismaImportPath(options, config.prismaImport || "@/lib/prisma");
+  const resolvedZodPrismaImport = resolvePrismaImportPath(options, config.zodPrismaImport || "./generated/zod");
   const parsedConfig = {
     output,
-    zodPrismaImport: config.zodPrismaImport || "./generated/zod",
-    prismaImport: config.prismaImport || "@/lib/prisma",
+    zodPrismaImport: resolvedZodPrismaImport,
+    prismaImport: resolvedPrismaImport,
     models
   };
   for (const modelName of models) {
@@ -1433,6 +1438,23 @@ function parseModelConfigFromFlatKeys(config, modelName) {
   }
   return modelConfig;
 }
+function resolvePrismaImportPath(options, importPath) {
+  if (!importPath.startsWith(".")) {
+    return importPath;
+  }
+  const schemaDir = path.dirname(options.schemaPath);
+  const outputDir = options.generator.output?.value ?? "./generated/flow";
+  const absoluteImportPath = path.resolve(schemaDir, importPath);
+  const relativeFromOutput = path.relative(outputDir, absoluteImportPath);
+  return relativeFromOutput.replace(/\\/g, "/").replace(/\.ts$/, "");
+}
+function getPrismaImportForNesting(basePrismaImport, nestingLevel) {
+  if (!basePrismaImport.startsWith(".")) {
+    return basePrismaImport;
+  }
+  const additionalLevels = "../".repeat(nestingLevel);
+  return additionalLevels + basePrismaImport;
+}
 function validateConfig(config, modelNames) {
   const invalidModels = config.models.filter((modelName) => !modelNames.includes(modelName));
   if (invalidModels.length > 0) {
@@ -1449,18 +1471,24 @@ function validateConfig(config, modelNames) {
 
 // src/templates/actions.ts
 import fs from "node:fs/promises";
-import path2 from "node:path";
+import path3 from "node:path";
 
 // src/utils.ts
-import path from "node:path";
+import path2 from "node:path";
 function createGeneratorContext(config, dmmf, outputPath) {
   return {
     config,
     dmmf,
-    outputDir: path.resolve(outputPath),
+    outputDir: path2.resolve(outputPath),
     zodPrismaImport: config.zodPrismaImport || "./generated/zod",
     prismaImport: config.prismaImport || "@/lib/prisma"
   };
+}
+function getPrismaImportPath(context, nestingLevel = 0) {
+  return getPrismaImportForNesting(context.prismaImport, nestingLevel);
+}
+function getZodPrismaImportPath(context, nestingLevel = 0) {
+  return getPrismaImportForNesting(context.zodPrismaImport, nestingLevel);
 }
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -1617,7 +1645,7 @@ async function generateServerActions(modelInfo, context, modelDir) {
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
   const template = `${formatGeneratedFileHeader()}'use server';
 
-import { prisma } from '${context.prismaImport}';
+import { prisma } from '${getPrismaImportPath(context, 1)}';
 import { revalidateTag } from 'next/cache';
 import { 
   ${lowerName}Schema, 
@@ -1711,13 +1739,13 @@ export async function deleteMany${pluralName}(ids: string[]): Promise<{ count: n
   return result;
 }
 `;
-  const filePath = path2.join(modelDir, "actions.ts");
+  const filePath = path3.join(modelDir, "actions.ts");
   await fs.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/atoms.ts
 import fs2 from "node:fs/promises";
-import path3 from "node:path";
+import path4 from "node:path";
 async function generateJotaiAtoms(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from 'jotai';
@@ -1899,13 +1927,13 @@ export const is${pluralName}EmptyAtom = atom((get) => {
   return count === 0;
 });
 `;
-  const filePath = path3.join(modelDir, "atoms.ts");
+  const filePath = path4.join(modelDir, "atoms.ts");
   await fs2.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/barrel.ts
 import fs3 from "node:fs/promises";
-import path4 from "node:path";
+import path5 from "node:path";
 async function generateBarrelExports(config, context) {
   await Promise.all([
     generateMainIndex(config, context),
@@ -1935,7 +1963,7 @@ ${exports}
 // Store setup
 export * from './store';
 `;
-  const filePath = path4.join(context.outputDir, "index.ts");
+  const filePath = path5.join(context.outputDir, "index.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 async function generateActionsIndex(config, context) {
@@ -1979,7 +2007,7 @@ ${config.models.map((modelName) => {
 
 `)}
 `;
-  const filePath = path4.join(context.outputDir, "actions.ts");
+  const filePath = path5.join(context.outputDir, "actions.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 async function generateHooksIndex(config, context) {
@@ -2010,7 +2038,7 @@ ${config.models.map((modelName) => {
 
 `)}
 `;
-  const filePath = path4.join(context.outputDir, "hooks.ts");
+  const filePath = path5.join(context.outputDir, "hooks.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 async function generateAtomsIndex(config, context) {
@@ -2042,7 +2070,7 @@ ${config.models.map((modelName) => {
 
 `)}
 `;
-  const filePath = path4.join(context.outputDir, "atoms.ts");
+  const filePath = path5.join(context.outputDir, "atoms.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 async function generateTypesIndex(config, context) {
@@ -2072,7 +2100,7 @@ ${config.models.map((modelName) => {
 
 `)}
 `;
-  const filePath = path4.join(context.outputDir, "types.ts");
+  const filePath = path5.join(context.outputDir, "types.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 async function generateStoreSetup(config, context) {
@@ -2175,13 +2203,13 @@ ${config.models.map((modelName) => {
   };
 }
 `;
-  const filePath = path4.join(context.outputDir, "store.ts");
+  const filePath = path5.join(context.outputDir, "store.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/hooks.ts
 import fs4 from "node:fs/promises";
-import path5 from "node:path";
+import path6 from "node:path";
 async function generateReactHooks(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -2424,13 +2452,13 @@ export function use${modelName}Exists(id: string): boolean {
   return !!${lowerName};
 }
 `;
-  const filePath = path5.join(modelDir, "hooks.ts");
+  const filePath = path6.join(modelDir, "hooks.ts");
   await fs4.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/routes.ts
 import fs5 from "node:fs/promises";
-import path6 from "node:path";
+import path7 from "node:path";
 async function generateApiRoutes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
@@ -2536,25 +2564,17 @@ export const routesHandlers = {
 	DELETE,
 };
 `;
-  const filePath = path6.join(modelDir, "routes.ts");
+  const filePath = path7.join(modelDir, "routes.ts");
   await fs5.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/types.ts
 import fs6 from "node:fs/promises";
-import path7 from "node:path";
+import path8 from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
-  let zodImportPath = context.zodPrismaImport;
-  if (zodImportPath.startsWith("./") || zodImportPath.startsWith("../")) {
-    if (zodImportPath.startsWith("../")) {
-      const finalPart = zodImportPath.split("/").pop();
-      zodImportPath = `../../${finalPart}`;
-    } else if (zodImportPath.startsWith("./")) {
-      zodImportPath = zodImportPath.replace(/^\.\//, "../../");
-    }
-  }
+  const zodImportPath = getZodPrismaImportPath(context, 1);
   const template = `${formatGeneratedFileHeader()}import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
@@ -2686,7 +2706,7 @@ export interface ${modelName}ValidationErrors {
   message: string;
 }
 `;
-  const filePath = path7.join(modelDir, "types.ts");
+  const filePath = path8.join(modelDir, "types.ts");
   await fs6.writeFile(filePath, template, "utf-8");
 }
 
@@ -2731,7 +2751,7 @@ import_generator_helper.generatorHandler({
           model,
           selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
         };
-        const modelDir = path8.join(context.outputDir, lowerModelName);
+        const modelDir = path9.join(context.outputDir, lowerModelName);
         try {
           await fs7.mkdir(modelDir, { recursive: true });
         } catch (error) {

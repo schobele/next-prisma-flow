@@ -14,7 +14,7 @@ generator flow {
   provider        = "./generator.js"
   output          = "../generated/flow"
   zodPrismaImport = "../generated/zod"
-  prismaImport    = "@/lib/db"
+  prismaImport    = "../lib/db"
   models          = ["User", "Category", "Todo"]
 
   // User configuration

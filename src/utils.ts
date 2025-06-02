@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { DMMF } from "@prisma/generator-helper";
+import { getPrismaImportForNesting } from "./config.js";
 import type { FlowGeneratorConfig, GeneratorContext } from "./types.js";
 
 export function createGeneratorContext(
@@ -14,6 +15,24 @@ export function createGeneratorContext(
 		zodPrismaImport: config.zodPrismaImport || "./generated/zod",
 		prismaImport: config.prismaImport || "@/lib/prisma",
 	};
+}
+
+/**
+ * Gets the correct prismaImport path for a specific file location.
+ * @param context - The generator context
+ * @param nestingLevel - How many directories deep from output root (0 = root, 1 = model subdirectory)
+ */
+export function getPrismaImportPath(context: GeneratorContext, nestingLevel = 0): string {
+	return getPrismaImportForNesting(context.prismaImport, nestingLevel);
+}
+
+/**
+ * Gets the correct zodPrismaImport path for a specific file location.
+ * @param context - The generator context
+ * @param nestingLevel - How many directories deep from output root (0 = root, 1 = model subdirectory)
+ */
+export function getZodPrismaImportPath(context: GeneratorContext, nestingLevel = 0): string {
+	return getPrismaImportForNesting(context.zodPrismaImport, nestingLevel);
 }
 
 export function capitalize(str: string): string {
@@ -300,4 +319,15 @@ export function pluralize(word: string): string {
 
 	// Default: just add s
 	return `${word}s`;
+}
+
+// Re-export the interface and types that templates might need
+export interface ModelInfo {
+	name: string;
+	lowerName: string;
+	pluralName: string;
+	lowerPluralName: string;
+	config: any;
+	model: DMMF.Model;
+	selectFields: string[];
 }

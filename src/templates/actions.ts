@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { createSelectObjectWithRelations, formatGeneratedFileHeader } from "../utils.js";
+import { createSelectObjectWithRelations, formatGeneratedFileHeader, getPrismaImportPath } from "../utils.js";
 
 export async function generateServerActions(
 	modelInfo: ModelInfo,
@@ -13,7 +13,7 @@ export async function generateServerActions(
 
 	const template = `${formatGeneratedFileHeader()}'use server';
 
-import { prisma } from '${context.prismaImport}';
+import { prisma } from '${getPrismaImportPath(context, 1)}';
 import { revalidateTag } from 'next/cache';
 import { 
   ${lowerName}Schema, 

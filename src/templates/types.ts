@@ -1,33 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { createSelectObjectWithRelations, formatGeneratedFileHeader } from "../utils.js";
+import { createSelectObjectWithRelations, formatGeneratedFileHeader, getZodPrismaImportPath } from "../utils.js";
 
 export async function generateTypes(modelInfo: ModelInfo, context: GeneratorContext, modelDir: string): Promise<void> {
 	const { name: modelName, lowerName, selectFields } = modelInfo;
 	const selectObject = createSelectObjectWithRelations(modelInfo, context);
 
-	// Calculate the correct relative path from the model subdirectory to zodPrismaImport
-	let zodImportPath = context.zodPrismaImport;
-	if (zodImportPath.startsWith("./") || zodImportPath.startsWith("../")) {
-		// It's a relative path - we need to calculate from the model subdirectory
-		// to the zod output directory
-
-		// The model files are in: output/modelName/types.ts
-		// We need to go up 2 levels: ../.. to get to the same level as zodPrismaImport
-
-		// If zodPrismaImport is "../generated/zod", we want "../../zod"
-		// If zodPrismaImport is "./generated/zod", we want "../../generated/zod"
-
-		if (zodImportPath.startsWith("../")) {
-			// "../generated/zod" -> "../../zod" (go up two levels total, keep only the final part)
-			const finalPart = zodImportPath.split("/").pop(); // Get "zod" from "../generated/zod"
-			zodImportPath = `../../${finalPart}`;
-		} else if (zodImportPath.startsWith("./")) {
-			// "./generated/zod" -> "../../generated/zod" (go up two levels and keep the path after "./"")
-			zodImportPath = zodImportPath.replace(/^\.\//, "../../");
-		}
-	}
+	// Get the correct relative path from the model subdirectory to zodPrismaImport
+	const zodImportPath = getZodPrismaImportPath(context, 1);
 
 	const template = `${formatGeneratedFileHeader()}import type { Prisma } from '@prisma/client';
 import { z } from 'zod';

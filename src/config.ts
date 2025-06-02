@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import { ConfigurationError, ModelNotFoundError } from "./errors.js";
 import type { FlowGeneratorConfig, ModelConfig } from "./types.js";
@@ -15,10 +16,17 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 
 	const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
 
+	// Resolve prismaImport and zodPrismaImport relative to schema file location
+	const resolvedPrismaImport = resolvePrismaImportPath(options, (config.prismaImport as string) || "@/lib/prisma");
+	const resolvedZodPrismaImport = resolvePrismaImportPath(
+		options,
+		(config.zodPrismaImport as string) || "./generated/zod",
+	);
+
 	const parsedConfig: FlowGeneratorConfig = {
 		output: output,
-		zodPrismaImport: (config.zodPrismaImport as string) || "./generated/zod",
-		prismaImport: (config.prismaImport as string) || "@/lib/prisma",
+		zodPrismaImport: resolvedZodPrismaImport,
+		prismaImport: resolvedPrismaImport,
 		models,
 	};
 
@@ -67,6 +75,48 @@ function parseModelConfigFromFlatKeys(config: Record<string, any>, modelName: st
 	}
 
 	return modelConfig;
+}
+
+/**
+ * Resolves a relative import path from the Prisma schema to the correct relative path
+ * from the generator output directory.
+ */
+function resolvePrismaImportPath(options: GeneratorOptions, importPath: string): string {
+	// If it's an absolute import (starts with @/ or doesn't start with ./ or ../), return as-is
+	if (!importPath.startsWith(".")) {
+		return importPath;
+	}
+
+	// Get the directory containing the schema file
+	const schemaDir = path.dirname(options.schemaPath);
+
+	// Get the output directory (already resolved to absolute path by Prisma)
+	const outputDir = options.generator.output?.value ?? "./generated/flow";
+
+	// Resolve the import path relative to the schema directory to get absolute path
+	const absoluteImportPath = path.resolve(schemaDir, importPath);
+
+	// Calculate relative path from output directory to the resolved import
+	const relativeFromOutput = path.relative(outputDir, absoluteImportPath);
+
+	// Convert to proper import format (forward slashes, no extension)
+	return relativeFromOutput.replace(/\\/g, "/").replace(/\.ts$/, "");
+}
+
+/**
+ * Gets the correctly resolved import path for a specific nesting level within the output.
+ * @param basePrismaImport - The resolved prismaImport from config
+ * @param nestingLevel - How many directories deep (0 = root, 1 = model subdirectory)
+ */
+export function getPrismaImportForNesting(basePrismaImport: string, nestingLevel: number): string {
+	// If it's an absolute import (starts with @/ or doesn't start with ./ or ../), return as-is
+	if (!basePrismaImport.startsWith(".")) {
+		return basePrismaImport;
+	}
+
+	// Add additional ../ for each nesting level
+	const additionalLevels = "../".repeat(nestingLevel);
+	return additionalLevels + basePrismaImport;
 }
 
 export function validateConfig(config: FlowGeneratorConfig, modelNames: string[]): void {
