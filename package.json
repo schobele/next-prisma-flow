@@ -1,6 +1,6 @@
 {
 	"name": "next-prisma-flow",
-	"version": "0.1.4",
+	"version": "0.1.41",
 	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js applications",
 	"main": "dist/index.js",
 	"module": "index.ts",
@@ -41,16 +41,18 @@
 	"engines": {
 		"node": ">=18.0.0"
 	},
-	"dependencies": {
+	"dependencies": {},
+	"devDependencies": {
 		"@prisma/client": "^5.0.0",
 		"@prisma/generator-helper": "^5.0.0",
+		"zod": "^3.25.46",
 		"lint-staged": "^16.1.0",
-		"zod": "^3.25.46"
-	},
-	"devDependencies": {
 		"@types/bun": "latest",
 		"@types/node": "^20.0.0",
-		"husky": "^9.1.7"
+		"husky": "^9.1.7",
+		"jotai": "^2.6.0",
+		"jotai-immer": "^0.4.1",
+		"zod-prisma-types": "^3.2.4"
 	},
 	"peerDependencies": {
 		"typescript": "^5",
