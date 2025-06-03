@@ -25,8 +25,8 @@ generator flow {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -34,7 +34,7 @@ datasource db {
 // ============================================================================
 
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   email     String   @unique
   name      String
   avatar    String?
@@ -48,7 +48,7 @@ model User {
 }
 
 model Category {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
   name      String
   color     String   @default("#3b82f6")
   createdAt DateTime @default(now())
@@ -60,7 +60,7 @@ model Category {
 }
 
 model Todo {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   title       String
   description String?
   status      String    @default("PENDING")
