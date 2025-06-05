@@ -3168,9 +3168,160 @@ export function use${modelName}FormState() {
   await fs5.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/smart-form-hook.ts
+// src/templates/namespace.ts
 import fs6 from "node:fs/promises";
 import path8 from "node:path";
+async function generateNamespaceExports(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}// Model-specific namespace export for ${modelName}
+// Provides organized access to all ${modelName} functionality
+
+import * as hooks from './hooks';
+import * as actions from './actions';
+import * as atoms from './atoms';
+import * as types from './types';
+import * as providers from './form-provider';
+import { ${modelName}CreateInputSchema, ${modelName}UpdateInputSchema } from './types';
+
+// Main namespace export
+export const ${lowerName} = {
+  hooks,
+  actions,
+  atoms,
+  types,
+  providers,
+  
+  schemas: {
+    create: ${modelName}CreateInputSchema,
+    update: ${modelName}UpdateInputSchema,
+  },
+} as const;
+
+// Export the namespace as default for convenience
+export default ${lowerName};
+
+// Also export all the individual pieces for direct access
+export { hooks, actions, atoms, types, providers };
+`;
+  const filePath = path8.join(modelDir, "namespace.ts");
+  await fs6.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/routes.ts
+import fs7 from "node:fs/promises";
+import path9 from "node:path";
+async function generateApiRoutes(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
+import * as ${modelName}Actions from './actions';
+
+async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (id) {
+      const result = await ${modelName}Actions.get${modelName}(id);
+      if (!result) {
+        return NextResponse.json(
+          { error: '${modelName} not found' },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json(result);
+    } else {
+      const results = await ${modelName}Actions.getAll${pluralName}();
+      return NextResponse.json(results);
+    }
+  } catch (error) {
+    console.error('GET /${lowerName} error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+async function POST(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const result = await ${modelName}Actions.create${modelName}(data);
+    return NextResponse.json(result, { status: 201 });
+  } catch (error) {
+    console.error('POST /${lowerName} error:', error);
+    const status = (error as any)?.code === 'P2002' ? 409 : 400;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Invalid request' },
+      { status }
+    );
+  }
+}
+
+async function PATCH(request: NextRequest) {
+  try {
+    const data = await request.json();
+    const { id, ...updateData } = data;
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing id in request body' },
+        { status: 400 }
+      );
+    }
+    
+    const result = await ${modelName}Actions.update${modelName}(id, updateData);
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error('PATCH /${lowerName} error:', error);
+    let status = 400;
+    if ((error as any)?.code === 'P2025') status = 404;
+    if ((error as any)?.code === 'P2002') status = 409;
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Update failed' },
+      { status }
+    );
+  }
+}
+
+async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Missing id parameter' },
+        { status: 400 }
+      );
+    }
+    
+    await ${modelName}Actions.delete${modelName}(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('DELETE /${lowerName} error:', error);
+    const status = (error as any)?.code === 'P2025' ? 404 : 500;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Delete failed' },
+      { status }
+    );
+  }
+}
+
+export const routesHandlers = {
+	GET,
+	POST,
+	PATCH,
+	DELETE,
+};
+`;
+  const filePath = path9.join(modelDir, "routes.ts");
+  await fs7.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/smart-form-hook.ts
+import fs8 from "node:fs/promises";
+import path10 from "node:path";
 async function generateSmartFormHook(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -3349,158 +3500,7 @@ export function use${modelName}UpdateForm(id: string, initialData?: any) {
   });
 }
 `;
-  const filePath = path8.join(modelDir, "smart-form.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
-}
-
-// src/templates/namespace.ts
-import fs7 from "node:fs/promises";
-import path9 from "node:path";
-async function generateNamespaceExports(modelInfo, context, modelDir) {
-  const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
-  const template = `${formatGeneratedFileHeader()}// Model-specific namespace export for ${modelName}
-// Provides organized access to all ${modelName} functionality
-
-import * as hooks from './hooks';
-import * as actions from './actions';
-import * as atoms from './atoms';
-import * as types from './types';
-import * as providers from './form-provider';
-import { ${modelName}CreateInputSchema, ${modelName}UpdateInputSchema } from './types';
-
-// Main namespace export
-export const ${lowerName} = {
-  hooks,
-  actions,
-  atoms,
-  types,
-  providers,
-  
-  schemas: {
-    create: ${modelName}CreateInputSchema,
-    update: ${modelName}UpdateInputSchema,
-  },
-} as const;
-
-// Export the namespace as default for convenience
-export default ${lowerName};
-
-// Also export all the individual pieces for direct access
-export { hooks, actions, atoms, types, providers };
-`;
-  const filePath = path9.join(modelDir, "namespace.ts");
-  await fs7.writeFile(filePath, template, "utf-8");
-}
-
-// src/templates/routes.ts
-import fs8 from "node:fs/promises";
-import path10 from "node:path";
-async function generateApiRoutes(modelInfo, context, modelDir) {
-  const { name: modelName, lowerName, pluralName } = modelInfo;
-  const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
-import * as ${modelName}Actions from './actions';
-
-async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (id) {
-      const result = await ${modelName}Actions.get${modelName}(id);
-      if (!result) {
-        return NextResponse.json(
-          { error: '${modelName} not found' },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json(result);
-    } else {
-      const results = await ${modelName}Actions.getAll${pluralName}();
-      return NextResponse.json(results);
-    }
-  } catch (error) {
-    console.error('GET /${lowerName} error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-async function POST(request: NextRequest) {
-  try {
-    const data = await request.json();
-    const result = await ${modelName}Actions.create${modelName}(data);
-    return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error('POST /${lowerName} error:', error);
-    const status = (error as any)?.code === 'P2002' ? 409 : 400;
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Invalid request' },
-      { status }
-    );
-  }
-}
-
-async function PATCH(request: NextRequest) {
-  try {
-    const data = await request.json();
-    const { id, ...updateData } = data;
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Missing id in request body' },
-        { status: 400 }
-      );
-    }
-    
-    const result = await ${modelName}Actions.update${modelName}(id, updateData);
-    return NextResponse.json(result);
-  } catch (error) {
-    console.error('PATCH /${lowerName} error:', error);
-    let status = 400;
-    if ((error as any)?.code === 'P2025') status = 404;
-    if ((error as any)?.code === 'P2002') status = 409;
-    
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Update failed' },
-      { status }
-    );
-  }
-}
-
-async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    
-    if (!id) {
-      return NextResponse.json(
-        { error: 'Missing id parameter' },
-        { status: 400 }
-      );
-    }
-    
-    await ${modelName}Actions.delete${modelName}(id);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('DELETE /${lowerName} error:', error);
-    const status = (error as any)?.code === 'P2025' ? 404 : 500;
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Delete failed' },
-      { status }
-    );
-  }
-}
-
-export const routesHandlers = {
-	GET,
-	POST,
-	PATCH,
-	DELETE,
-};
-`;
-  const filePath = path10.join(modelDir, "routes.ts");
+  const filePath = path10.join(modelDir, "smart-form.ts");
   await fs8.writeFile(filePath, template, "utf-8");
 }
 
