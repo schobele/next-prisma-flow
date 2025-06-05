@@ -1,6 +1,14 @@
 # Next Prisma Flow Generator
 
-A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications. Automatically generates API routes, server actions, Jotai state management, and React hooks - all fully type-safe and derived from your Prisma schema.
+A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
+
+## 🚀 What's New in v0.2.0
+
+- **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
+- **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
+- **Zero-config form integration** - Automatic validation and submission with `todos.hooks.useForm()`
+- **Enhanced developer experience** - Intuitive API that works out of the box
+- **Backward compatibility** - All v0.1.x APIs still work
 
 ## Features
 
@@ -12,6 +20,8 @@ A powerful Prisma generator that scaffolds a full stack of typed code for Next.j
 - 📦 **Batch Operations**: Generated batch create/delete operations
 - 🛡️ **Input Validation**: Zod schema validation for all mutations
 - 📊 **Selective Fields**: Control which fields are exposed via configuration
+- 🎨 **Smart Forms**: Zero-config form hooks with automatic validation
+- 🏗️ **Namespace Exports**: Organized, intuitive API structure
 
 ## Installation
 
@@ -89,23 +99,46 @@ This creates the following structure:
 ```
 generated/flow/
 ├── user/
-│   ├── actions.ts    # Server actions
-│   ├── atoms.ts      # Jotai atoms
-│   ├── hooks.ts      # React hooks
-│   ├── routes.ts     # API route handlers
-│   └── types.ts      # TypeScript types
+│   ├── actions.ts        # Server actions
+│   ├── atoms.ts          # Jotai atoms
+│   ├── hooks.ts          # Enhanced React hooks with unified API
+│   ├── routes.ts         # API route handlers
+│   ├── types.ts          # TypeScript types
+│   ├── form-provider.tsx # Form context providers
+│   ├── smart-form.ts     # Smart form utilities
+│   └── namespace.ts      # Model-specific organized exports
 ├── post/
 │   ├── actions.ts
 │   ├── atoms.ts
 │   ├── hooks.ts
 │   ├── routes.ts
-│   └── types.ts
-├── actions.ts        # Barrel exports for actions
-├── atoms.ts          # Barrel exports for atoms
-├── hooks.ts          # Barrel exports for hooks
-├── types.ts          # Barrel exports for types
-├── store.ts          # Central store setup
-└── index.ts          # Main barrel export
+│   ├── types.ts
+│   ├── form-provider.tsx
+│   ├── smart-form.ts
+│   └── namespace.ts
+├── actions.ts            # Legacy barrel exports for actions
+├── atoms.ts              # Legacy barrel exports for atoms
+├── hooks.ts              # Legacy barrel exports for hooks
+├── types.ts              # Legacy barrel exports for types
+├── store.ts              # Central store setup
+├── zod/                  # Zod schema exports
+│   └── index.ts
+└── index.ts              # Enhanced main export with namespaces
+```
+
+#### Modern v0.2.0 Import Structure
+
+```typescript
+import { users, posts } from '@/generated/flow';
+
+// Everything organized under model namespaces:
+users.hooks.useUsers()         // Unified CRUD hook
+users.hooks.useUser(id)        // Individual item hook
+users.hooks.useCreateUserForm() // Smart form hook
+users.actions.create()         // Server actions
+users.atoms.usersAtom          // Jotai atoms
+users.types.User               // TypeScript types
+users.schemas.create           // Zod schemas
 ```
 
 ### 3. Set up your Next.js API routes
@@ -122,10 +155,82 @@ export { GET, POST, PATCH, DELETE } from '@/generated/flow/post/routes';
 
 ### 4. Use in your React components
 
+#### 🎯 Modern API (v0.2.0+) - Recommended
+
 ```typescript
 'use client';
 
-import { useUsers, useCreateUser, useUserMutations } from '@/generated/flow/hooks';
+import { users, posts } from '@/generated/flow';
+
+export default function UsersList() {
+  // One hook, everything you need
+  const { 
+    data: userList, 
+    createUser, 
+    updateUser, 
+    deleteUser,
+    loading, 
+    error 
+  } = users.hooks.useUsers();
+  
+  // Zero-config form with auto-validation
+  const form = users.hooks.useCreateUserForm();
+  
+  if (loading) return <div>Loading users...</div>;
+  if (error) return <div>Error: {error}</div>;
+
+  return (
+    <div>
+      <form onSubmit={form.submit}>
+        <input {...form.field('name')} placeholder="Name" />
+        <input {...form.field('email')} placeholder="Email" />
+        <button type="submit" disabled={!form.isValid || form.loading}>
+          {form.loading ? 'Creating...' : 'Create User'}
+        </button>
+      </form>
+      
+      <ul>
+        {userList.map(user => (
+          <li key={user.id}>
+            {user.name} ({user.email})
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+#### Individual Item Management
+
+```typescript
+import { users } from '@/generated/flow';
+
+function UserProfile({ id }: { id: string }) {
+  // Individual item with form integration
+  const { data: user, form, update, delete: deleteUser } = users.hooks.useUser(id);
+  
+  if (!user) return <div>Loading...</div>;
+  
+  return (
+    <div>
+      <form onSubmit={form.submit}>
+        <input {...form.field('name')} />
+        <input {...form.field('email')} />
+        <button type="submit">Update</button>
+      </form>
+      <button onClick={() => deleteUser()}>Delete</button>
+    </div>
+  );
+}
+```
+
+#### Legacy API (v0.1.x) - Still Supported
+
+```typescript
+'use client';
+
+import { useUsers, useCreateUser } from '@/generated/flow/hooks';
 
 export default function UsersList() {
   const { users, loading, error, refresh } = useUsers();
@@ -294,7 +399,108 @@ export async function DELETE(request: NextRequest): Promise<NextResponse>
 
 ## Advanced Usage
 
-### Custom Error Handling
+### 🎯 Modern API (v0.2.0+)
+
+#### Smart Form Integration
+
+```typescript
+import { todos } from '@/generated/flow';
+
+function TodoForm() {
+  const form = todos.hooks.useCreateTodoForm({
+    title: '',
+    priority: 'MEDIUM'
+  });
+  
+  // Auto-save functionality
+  form.enableAutoSave(1000); // Save every 1 second
+  
+  return (
+    <form onSubmit={form.submit}>
+      <input 
+        {...form.field('title')}
+        placeholder="Todo title"
+      />
+      <select {...form.field('priority')}>
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+      </select>
+      <button type="submit" disabled={!form.isValid}>
+        {form.loading ? 'Creating...' : 'Create Todo'}
+      </button>
+      {form.error && <div className="error">{form.error.message}</div>}
+    </form>
+  );
+}
+```
+
+#### Advanced Custom State
+
+```typescript
+import { atom } from 'jotai';
+import { todos } from '@/generated/flow';
+
+// Direct atom access for custom derived state
+const { todosAtom } = todos.atoms;
+
+export const myTodosAtom = atom((get) => {
+  const allTodos = get(todosAtom);
+  return Object.values(allTodos).filter(t => t.userId === currentUserId);
+});
+
+export const urgentTodosAtom = atom((get) => {
+  const myTodos = get(myTodosAtom);
+  return myTodos.filter(t => t.priority === 'HIGH' && t.status !== 'COMPLETED');
+});
+```
+
+#### Programmatic Actions
+
+```typescript
+import { todos } from '@/generated/flow';
+
+// Direct action access for programmatic use
+export async function bulkMarkComplete(todoIds: string[]) {
+  await Promise.all(
+    todoIds.map(id => 
+      todos.actions.update(id, { status: 'COMPLETED' })
+    )
+  );
+}
+
+export async function createTodoFromTemplate(template: TodoTemplate) {
+  return await todos.actions.create({
+    title: template.title,
+    description: template.description,
+    priority: template.priority,
+    userId: getCurrentUserId()
+  });
+}
+```
+
+#### Batch Operations
+
+```typescript
+import { users } from '@/generated/flow';
+
+function BatchUserActions() {
+  const { createMany, deleteMany } = users.hooks.useUsers();
+  
+  const handleBatchCreate = async () => {
+    await createMany([
+      { name: 'User 1', email: 'user1@example.com' },
+      { name: 'User 2', email: 'user2@example.com' },
+    ]);
+  };
+  
+  return <button onClick={handleBatchCreate}>Create Multiple Users</button>;
+}
+```
+
+### Legacy API (v0.1.x)
+
+#### Custom Error Handling
 
 ```typescript
 import { useUsers } from '@/generated/flow/hooks';
@@ -310,39 +516,7 @@ function UsersWithErrorBoundary() {
 }
 ```
 
-### Optimistic Updates
-
-All mutations include built-in optimistic updates:
-
-```typescript
-const { updateUser } = useUpdateUser();
-
-// UI updates immediately, then syncs with server
-await updateUser(userId, { name: 'New Name' });
-```
-
-### Batch Operations
-
-```typescript
-import { useBatchUserOperations } from '@/generated/flow/hooks';
-
-function BatchUserActions() {
-  const { createManyUsers, deleteManyUsers } = useBatchUserOperations();
-  
-  const handleBatchCreate = () => {
-    createManyUsers([
-      { name: 'User 1', email: 'user1@example.com' },
-      { name: 'User 2', email: 'user2@example.com' },
-    ]);
-  };
-  
-  return <button onClick={handleBatchCreate}>Create Multiple Users</button>;
-}
-```
-
-### Direct Server Action Usage
-
-Skip HTTP overhead by importing server actions directly:
+#### Direct Server Action Usage
 
 ```typescript
 import { createUser } from '@/generated/flow/user/actions';
@@ -358,26 +532,124 @@ async function handleServerSideUserCreation() {
 }
 ```
 
+## Migration from v0.1.x to v0.2.0
+
+### No Breaking Changes 🎉
+
+All v0.1.x APIs continue to work exactly as before. You can upgrade to v0.2.0 and migrate gradually.
+
+### Recommended Migration Path
+
+#### 1. Import Style (Optional but Recommended)
+
+**Before (v0.1.x):**
+```typescript
+import { useUsers, useCreateUser } from '@/generated/flow/hooks';
+import { createUser } from '@/generated/flow/user/actions';
+```
+
+**After (v0.2.0+):**
+```typescript
+import { users } from '@/generated/flow';
+// Everything is available under users.hooks, users.actions, etc.
+```
+
+#### 2. Hook Consolidation (Optional)
+
+**Before (v0.1.x):**
+```typescript
+const { users, loading, error } = useUsers();
+const { createUser } = useCreateUser();
+const { updateUser } = useUpdateUser();
+const { deleteUser } = useDeleteUser();
+```
+
+**After (v0.2.0+):**
+```typescript
+const { 
+  data: users, 
+  loading, 
+  error,
+  createUser, 
+  updateUser, 
+  deleteUser 
+} = users.hooks.useUsers();
+```
+
+#### 3. Form Integration (New Feature)
+
+**Enhanced with v0.2.0:**
+```typescript
+// Zero-config forms with validation
+const form = users.hooks.useCreateUserForm();
+
+return (
+  <form onSubmit={form.submit}>
+    <input {...form.field('name')} />
+    <input {...form.field('email')} />
+    <button type="submit" disabled={!form.isValid}>
+      Create User
+    </button>
+  </form>
+);
+```
+
+### Key Benefits of Migrating
+
+1. **Cleaner Imports** - Single namespace import instead of multiple
+2. **Unified Hooks** - One hook with all CRUD operations
+3. **Smart Forms** - Zero-config form integration with validation
+4. **Better DX** - More intuitive and discoverable API
+5. **Future-Ready** - Built for upcoming features
+
+### Migration Timeline
+
+- **Immediate**: Upgrade to v0.2.0 (no code changes needed)
+- **Gradual**: Migrate components one at a time using new APIs
+- **Optional**: Old APIs will be supported indefinitely
+
 ## Best Practices
 
-### 1. Security First
+### 1. Use Modern API (v0.2.0+)
+Prefer the new namespace imports for better DX:
+
+```typescript
+// ✅ Good - Modern namespace import
+import { users, todos } from '@/generated/flow';
+
+// ❌ Avoid - Legacy multiple imports (still works)
+import { useUsers, useCreateUser } from '@/generated/flow/hooks';
+```
+
+### 2. Security First
 Always configure `select` to exclude sensitive fields:
 
 ```prisma
-user = {
-  select = ["id", "name", "email"]  # Excludes password, internal fields
-}
+userSelect = ["id", "name", "email"]  # Excludes password, internal fields
 ```
 
-### 2. Use Type Imports
+### 3. Leverage Smart Forms
+Use the new form hooks for better UX:
+
+```typescript
+// ✅ Good - Smart form with validation
+const form = users.hooks.useCreateUserForm();
+return <form onSubmit={form.submit}>...</form>;
+
+// ❌ Avoid - Manual form handling
+const { createUser } = users.hooks.useUsers();
+const handleSubmit = async (e) => { /* manual validation */ };
+```
+
+### 4. Use Type Imports
 Import types separately to avoid bundle bloat:
 
 ```typescript
 import type { User, UserCreateInput } from '@/generated/flow/types';
-import { useUsers } from '@/generated/flow/hooks';
+import { users } from '@/generated/flow';
 ```
 
-### 3. Error Boundaries
+### 5. Error Boundaries
 Wrap components using hooks in error boundaries:
 
 ```typescript
@@ -388,18 +660,27 @@ import { ErrorBoundary } from 'react-error-boundary';
 </ErrorBoundary>
 ```
 
-### 4. Cache Invalidation
-The generator automatically handles cache invalidation, but you can manually refresh:
+### 6. Optimistic Updates
+Take advantage of built-in optimistic updates:
 
 ```typescript
-const { refresh } = useUsers();
+const { updateUser } = users.hooks.useUsers();
 
-// Refresh after external data changes
-useEffect(() => {
-  const handleFocus = () => refresh();
-  window.addEventListener('focus', handleFocus);
-  return () => window.removeEventListener('focus', handleFocus);
-}, [refresh]);
+// UI updates immediately, then syncs with server
+await updateUser(userId, { name: 'New Name' });
+```
+
+### 7. Custom State Derivation
+Use direct atom access for complex state logic:
+
+```typescript
+import { atom } from 'jotai';
+import { users } from '@/generated/flow';
+
+const activeUsersAtom = atom((get) => {
+  const allUsers = get(users.atoms.usersAtom);
+  return Object.values(allUsers).filter(u => u.status === 'ACTIVE');
+});
 ```
 
 ## Requirements
