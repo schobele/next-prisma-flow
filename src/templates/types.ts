@@ -33,21 +33,21 @@ import { z } from 'zod';
 // Re-export Zod schemas from zod-prisma-types
 export {
   ${modelName}Schema as ${lowerName}Schema,
-  ${modelName}CreateInputSchema,
-  ${modelName}UpdateInputSchema,
+  ${modelName}UncheckedCreateInputSchema as ${modelName}CreateInputSchema,
+  ${modelName}UncheckedUpdateInputSchema as ${modelName}UpdateInputSchema,
   ${modelName}CreateManyInputSchema,
 } from '${zodImportPath}';
 
 // Import schemas for type inference
 import {
-  ${modelName}CreateInputSchema,
-  ${modelName}UpdateInputSchema,
+  ${modelName}UncheckedCreateInputSchema,
+  ${modelName}UncheckedUpdateInputSchema,
   ${modelName}CreateManyInputSchema,
 } from '${zodImportPath}';
 
 // Infer types from Zod schemas
-export type ${modelName}CreateInput = z.infer<typeof ${modelName}CreateInputSchema>;
-export type ${modelName}UpdateInput = z.infer<typeof ${modelName}UpdateInputSchema>;
+export type ${modelName}CreateInput = z.infer<typeof ${modelName}UncheckedCreateInputSchema>;
+export type ${modelName}UpdateInput = z.infer<typeof ${modelName}UncheckedUpdateInputSchema>;
 export type ${modelName}CreateManyInput = z.infer<typeof ${modelName}CreateManyInputSchema>;
 
 // Define the select object for this model
@@ -138,6 +138,16 @@ export interface ${modelName}OptimisticUpdate {
 // Form types (useful for React Hook Form integration)
 export type ${modelName}FormData = Omit<${modelName}Input, 'id' | 'createdAt' | 'updatedAt'>;
 export type ${modelName}UpdateFormData = Partial<${modelName}FormData>;
+
+// Field configuration for form hooks
+export interface ${modelName}FieldConfig {
+  name: string;
+  value: any;
+  onChange: (value: any) => void;
+  onBlur: () => void;
+  error?: string;
+  required?: boolean;
+}
 
 // Event types for custom hooks
 export interface ${modelName}ChangeEvent {

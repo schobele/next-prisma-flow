@@ -1340,8 +1340,8 @@ var require_dist2 = __commonJS((exports, module) => {
 
 // index.ts
 var import_generator_helper = __toESM(require_dist2(), 1);
-import fs8 from "node:fs/promises";
-import path10 from "node:path";
+import fs11 from "node:fs/promises";
+import path13 from "node:path";
 
 // src/config.ts
 import path from "node:path";
@@ -1933,174 +1933,199 @@ export const is${pluralName}EmptyAtom = atom((get) => {
   await fs2.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/barrel.ts
+// src/templates/enhanced-barrel.ts
 import fs3 from "node:fs/promises";
 import path5 from "node:path";
-async function generateBarrelExports(config, context) {
+async function generateEnhancedBarrelExports(config, context) {
   await Promise.all([
-    generateMainIndex(config, context),
-    generateActionsIndex(config, context),
-    generateHooksIndex(config, context),
-    generateAtomsIndex(config, context),
-    generateTypesIndex(config, context),
+    generateEnhancedMainIndex(config, context),
+    generateNamespacedTypes(config, context),
     generateStoreSetup(config, context)
   ]);
 }
-async function generateMainIndex(config, context) {
-  const exports = config.models.map((modelName) => {
+async function generateModelBarrelExport(modelName, context) {
+  const lowerName = modelName.toLowerCase();
+  const pluralName = capitalize(pluralize(modelName));
+  const lowerPluralName = pluralize(lowerName);
+  const template = `${formatGeneratedFileHeader()}// Barrel export for ${modelName} module
+
+// Export namespace as default
+export { ${lowerName} } from './namespace';
+
+// Export all individual pieces for direct import
+export * from './types';
+export * from './actions';
+export * from './atoms';
+export * from './hooks';
+// Note: routes are not exported to avoid naming conflicts in barrel exports
+
+// Named exports for convenience
+export {
+  // Types
+  type ${modelName},
+  type ${modelName}CreateInput,
+  type ${modelName}UpdateInput,
+  type ${modelName}FormData,
+  
+  // Schemas
+  ${modelName}CreateInputSchema,
+  ${modelName}UpdateInputSchema,
+} from './types';
+
+export {
+  // Actions
+  create${modelName},
+  update${modelName},
+  delete${modelName},
+  getAll${pluralName},
+  get${modelName},
+  createMany${pluralName},
+  deleteMany${pluralName},
+} from './actions';
+
+export {
+  // Hooks
+  use${pluralName},
+  use${modelName},
+  useCreate${modelName}Form,
+  useUpdate${modelName}Form,
+  use${modelName}Exists,
+} from './hooks';
+
+export {
+  // Form Providers
+  ${modelName}FormProvider,
+  use${modelName}FormContext,
+  use${modelName}Field,
+  use${modelName}FormSubmit,
+  use${modelName}FormState,
+} from './form-provider';
+
+export {
+  // Smart Form Hook
+  use${modelName}SmartForm,
+  use${modelName}CreateForm,
+  use${modelName}UpdateForm,
+} from './smart-form';
+`;
+  const filePath = path5.join(context.outputDir, lowerName, "index.ts");
+  await fs3.writeFile(filePath, template, "utf-8");
+}
+async function generateEnhancedMainIndex(config, context) {
+  await Promise.all(config.models.map(async (modelName) => {
+    await generateModelBarrelExport(modelName, context);
+  }));
+  const modelExports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    return `// ${modelName} exports
-export * from './${lowerName}/types';
-export * from './${lowerName}/actions';
-export * from './${lowerName}/atoms';
-export * from './${lowerName}/hooks';`;
+    return `// ${modelName} namespace export
+import { ${lowerName} } from './${lowerName}/namespace';
+export { ${lowerName} };`;
   }).join(`
 
 `);
-  const template = `${formatGeneratedFileHeader()}// Main barrel export file for Next Prisma Flow
-// This file re-exports all generated code for easy importing
+  const namedExports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    return `// ${modelName} direct exports
+export * from './${lowerName}';`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// Enhanced Next Prisma Flow v0.2.0 - Model-specific namespace exports
+// Modern, intuitive developer experience with smart API patterns
 
-${exports}
+${modelExports}
 
-// Store setup
+// Direct exports for flexibility  
+${namedExports}
+
+// Global utilities
 export * from './store';
+export * from './types';
 `;
   const filePath = path5.join(context.outputDir, "index.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
-async function generateActionsIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * as ${modelName}Actions from './${lowerName}/actions';`;
-  }).join(`
-`);
-  const namedExports = config.models.flatMap((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return [
-      `getAll${pluralName}`,
-      `get${modelName}`,
-      `create${modelName}`,
-      `update${modelName}`,
-      `delete${modelName}`,
-      `createMany${pluralName}`,
-      `deleteMany${pluralName}`
-    ].map((action) => `${action} as ${lowerName}${action.replace(modelName, "").replace(pluralName, "")}`);
-  });
-  const template = `${formatGeneratedFileHeader()}// Server Actions barrel exports
-// Import all server actions for convenient access
-
-${exports}
-
-// Named exports for direct import
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return `export {
-  getAll${pluralName},
-  get${modelName},
-  create${modelName},
-  update${modelName},
-  delete${modelName},
-  createMany${pluralName},
-  deleteMany${pluralName},
-} from './${lowerName}/actions';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path5.join(context.outputDir, "actions.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
-}
-async function generateHooksIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * from './${lowerName}/hooks';`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// React Hooks barrel exports
-// Import all hooks for convenient access
-
-${exports}
-
-// Type exports for hook return types
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    return `export type {
-  Use${pluralName}Result,
-  Use${modelName}Result,
-  UseCreate${modelName}Result,
-  UseUpdate${modelName}Result,
-  UseDelete${modelName}Result,
-  Use${modelName}MutationsResult,
-  UseBatch${modelName}OperationsResult,
-} from './${lowerName}/hooks';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path5.join(context.outputDir, "hooks.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
-}
-async function generateAtomsIndex(config, context) {
-  const exports = config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export * from './${lowerName}/atoms';`;
-  }).join(`
-`);
-  const template = `${formatGeneratedFileHeader()}// Jotai Atoms barrel exports
-// Import all atoms for convenient access
-
-${exports}
-
-// Convenient re-exports for common atoms
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
-    return `export {
-  base${pluralName}Atom,
-  ${lowerName}ListAtom,
-  ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,
-  refresh${pluralName}Atom,
-  ${lowerName}CountAtom,
-  is${pluralName}EmptyAtom,
-} from './${lowerName}/atoms';`;
-  }).join(`
-
-`)}
-`;
-  const filePath = path5.join(context.outputDir, "atoms.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
-}
-async function generateTypesIndex(config, context) {
-  const exports = config.models.map((modelName) => {
+async function generateNamespacedTypes(config, context) {
+  const typeExports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
     return `export * from './${lowerName}/types';`;
   }).join(`
 `);
-  const template = `${formatGeneratedFileHeader()}// TypeScript Types barrel exports
-// Import all types for convenient access
+  const template = `${formatGeneratedFileHeader()}// Consolidated type exports for all models
 
-${exports}
+${typeExports}
 
-// Common type aliases for convenience
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    return `export type {
-  ${modelName},
-  ${modelName}Input,
-  ${modelName}UpdateInput,
-  ${modelName}ApiResponse,
-  ${modelName}ListApiResponse,
-  ${modelName}MutationResponse,
-  ${modelName}FormData,
-} from './${lowerName}/types';`;
-  }).join(`
+// Common utility types
+export interface ApiError {
+  message: string;
+  code?: string;
+  field?: string;
+}
 
-`)}
+export interface ApiResponse<T = any> {
+  data?: T;
+  success: boolean;
+  message?: string;
+  errors?: ApiError[];
+}
+
+export interface ListApiResponse<T = any> extends ApiResponse<T[]> {
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface MutationResponse<T = any> extends ApiResponse<T> {
+  // Specific to mutations
+}
+
+export interface BatchResponse extends ApiResponse {
+  count: number;
+}
+
+// Form types
+export interface FormField<T = any> {
+  value: T;
+  onChange: (value: T) => void;
+  onBlur: () => void;
+  error?: string;
+  required: boolean;
+  name: string;
+}
+
+export interface FormState<T = any> {
+  data: Partial<T>;
+  isValid: boolean;
+  isDirty: boolean;
+  errors: Record<string, string>;
+  loading: boolean;
+  error: Error | null;
+}
+
+// Optimistic update types
+export interface OptimisticUpdate<T = any> {
+  id: string;
+  data: Partial<T>;
+  timestamp: number;
+  operation: 'create' | 'update' | 'delete';
+}
+
+// State management types
+export interface LoadingStates {
+  [key: string]: boolean;
+}
+
+export interface EntityState<T = any> {
+  items: Record<string, T>;
+  loading: boolean;
+  creating: boolean;
+  updating: LoadingStates;
+  deleting: LoadingStates;
+  error: string | null;
+  optimisticUpdates: Record<string, OptimisticUpdate<T>>;
+}
 `;
   const filePath = path5.join(context.outputDir, "types.ts");
   await fs3.writeFile(filePath, template, "utf-8");
@@ -2110,39 +2135,25 @@ async function generateStoreSetup(config, context) {
     const lowerName = modelName.toLowerCase();
     const pluralName = capitalize(pluralize(modelName));
     const lowerPluralName = pluralize(lowerName);
-    return `  base${pluralName}Atom,
+    return `import {
+  base${pluralName}Atom,
   ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,`;
+  ${lowerPluralName}ErrorAtom,
+} from './${lowerName}/atoms';`;
   }).join(`
 `);
   const atomExports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
     const pluralName = capitalize(pluralize(modelName));
     const lowerPluralName = pluralize(lowerName);
-    return `  base${pluralName}Atom,
-  ${lowerPluralName}LoadingAtom,
-  ${lowerPluralName}ErrorAtom,`;
+    return `  ${lowerName}: {
+    data: base${pluralName}Atom,
+    loading: ${lowerPluralName}LoadingAtom,
+    error: ${lowerPluralName}ErrorAtom,
+  },`;
   }).join(`
 `);
-  const template = `${formatGeneratedFileHeader()}// Central store setup for all Flow atoms
-// This file provides utilities for global state management
-
-import { createStore } from 'jotai';
-import {
-${atomImports}
-} from './atoms';
-
-// Create a store instance for SSR/testing if needed
-export const flowStore = createStore();
-
-// Export all base atoms for external access
-export const flowAtoms = {
-${atomExports}
-};
-
-// Utility function to clear all data (useful for logout, testing, etc.)
-export function clearAllFlowData() {
-${config.models.map((modelName) => {
+  const clearDataStatements = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
     const pluralName = capitalize(pluralize(modelName));
     const lowerPluralName = pluralize(lowerName);
@@ -2150,31 +2161,66 @@ ${config.models.map((modelName) => {
   flowStore.set(${lowerPluralName}LoadingAtom, false);
   flowStore.set(${lowerPluralName}ErrorAtom, null);`;
   }).join(`
-`)}
+`);
+  const template = `${formatGeneratedFileHeader()}// Enhanced store setup for all Flow atoms
+// Provides utilities for global state management and debugging
+
+import { createStore } from 'jotai';
+${atomImports}
+
+// Create a store instance for SSR/testing if needed
+export const flowStore = createStore();
+
+// Organized atom access by model
+export const flowAtoms = {
+${atomExports}
+};
+
+// Utility function to clear all data (useful for logout, testing, etc.)
+export function clearAllFlowData() {
+${clearDataStatements}
 }
 
 // Utility function to check if any data is loading
 export function isAnyFlowDataLoading(): boolean {
-  return [
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const lowerPluralName = pluralize(lowerName);
-    return `    flowStore.get(${lowerPluralName}LoadingAtom),`;
-  }).join(`
-`)}
-  ].some(Boolean);
+  return Object.values(flowAtoms).some(model => 
+    flowStore.get(model.loading)
+  );
 }
 
 // Utility function to get all errors
 export function getAllFlowErrors(): Record<string, string | null> {
+  return Object.fromEntries(
+    Object.entries(flowAtoms).map(([modelName, atoms]) => [
+      modelName,
+      flowStore.get(atoms.error)
+    ])
+  );
+}
+
+// Enhanced debugging utilities
+export function getFlowDebugInfo() {
+  const errors = getAllFlowErrors();
+  const isLoading = isAnyFlowDataLoading();
+  const hasErrors = Object.values(errors).some(Boolean);
+  
   return {
-${config.models.map((modelName) => {
-    const lowerName = modelName.toLowerCase();
-    const lowerPluralName = pluralize(lowerName);
-    return `    ${lowerName}: flowStore.get(${lowerPluralName}ErrorAtom),`;
-  }).join(`
-`)}
+    isLoading,
+    hasErrors,
+    errors,
+    models: Object.keys(flowAtoms),
+    timestamp: new Date().toISOString(),
   };
+}
+
+// Development helpers
+export function logFlowState() {
+  if (process.env.NODE_ENV === 'development') {
+    console.group('\uD83C\uDF0A Flow State Debug');
+    console.log('Debug Info:', getFlowDebugInfo());
+    console.log('Store:', flowStore);
+    console.groupEnd();
+  }
 }
 
 // Type for the complete state shape
@@ -2204,20 +2250,31 @@ ${config.models.map((modelName) => {
 `)}
   };
 }
+
+// React DevTools integration (if available)
+if (typeof window !== 'undefined' && (window as any).__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+  (window as any).__FLOW_DEBUG__ = {
+    store: flowStore,
+    atoms: flowAtoms,
+    getState: getFlowSnapshot,
+    getDebugInfo: getFlowDebugInfo,
+    clearAll: clearAllFlowData,
+  };
+}
 `;
   const filePath = path5.join(context.outputDir, "store.ts");
   await fs3.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/hooks.ts
+// src/templates/enhanced-hooks.ts
 import fs4 from "node:fs/promises";
 import path6 from "node:path";
-async function generateReactHooks(modelInfo, context, modelDir) {
+async function generateEnhancedReactHooks(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
 
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   base${pluralName}Atom,
   ${lowerName}ListAtom,
@@ -2234,27 +2291,64 @@ import {
   ${lowerName}CountAtom,
   is${pluralName}EmptyAtom,
 } from './atoms';
-import type { ${modelName} } from './types';
+import type { 
+  ${modelName}, 
+  ${modelName}CreateInput, 
+  ${modelName}UpdateInput,
+  ${modelName}FormData,
+  ${modelName}FieldConfig
+} from './types';
+import { ${modelName}CreateInputSchema, ${modelName}UpdateInputSchema } from './types';
 import * as ${modelName}Actions from './actions';
 
+// ============================================================================
+// ENHANCED UNIFIED HOOKS - Everything you need in one hook
+// ============================================================================
+
 export interface Use${pluralName}Result {
-  ${lowerPluralName}: ${modelName}[];
+  // Data
+  data: ${modelName}[];
   loading: boolean;
-  creating: boolean;
   error: string | null;
   count: number;
   isEmpty: boolean;
+  
+  // CRUD operations
+  create${modelName}: (data: ${modelName}CreateInput) => Promise<${modelName}>;
+  update${modelName}: (id: string, data: ${modelName}UpdateInput) => Promise<${modelName}>;
+  delete${modelName}: (id: string) => Promise<void>;
+  
+  // Batch operations
+  createMany: (data: ${modelName}CreateInput[]) => Promise<{ count: number }>;
+  deleteMany: (ids: string[]) => Promise<{ count: number }>;
+  
+  // State management
   refresh: () => void;
+  
+  // Loading states for individual operations
+  isCreating: boolean;
+  isUpdating: (id: string) => boolean;
+  isDeleting: (id: string) => boolean;
+  
+  // Optimistic updates info
+  optimisticUpdates: Record<string, boolean>;
 }
 
 export function use${pluralName}(autoFetch = true): Use${pluralName}Result {
-  const ${lowerPluralName} = useAtomValue(${lowerName}ListAtom);
+  const data = useAtomValue(${lowerName}ListAtom);
   const loading = useAtomValue(${lowerPluralName}LoadingAtom);
   const creating = useAtomValue(${lowerName}CreatingAtom);
+  const updatingStates = useAtomValue(${lowerName}UpdatingAtom);
+  const deletingStates = useAtomValue(${lowerName}DeletingAtom);
   const error = useAtomValue(${lowerPluralName}ErrorAtom);
   const count = useAtomValue(${lowerName}CountAtom);
   const isEmpty = useAtomValue(is${pluralName}EmptyAtom);
   const refresh = useSetAtom(refresh${pluralName}Atom);
+  
+  // Action atoms for optimistic updates
+  const create${modelName} = useSetAtom(optimisticCreate${modelName}Atom);
+  const update${modelName} = useSetAtom(optimisticUpdate${modelName}Atom);
+  const delete${modelName} = useSetAtom(optimisticDelete${modelName}Atom);
   
   // Track if we've already attempted to auto-fetch to prevent infinite loops
   const hasFetchedRef = useRef(false);
@@ -2267,200 +2361,1040 @@ export function use${pluralName}(autoFetch = true): Use${pluralName}Result {
     }
   }, [autoFetch, isEmpty, loading, refresh]);
 
+  // Batch operations
+  const createMany = useCallback(
+    async (inputs: ${modelName}CreateInput[]) => {
+      return await ${modelName}Actions.createMany${pluralName}(inputs);
+    },
+    []
+  );
+
+  const deleteMany = useCallback(
+    async (ids: string[]) => {
+      return await ${modelName}Actions.deleteMany${pluralName}(ids);
+    },
+    []
+  );
+
   return {
-    ${lowerPluralName},
+    data,
     loading,
-    creating,
     error,
     count,
     isEmpty,
+    create${modelName}: useCallback(
+      async (data: ${modelName}CreateInput) => await create${modelName}(data),
+      [create${modelName}]
+    ),
+    update${modelName}: useCallback(
+      async (id: string, data: ${modelName}UpdateInput) => 
+        await update${modelName}({ id, data }),
+      [update${modelName}]
+    ),
+    delete${modelName}: useCallback(
+      async (id: string) => await delete${modelName}(id),
+      [delete${modelName}]
+    ),
+    createMany,
+    deleteMany,
     refresh: useCallback(() => refresh(), [refresh]),
+    isCreating: creating,
+    isUpdating: useCallback((id: string) => updatingStates[id] || false, [updatingStates]),
+    isDeleting: useCallback((id: string) => deletingStates[id] || false, [deletingStates]),
+    optimisticUpdates: updatingStates,
   };
 }
 
+// ============================================================================
+// ENHANCED INDIVIDUAL ITEM HOOK - Smart item management with form integration
+// ============================================================================
+
 export interface Use${modelName}Result {
-  ${lowerName}: ${modelName} | null;
+  // Data
+  data: ${modelName} | null;
   loading: boolean;
-  updating: boolean;
-  deleting: boolean;
   error: string | null;
+  
+  // Operations
+  update: (data: ${modelName}UpdateInput) => Promise<${modelName}>;
+  delete: () => Promise<void>;
+  
+  // State
+  isUpdating: boolean;
+  isDeleting: boolean;
+  isOptimistic: boolean;
+  
+  // Form integration
+  form: UseUpdate${modelName}FormResult;
 }
 
 export function use${modelName}(id: string): Use${modelName}Result {
-  const ${lowerName} = useAtomValue(${lowerName}ByIdAtom(id));
+  const data = useAtomValue(${lowerName}ByIdAtom(id));
   const loading = useAtomValue(${lowerPluralName}LoadingAtom);
   const updatingStates = useAtomValue(${lowerName}UpdatingAtom);
   const deletingStates = useAtomValue(${lowerName}DeletingAtom);
   const error = useAtomValue(${lowerPluralName}ErrorAtom);
-
-  return {
-    ${lowerName},
-    loading,
-    updating: updatingStates[id] || false,
-    deleting: deletingStates[id] || false,
-    error,
-  };
-}
-
-export interface UseCreate${modelName}Result {
-  create${modelName}: (data: Parameters<typeof ${modelName}Actions.create${modelName}>[0]) => Promise<${modelName}>;
-  creating: boolean;
-  error: string | null;
-}
-
-export function useCreate${modelName}(): UseCreate${modelName}Result {
-  const creating = useAtomValue(${lowerName}CreatingAtom);
-  const error = useAtomValue(${lowerPluralName}ErrorAtom);
-  const create${modelName} = useSetAtom(optimisticCreate${modelName}Atom);
-
-  return {
-    create${modelName}: useCallback(
-      async (data: Parameters<typeof ${modelName}Actions.create${modelName}>[0]) => {
-        return await create${modelName}(data);
-      },
-      [create${modelName}]
-    ),
-    creating,
-    error,
-  };
-}
-
-export interface UseUpdate${modelName}Result {
-  update${modelName}: (id: string, data: Parameters<typeof ${modelName}Actions.update${modelName}>[1]) => Promise<${modelName}>;
-  updating: (id: string) => boolean;
-  error: string | null;
-}
-
-export function useUpdate${modelName}(): UseUpdate${modelName}Result {
-  const updatingStates = useAtomValue(${lowerName}UpdatingAtom);
-  const error = useAtomValue(${lowerPluralName}ErrorAtom);
+  
   const update${modelName} = useSetAtom(optimisticUpdate${modelName}Atom);
-
-  return {
-    update${modelName}: useCallback(
-      async (id: string, data: Parameters<typeof ${modelName}Actions.update${modelName}>[1]) => {
-        return await update${modelName}({ id, data });
-      },
-      [update${modelName}]
-    ),
-    updating: useCallback((id: string) => updatingStates[id] || false, [updatingStates]),
-    error,
-  };
-}
-
-export interface UseDelete${modelName}Result {
-  delete${modelName}: (id: string) => Promise<void>;
-  deleting: (id: string) => boolean;
-  error: string | null;
-}
-
-export function useDelete${modelName}(): UseDelete${modelName}Result {
-  const deletingStates = useAtomValue(${lowerName}DeletingAtom);
-  const error = useAtomValue(${lowerPluralName}ErrorAtom);
   const delete${modelName} = useSetAtom(optimisticDelete${modelName}Atom);
+  
+  // Filter data to only include update input fields (remove relations and computed fields)
+  const filteredData = data ? Object.fromEntries(
+    Object.entries(data).filter(([key]) => 
+      // Exclude common relational and computed fields
+      !['user', 'category', 'todos', 'posts', 'comments', 'profile'].includes(key)
+    )
+  ) : undefined;
+  
+  const form = useUpdate${modelName}Form(id, filteredData);
 
   return {
-    delete${modelName}: useCallback(
-      async (id: string) => {
-        await delete${modelName}(id);
-      },
-      [delete${modelName}]
+    data,
+    loading,
+    error,
+    update: useCallback(
+      async (updateData: ${modelName}UpdateInput) => 
+        await update${modelName}({ id, data: updateData }),
+      [update${modelName}, id]
     ),
-    deleting: useCallback((id: string) => deletingStates[id] || false, [deletingStates]),
-    error,
+    delete: useCallback(
+      async () => await delete${modelName}(id),
+      [delete${modelName}, id]
+    ),
+    isUpdating: updatingStates[id] || false,
+    isDeleting: deletingStates[id] || false,
+    isOptimistic: !!(updatingStates[id] || deletingStates[id]),
+    form,
   };
 }
 
-// Combined mutation hook for convenience
-export interface Use${modelName}MutationsResult {
-  create${modelName}: (data: Parameters<typeof ${modelName}Actions.create${modelName}>[0]) => Promise<${modelName}>;
-  update${modelName}: (id: string, data: Parameters<typeof ${modelName}Actions.update${modelName}>[1]) => Promise<${modelName}>;
-  delete${modelName}: (id: string) => Promise<void>;
-  creating: boolean;
-  updating: (id: string) => boolean;
-  deleting: (id: string) => boolean;
-  error: string | null;
+
+// ============================================================================
+// SPECIALIZED FORM HOOKS - Dedicated hooks for create and update operations
+// ============================================================================
+
+export interface UseCreate${modelName}FormResult {
+  // Form state
+  data: Partial<${modelName}CreateInput>;
+  isValid: boolean;
+  isDirty: boolean;
+  errors: Record<string, string>;
+  
+  // Field helpers with auto-validation
+  field: (name: keyof ${modelName}CreateInput) => ${modelName}FieldConfig;
+  
+  // Form operations
+  submit: () => Promise<${modelName} | null>;
+  reset: () => void;
+  setData: (data: Partial<${modelName}CreateInput>) => void;
+  
+  // Loading states
+  loading: boolean;
+  error: Error | null;
+  
+  // Validation
+  validate: () => boolean;
+  validateField: (field: keyof ${modelName}CreateInput) => boolean;
+  
+  // Auto-save capabilities
+  enableAutoSave: (debounceMs?: number) => void;
+  disableAutoSave: () => void;
 }
 
-export function use${modelName}Mutations(): Use${modelName}MutationsResult {
-  const { create${modelName}, creating } = useCreate${modelName}();
-  const { update${modelName}, updating } = useUpdate${modelName}();
-  const { delete${modelName}, deleting } = useDelete${modelName}();
-  const error = useAtomValue(${lowerPluralName}ErrorAtom);
+export function useCreate${modelName}Form(initialData?: Partial<${modelName}CreateInput>): UseCreate${modelName}FormResult {
+  const [data, setFormData] = useState<Partial<${modelName}CreateInput>>(initialData || {});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const create${modelName} = useSetAtom(optimisticCreate${modelName}Atom);
+  
+  // Check if form is dirty
+  const isDirty = useMemo(() => {
+    if (!initialData) return Object.keys(data).length > 0;
+    return JSON.stringify(data) !== JSON.stringify(initialData);
+  }, [data, initialData]);
+  
+  // Validate individual field
+  const validateField = useCallback((fieldName: keyof ${modelName}CreateInput): boolean => {
+    try {
+      const value = data[fieldName];
+      if (value !== undefined && value !== null && value !== '') {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[fieldName as string];
+          return newErrors;
+        });
+        return true;
+      }
+      return true;
+    } catch (err: any) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldName as string]: err.errors?.[0]?.message || 'Invalid value'
+      }));
+      return false;
+    }
+  }, [data]);
+  
+  // Validate entire form
+  const validate = useCallback((): boolean => {
+    try {
+      ${modelName}CreateInputSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (err: any) {
+      const newErrors: Record<string, string> = {};
+      err.errors?.forEach((error: any) => {
+        if (error.path?.length > 0) {
+          newErrors[error.path[0]] = error.message;
+        }
+      });
+      setErrors(newErrors);
+      return false;
+    }
+  }, [data]);
+  
+  // Check if form is valid
+  const isValid = useMemo(() => {
+    try {
+      ${modelName}CreateInputSchema.parse(data);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [data]);
+  
+  // Memoized field helpers to prevent unnecessary re-renders
+  const fieldConfigs = useMemo(() => {
+    const configs: Record<string, ${modelName}FieldConfig> = {};
+    return configs;
+  }, []);
+
+  // Field helper function with internal memoization
+  const field = useCallback((name: keyof ${modelName}CreateInput): ${modelName}FieldConfig => {
+    const cacheKey = \`\${name}-\${data[name]}-\${errors[name as string]}-\${touched[name as string]}\`;
+    
+    if (!fieldConfigs[cacheKey]) {
+      fieldConfigs[cacheKey] = {
+        name: name as string,
+        value: data[name] ?? '',
+        onChange: (value: any) => {
+          setFormData(prev => ({ ...prev, [name]: value }));
+          
+          // Auto-save logic
+          if (autoSaveEnabled && autoSaveTimeout) {
+            clearTimeout(autoSaveTimeout);
+          }
+          if (autoSaveEnabled) {
+            const timeout = setTimeout(() => {
+              if (isValid) {
+                submit();
+              }
+            }, 1000);
+            setAutoSaveTimeout(timeout);
+          }
+        },
+        onBlur: () => {
+          setTouched(prev => ({ ...prev, [name]: true }));
+          validateField(name);
+        },
+        error: touched[name as string] ? errors[name as string] : undefined,
+        required: true, // TODO: Determine from schema
+      };
+    }
+    
+    return fieldConfigs[cacheKey];
+  }, [data, errors, touched, validateField, autoSaveEnabled, autoSaveTimeout, isValid, fieldConfigs]);
+  
+  // Submit form
+  const submit = useCallback(async (): Promise<${modelName} | null> => {
+    if (!validate()) {
+      return null;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await create${modelName}(data as ${modelName}CreateInput);
+      
+      // Reset form on successful create
+      setFormData({});
+      setTouched({});
+      setErrors({});
+      
+      return result;
+    } catch (err: any) {
+      setError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [data, validate, create${modelName}]);
+  
+  // Reset form
+  const reset = useCallback(() => {
+    setFormData(initialData || {});
+    setErrors({});
+    setTouched({});
+    setError(null);
+  }, [initialData]);
+  
+  // Set form data
+  const setData = useCallback((newData: Partial<${modelName}CreateInput>) => {
+    setFormData(newData);
+  }, []);
+  
+  // Auto-save functionality
+  const enableAutoSave = useCallback((debounceMs = 1000) => {
+    setAutoSaveEnabled(true);
+  }, []);
+  
+  const disableAutoSave = useCallback(() => {
+    setAutoSaveEnabled(false);
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      setAutoSaveTimeout(null);
+    }
+  }, [autoSaveTimeout]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+    };
+  }, [autoSaveTimeout]);
 
   return {
-    create${modelName},
-    update${modelName},
-    delete${modelName},
-    creating,
-    updating,
-    deleting,
+    data,
+    isValid,
+    isDirty,
+    errors,
+    field,
+    submit,
+    reset,
+    setData,
+    loading,
     error,
+    validate,
+    validateField,
+    enableAutoSave,
+    disableAutoSave,
   };
 }
 
-// Batch operations hooks
-export interface UseBatch${modelName}OperationsResult {
-  createMany${pluralName}: (data: Parameters<typeof ${modelName}Actions.createMany${pluralName}>[0]) => Promise<{ count: number }>;
-  deleteMany${pluralName}: (ids: string[]) => Promise<{ count: number }>;
-  processing: boolean;
-  error: string | null;
+export interface UseUpdate${modelName}FormResult {
+  // Form state
+  data: Partial<${modelName}UpdateInput>;
+  isValid: boolean;
+  isDirty: boolean;
+  errors: Record<string, string>;
+  
+  // Field helpers with auto-validation
+  field: (name: keyof ${modelName}UpdateInput) => ${modelName}FieldConfig;
+  
+  // Form operations
+  submit: () => Promise<${modelName} | null>;
+  reset: () => void;
+  setData: (data: Partial<${modelName}UpdateInput>) => void;
+  
+  // Loading states
+  loading: boolean;
+  error: Error | null;
+  
+  // Validation
+  validate: () => boolean;
+  validateField: (field: keyof ${modelName}UpdateInput) => boolean;
+  
+  // Auto-save capabilities
+  enableAutoSave: (debounceMs?: number) => void;
+  disableAutoSave: () => void;
+  
+  // ID for update operations
+  id: string;
 }
 
-export function useBatch${modelName}Operations(): UseBatch${modelName}OperationsResult {
-  const [processing, setProcessing] = useAtom(${lowerPluralName}LoadingAtom);
-  const error = useAtomValue(${lowerPluralName}ErrorAtom);
-  const refresh = useSetAtom(refresh${pluralName}Atom);
-
-  const createMany${pluralName} = useCallback(
-    async (data: Parameters<typeof ${modelName}Actions.createMany${pluralName}>[0]) => {
-      setProcessing(true);
-      try {
-        const result = await ${modelName}Actions.createMany${pluralName}(data);
-        refresh(); // Refresh the list after batch create
-        return result;
-      } finally {
-        setProcessing(false);
+export function useUpdate${modelName}Form(id: string, initialData?: Partial<${modelName}UpdateInput>): UseUpdate${modelName}FormResult {
+  const [data, setFormData] = useState<Partial<${modelName}UpdateInput>>(initialData || {});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const update${modelName} = useSetAtom(optimisticUpdate${modelName}Atom);
+  
+  // Check if form is dirty
+  const isDirty = useMemo(() => {
+    if (!initialData) return Object.keys(data).length > 0;
+    return JSON.stringify(data) !== JSON.stringify(initialData);
+  }, [data, initialData]);
+  
+  // Validate individual field
+  const validateField = useCallback((fieldName: keyof ${modelName}UpdateInput): boolean => {
+    try {
+      const value = data[fieldName];
+      if (value !== undefined && value !== null && value !== '') {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[fieldName as string];
+          return newErrors;
+        });
+        return true;
       }
-    },
-    [setProcessing, refresh]
-  );
+      return true;
+    } catch (err: any) {
+      setErrors(prev => ({
+        ...prev,
+        [fieldName as string]: err.errors?.[0]?.message || 'Invalid value'
+      }));
+      return false;
+    }
+  }, [data]);
+  
+  // Validate entire form
+  const validate = useCallback((): boolean => {
+    try {
+      ${modelName}UpdateInputSchema.parse(data);
+      setErrors({});
+      return true;
+    } catch (err: any) {
+      const newErrors: Record<string, string> = {};
+      err.errors?.forEach((error: any) => {
+        if (error.path?.length > 0) {
+          newErrors[error.path[0]] = error.message;
+        }
+      });
+      setErrors(newErrors);
+      return false;
+    }
+  }, [data]);
+  
+  // Check if form is valid
+  const isValid = useMemo(() => {
+    try {
+      ${modelName}UpdateInputSchema.parse(data);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [data]);
+  
+  // Memoized field helpers to prevent unnecessary re-renders
+  const updateFieldConfigs = useMemo(() => {
+    const configs: Record<string, ${modelName}FieldConfig> = {};
+    return configs;
+  }, []);
 
-  const deleteMany${pluralName} = useCallback(
-    async (ids: string[]) => {
-      setProcessing(true);
-      try {
-        const result = await ${modelName}Actions.deleteMany${pluralName}(ids);
-        refresh(); // Refresh the list after batch delete
-        return result;
-      } finally {
-        setProcessing(false);
+  // Field helper function with internal memoization
+  const field = useCallback((name: keyof ${modelName}UpdateInput): ${modelName}FieldConfig => {
+    const cacheKey = \`\${name}-\${data[name]}-\${errors[name as string]}-\${touched[name as string]}\`;
+    
+    if (!updateFieldConfigs[cacheKey]) {
+      updateFieldConfigs[cacheKey] = {
+        name: name as string,
+        value: data[name] ?? '',
+        onChange: (value: any) => {
+          setFormData(prev => ({ ...prev, [name]: value }));
+          
+          // Auto-save logic
+          if (autoSaveEnabled && autoSaveTimeout) {
+            clearTimeout(autoSaveTimeout);
+          }
+          if (autoSaveEnabled) {
+            const timeout = setTimeout(() => {
+              if (isValid) {
+                submit();
+              }
+            }, 1000);
+            setAutoSaveTimeout(timeout);
+          }
+        },
+        onBlur: () => {
+          setTouched(prev => ({ ...prev, [name]: true }));
+          validateField(name);
+        },
+        error: touched[name as string] ? errors[name as string] : undefined,
+        required: false, // Update fields are typically optional
+      };
+    }
+    
+    return updateFieldConfigs[cacheKey];
+  }, [data, errors, touched, validateField, autoSaveEnabled, autoSaveTimeout, isValid, updateFieldConfigs]);
+  
+  // Submit form
+  const submit = useCallback(async (): Promise<${modelName} | null> => {
+    if (!validate()) {
+      return null;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const result = await update${modelName}({ id, data: data as ${modelName}UpdateInput });
+      return result;
+    } catch (err: any) {
+      setError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [data, validate, update${modelName}, id]);
+  
+  // Reset form
+  const reset = useCallback(() => {
+    setFormData(initialData || {});
+    setErrors({});
+    setTouched({});
+    setError(null);
+  }, [initialData]);
+  
+  // Set form data
+  const setData = useCallback((newData: Partial<${modelName}UpdateInput>) => {
+    setFormData(newData);
+  }, []);
+  
+  // Auto-save functionality
+  const enableAutoSave = useCallback((debounceMs = 1000) => {
+    setAutoSaveEnabled(true);
+  }, []);
+  
+  const disableAutoSave = useCallback(() => {
+    setAutoSaveEnabled(false);
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+      setAutoSaveTimeout(null);
+    }
+  }, [autoSaveTimeout]);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
       }
-    },
-    [setProcessing, refresh]
-  );
+    };
+  }, [autoSaveTimeout]);
 
   return {
-    createMany${pluralName},
-    deleteMany${pluralName},
-    processing,
+    data,
+    isValid,
+    isDirty,
+    errors,
+    field,
+    submit,
+    reset,
+    setData,
+    loading,
     error,
+    validate,
+    validateField,
+    enableAutoSave,
+    disableAutoSave,
+    id,
   };
 }
 
-// Utility hook for ${lowerName} existence check
+// ============================================================================
+// UTILITY HOOKS
+// ============================================================================
+
 export function use${modelName}Exists(id: string): boolean {
   const ${lowerName} = useAtomValue(${lowerName}ByIdAtom(id));
   return !!${lowerName};
 }
+
 `;
   const filePath = path6.join(modelDir, "hooks.ts");
   await fs4.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/routes.ts
+// src/templates/form-providers.ts
 import fs5 from "node:fs/promises";
 import path7 from "node:path";
+async function generateFormProviders(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}'use client';
+
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import { 
+  useCreate${modelName}Form, 
+  useUpdate${modelName}Form,
+  type UseCreate${modelName}FormResult,
+  type UseUpdate${modelName}FormResult,
+} from './hooks';
+import type { 
+  ${modelName},
+  ${modelName}CreateInput,
+  ${modelName}UpdateInput,
+  ${modelName}FieldConfig
+} from './types';
+
+// ============================================================================
+// SMART FORM PROVIDER - Handles create/update logic with optimized field access
+// ============================================================================
+
+interface ${modelName}FormContextValue {
+  // Mode detection
+  isCreateMode: boolean;
+  isUpdateMode: boolean;
+  
+  // Form state (unified interface)
+  data: Partial<${modelName}CreateInput | ${modelName}UpdateInput>;
+  isValid: boolean;
+  isDirty: boolean;
+  errors: Record<string, string>;
+  loading: boolean;
+  error: Error | null;
+  
+  // Optimized field accessors (memoized internally)
+  fields: {
+    [K in keyof ${modelName}CreateInput]: () => ${modelName}FieldConfig;
+  };
+  
+  // Actions
+  submit: () => Promise<${modelName} | null>;
+  reset: () => void;
+  setData: (data: Partial<${modelName}CreateInput | ${modelName}UpdateInput>) => void;
+  
+  // Auto-save
+  enableAutoSave: (debounceMs?: number) => void;
+  disableAutoSave: () => void;
+  
+  // Form-specific data (when in update mode)
+  id?: string;
+}
+
+const ${modelName}FormContext = createContext<${modelName}FormContextValue | null>(null);
+
+export interface ${modelName}FormProviderProps {
+  children: React.ReactNode;
+  mode?: 'create' | 'update';
+  initialData?: Partial<${modelName}> | ${modelName};
+  id?: string;
+  autoDetectMode?: boolean; // Default true - detect mode from initialData
+}
+
+export function ${modelName}FormProvider({
+  children,
+  mode,
+  initialData,
+  id,
+  autoDetectMode = true,
+}: ${modelName}FormProviderProps) {
+  // Smart mode detection
+  const detectedMode = useMemo(() => {
+    if (mode) return mode;
+    if (autoDetectMode && initialData && 'id' in initialData && initialData.id) {
+      return 'update';
+    }
+    return 'create';
+  }, [mode, initialData, autoDetectMode]);
+
+  const isCreateMode = detectedMode === 'create';
+  const isUpdateMode = detectedMode === 'update';
+
+  // Filter initial data to remove read-only fields
+  const filteredInitialData = useMemo(() => {
+    if (!initialData) return undefined;
+    
+    // Remove read-only and relational fields
+    const { 
+      createdAt, 
+      updatedAt, 
+      user, 
+      category, 
+      todos, 
+      posts, 
+      comments, 
+      profile,
+      ...cleanData 
+    } = initialData as any;
+    
+    return cleanData;
+  }, [initialData]);
+
+  // Get the ID for update operations
+  const updateId = useMemo(() => {
+    if (id) return id;
+    if (initialData && 'id' in initialData) return initialData.id as string;
+    return 'temp-id'; // Fallback for hooks
+  }, [id, initialData]);
+
+  // Always call both hooks (Rules of Hooks compliance)
+  const createForm = useCreate${modelName}Form(
+    isCreateMode ? filteredInitialData : undefined
+  );
+  
+  const updateForm = useUpdate${modelName}Form(
+    updateId,
+    isUpdateMode ? filteredInitialData : undefined
+  );
+
+  // Select the active form
+  const activeForm = isUpdateMode ? updateForm : createForm;
+
+  // Memoized field accessors to prevent unnecessary re-renders
+  const fields = useMemo(() => {
+    // Create a proxy that generates field accessors on demand
+    return new Proxy({}, {
+      get: (target: any, fieldName: string | symbol) => {
+        if (typeof fieldName === 'string') {
+          return () => activeForm.field(fieldName as keyof ${modelName}CreateInput);
+        }
+        return undefined;
+      }
+    }) as { [K in keyof ${modelName}CreateInput]: () => ${modelName}FieldConfig };
+  }, [activeForm]);
+
+  // Unified submit that works for both create and update
+  const submit = useCallback(async () => {
+    return await activeForm.submit();
+  }, [activeForm.submit]);
+
+  // Unified reset
+  const reset = useCallback(() => {
+    activeForm.reset();
+  }, [activeForm.reset]);
+
+  // Unified setData with type safety
+  const setData = useCallback((newData: Partial<${modelName}CreateInput | ${modelName}UpdateInput>) => {
+    activeForm.setData(newData as any);
+  }, [activeForm.setData]);
+
+  const contextValue: ${modelName}FormContextValue = {
+    isCreateMode,
+    isUpdateMode,
+    data: activeForm.data,
+    isValid: activeForm.isValid,
+    isDirty: activeForm.isDirty,
+    errors: activeForm.errors,
+    loading: activeForm.loading,
+    error: activeForm.error,
+    fields,
+    submit,
+    reset,
+    setData,
+    enableAutoSave: activeForm.enableAutoSave,
+    disableAutoSave: activeForm.disableAutoSave,
+    id: isUpdateMode ? updateId : undefined,
+  };
+
+  return (
+    <${modelName}FormContext.Provider value={contextValue}>
+      {children}
+    </${modelName}FormContext.Provider>
+  );
+}
+
+// ============================================================================
+// HOOK FOR CONSUMING FORM CONTEXT
+// ============================================================================
+
+export function use${modelName}FormContext(): ${modelName}FormContextValue {
+  const context = useContext(${modelName}FormContext);
+  if (!context) {
+    throw new Error('use${modelName}FormContext must be used within a ${modelName}FormProvider');
+  }
+  return context;
+}
+
+// ============================================================================
+// OPTIMIZED FIELD HOOK - Returns stable field configs
+// ============================================================================
+
+export function use${modelName}Field(fieldName: keyof ${modelName}CreateInput): ${modelName}FieldConfig {
+  const context = use${modelName}FormContext();
+  const { isUpdateMode } = context;
+  
+  // Get the active form directly from hooks
+  const createForm = useCreate${modelName}Form(
+    !isUpdateMode ? context.data as Partial<${modelName}CreateInput> : undefined
+  );
+  const updateForm = useUpdate${modelName}Form(
+    context.id || 'temp-id',
+    isUpdateMode ? context.data as Partial<${modelName}UpdateInput> : undefined
+  );
+  
+  const activeForm = isUpdateMode ? updateForm : createForm;
+  
+  // Return the field configuration with internal memoization from hooks
+  return useMemo(() => activeForm.field(fieldName), [
+    activeForm.data[fieldName],
+    activeForm.errors[fieldName as string],
+    fieldName
+  ]);
+}
+
+// ============================================================================
+// CONVENIENCE HOOKS FOR COMMON PATTERNS
+// ============================================================================
+
+export function use${modelName}FormSubmit() {
+  const { submit, loading, isValid } = use${modelName}FormContext();
+  
+  return {
+    submit,
+    loading,
+    isValid,
+    canSubmit: isValid && !loading,
+  };
+}
+
+export function use${modelName}FormState() {
+  const { data, isValid, isDirty, errors, loading, error, isCreateMode, isUpdateMode } = use${modelName}FormContext();
+  
+  return {
+    data,
+    isValid,
+    isDirty,
+    errors,
+    loading,
+    error,
+    isCreateMode,
+    isUpdateMode,
+  };
+}
+`;
+  const filePath = path7.join(modelDir, "form-provider.tsx");
+  await fs5.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/smart-form-hook.ts
+import fs6 from "node:fs/promises";
+import path8 from "node:path";
+async function generateSmartFormHook(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}'use client';
+
+import { useMemo, useCallback } from 'react';
+import { 
+  useCreate${modelName}Form, 
+  useUpdate${modelName}Form,
+  type UseCreate${modelName}FormResult,
+  type UseUpdate${modelName}FormResult,
+} from './hooks';
+import type { 
+  ${modelName},
+  ${modelName}CreateInput,
+  ${modelName}UpdateInput,
+  ${modelName}FieldConfig
+} from './types';
+
+// ============================================================================
+// SMART FORM HOOK - Handles create/update mode detection and field memoization
+// ============================================================================
+
+export interface Use${modelName}SmartFormOptions {
+  mode?: 'create' | 'update';
+  initialData?: any; // Flexible to accept various data shapes
+  id?: string;
+  autoDetectMode?: boolean; // Default true
+}
+
+export interface Use${modelName}SmartFormResult {
+  // Mode detection
+  isCreateMode: boolean;
+  isUpdateMode: boolean;
+  
+  // Form state (unified interface)
+  data: Partial<${modelName}CreateInput | ${modelName}UpdateInput>;
+  isValid: boolean;
+  isDirty: boolean;
+  errors: Record<string, string>;
+  loading: boolean;
+  error: Error | null;
+  
+  // Optimized field accessor (memoized internally)
+  field: (name: keyof ${modelName}CreateInput) => ${modelName}FieldConfig;
+  
+  // Actions
+  submit: () => Promise<${modelName} | null>;
+  reset: () => void;
+  setData: (data: Partial<${modelName}CreateInput | ${modelName}UpdateInput>) => void;
+  
+  // Auto-save
+  enableAutoSave: (debounceMs?: number) => void;
+  disableAutoSave: () => void;
+  
+  // Form-specific data (when in update mode)
+  id?: string;
+}
+
+export function use${modelName}SmartForm({
+  mode,
+  initialData,
+  id,
+  autoDetectMode = true,
+}: Use${modelName}SmartFormOptions = {}): Use${modelName}SmartFormResult {
+  
+  // Smart mode detection
+  const detectedMode = useMemo(() => {
+    if (mode) return mode;
+    if (autoDetectMode && initialData && 'id' in initialData && initialData.id) {
+      return 'update';
+    }
+    return 'create';
+  }, [mode, initialData, autoDetectMode]);
+
+  const isCreateMode = detectedMode === 'create';
+  const isUpdateMode = detectedMode === 'update';
+
+  // Filter initial data to remove read-only fields
+  const filteredInitialData = useMemo(() => {
+    if (!initialData) return undefined;
+    
+    // Remove read-only and relational fields
+    const { 
+      createdAt, 
+      updatedAt, 
+      user, 
+      category, 
+      todos, 
+      posts, 
+      comments, 
+      profile,
+      ...cleanData 
+    } = initialData as any;
+    
+    return cleanData;
+  }, [initialData]);
+
+  // Get the ID for update operations
+  const updateId = useMemo(() => {
+    if (id) return id;
+    if (initialData && 'id' in initialData) return initialData.id as string;
+    return 'temp-id'; // Fallback for hooks
+  }, [id, initialData]);
+
+  // Always call both hooks (Rules of Hooks compliance)
+  const createForm = useCreate${modelName}Form(
+    isCreateMode ? filteredInitialData : undefined
+  );
+  
+  const updateForm = useUpdate${modelName}Form(
+    updateId,
+    isUpdateMode ? filteredInitialData : undefined
+  );
+
+  // Select the active form
+  const activeForm = isUpdateMode ? updateForm : createForm;
+
+  // Optimized field accessor with internal memoization
+  const field = useCallback((fieldName: keyof ${modelName}CreateInput): ${modelName}FieldConfig => {
+    // The hooks already provide internal memoization
+    return activeForm.field(fieldName);
+  }, [activeForm]);
+
+  // Unified submit that works for both create and update
+  const submit = useCallback(async () => {
+    return await activeForm.submit();
+  }, [activeForm.submit]);
+
+  // Unified reset
+  const reset = useCallback(() => {
+    activeForm.reset();
+  }, [activeForm.reset]);
+
+  // Unified setData with type safety
+  const setData = useCallback((newData: Partial<${modelName}CreateInput | ${modelName}UpdateInput>) => {
+    activeForm.setData(newData as any);
+  }, [activeForm.setData]);
+
+  return {
+    isCreateMode,
+    isUpdateMode,
+    data: activeForm.data,
+    isValid: activeForm.isValid,
+    isDirty: activeForm.isDirty,
+    errors: activeForm.errors,
+    loading: activeForm.loading,
+    error: activeForm.error,
+    field,
+    submit,
+    reset,
+    setData,
+    enableAutoSave: activeForm.enableAutoSave,
+    disableAutoSave: activeForm.disableAutoSave,
+    id: isUpdateMode ? updateId : undefined,
+  };
+}
+
+// ============================================================================
+// CONVENIENCE HOOKS FOR COMMON PATTERNS  
+// ============================================================================
+
+export function use${modelName}CreateForm(initialData?: any) {
+  return use${modelName}SmartForm({ 
+    mode: 'create', 
+    initialData, 
+    autoDetectMode: false 
+  });
+}
+
+export function use${modelName}UpdateForm(id: string, initialData?: any) {
+  return use${modelName}SmartForm({ 
+    mode: 'update', 
+    id, 
+    initialData, 
+    autoDetectMode: false 
+  });
+}
+`;
+  const filePath = path8.join(modelDir, "smart-form.ts");
+  await fs6.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/namespace.ts
+import fs7 from "node:fs/promises";
+import path9 from "node:path";
+async function generateNamespaceExports(modelInfo, context, modelDir) {
+  const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
+  const template = `${formatGeneratedFileHeader()}// Model-specific namespace export for ${modelName}
+// Provides organized access to all ${modelName} functionality
+
+import * as hooks from './hooks';
+import * as actions from './actions';
+import * as atoms from './atoms';
+import * as types from './types';
+import * as providers from './form-provider';
+import { ${modelName}CreateInputSchema, ${modelName}UpdateInputSchema } from './types';
+
+// Main namespace export
+export const ${lowerName} = {
+  hooks,
+  actions,
+  atoms,
+  types,
+  providers,
+  
+  schemas: {
+    create: ${modelName}CreateInputSchema,
+    update: ${modelName}UpdateInputSchema,
+  },
+} as const;
+
+// Export the namespace as default for convenience
+export default ${lowerName};
+
+// Also export all the individual pieces for direct access
+export { hooks, actions, atoms, types, providers };
+`;
+  const filePath = path9.join(modelDir, "namespace.ts");
+  await fs7.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/routes.ts
+import fs8 from "node:fs/promises";
+import path10 from "node:path";
 async function generateApiRoutes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
@@ -2566,13 +3500,13 @@ export const routesHandlers = {
 	DELETE,
 };
 `;
-  const filePath = path7.join(modelDir, "routes.ts");
-  await fs5.writeFile(filePath, template, "utf-8");
+  const filePath = path10.join(modelDir, "routes.ts");
+  await fs8.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/types.ts
-import fs6 from "node:fs/promises";
-import path8 from "node:path";
+import fs9 from "node:fs/promises";
+import path11 from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -2587,21 +3521,21 @@ import { z } from 'zod';
 // Re-export Zod schemas from zod-prisma-types
 export {
   ${modelName}Schema as ${lowerName}Schema,
-  ${modelName}CreateInputSchema,
-  ${modelName}UpdateInputSchema,
+  ${modelName}UncheckedCreateInputSchema as ${modelName}CreateInputSchema,
+  ${modelName}UncheckedUpdateInputSchema as ${modelName}UpdateInputSchema,
   ${modelName}CreateManyInputSchema,
 } from '${zodImportPath}';
 
 // Import schemas for type inference
 import {
-  ${modelName}CreateInputSchema,
-  ${modelName}UpdateInputSchema,
+  ${modelName}UncheckedCreateInputSchema,
+  ${modelName}UncheckedUpdateInputSchema,
   ${modelName}CreateManyInputSchema,
 } from '${zodImportPath}';
 
 // Infer types from Zod schemas
-export type ${modelName}CreateInput = z.infer<typeof ${modelName}CreateInputSchema>;
-export type ${modelName}UpdateInput = z.infer<typeof ${modelName}UpdateInputSchema>;
+export type ${modelName}CreateInput = z.infer<typeof ${modelName}UncheckedCreateInputSchema>;
+export type ${modelName}UpdateInput = z.infer<typeof ${modelName}UncheckedUpdateInputSchema>;
 export type ${modelName}CreateManyInput = z.infer<typeof ${modelName}CreateManyInputSchema>;
 
 // Define the select object for this model
@@ -2693,6 +3627,16 @@ export interface ${modelName}OptimisticUpdate {
 export type ${modelName}FormData = Omit<${modelName}Input, 'id' | 'createdAt' | 'updatedAt'>;
 export type ${modelName}UpdateFormData = Partial<${modelName}FormData>;
 
+// Field configuration for form hooks
+export interface ${modelName}FieldConfig {
+  name: string;
+  value: any;
+  onChange: (value: any) => void;
+  onBlur: () => void;
+  error?: string;
+  required?: boolean;
+}
+
 // Event types for custom hooks
 export interface ${modelName}ChangeEvent {
   type: 'create' | 'update' | 'delete';
@@ -2712,14 +3656,14 @@ export interface ${modelName}ValidationErrors {
   message: string;
 }
 `;
-  const filePath = path8.join(modelDir, "types.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
+  const filePath = path11.join(modelDir, "types.ts");
+  await fs9.writeFile(filePath, template, "utf-8");
 }
 
 // src/zod-generator.ts
 import { spawn } from "node:child_process";
-import fs7 from "node:fs/promises";
-import path9 from "node:path";
+import fs10 from "node:fs/promises";
+import path12 from "node:path";
 class ZodGenerationError extends FlowGeneratorError {
   constructor(message, cause) {
     super(`Zod generation failed: ${message}`, cause);
@@ -2728,9 +3672,9 @@ class ZodGenerationError extends FlowGeneratorError {
 }
 async function generateZodSchemas(options, outputDir, models) {
   console.log("\uD83D\uDCE6 Generating integrated Zod schemas...");
-  const zodOutputDir = path9.join(outputDir, "zod");
+  const zodOutputDir = path12.join(outputDir, "zod");
   try {
-    await fs7.mkdir(zodOutputDir, { recursive: true });
+    await fs10.mkdir(zodOutputDir, { recursive: true });
   } catch (error) {
     throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
   }
@@ -2743,13 +3687,13 @@ async function generateZodSchemas(options, outputDir, models) {
     throw new ZodGenerationError("Failed to generate Zod schemas", error);
   } finally {
     try {
-      await fs7.unlink(tempSchemaPath);
+      await fs10.unlink(tempSchemaPath);
     } catch {}
   }
 }
 async function createTempSchemaWithZodGenerator(options, zodOutputDir, models) {
   try {
-    const originalSchemaContent = await fs7.readFile(options.schemaPath, "utf-8");
+    const originalSchemaContent = await fs10.readFile(options.schemaPath, "utf-8");
     const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
     const zodGeneratorConfig = `
 generator zod {
@@ -2759,8 +3703,8 @@ generator zod {
 `;
     const modifiedSchema = `${schemaWithoutFlowGenerator}
 ${zodGeneratorConfig}`;
-    const tempSchemaPath = path9.join(path9.dirname(options.schemaPath), ".temp-zod-schema.prisma");
-    await fs7.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+    const tempSchemaPath = path12.join(path12.dirname(options.schemaPath), ".temp-zod-schema.prisma");
+    await fs10.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
     return tempSchemaPath;
   } catch (error) {
     throw new ZodGenerationError("Failed to create temporary schema file", error);
@@ -2796,12 +3740,12 @@ STDERR: ${stderr}`));
 }
 async function validateGeneratedSchemas(zodOutputDir, models) {
   try {
-    const indexPath = path9.join(zodOutputDir, "index.ts");
-    const indexExists = await fs7.access(indexPath).then(() => true).catch(() => false);
+    const indexPath = path12.join(zodOutputDir, "index.ts");
+    const indexExists = await fs10.access(indexPath).then(() => true).catch(() => false);
     if (!indexExists) {
       throw new Error("Zod index file was not generated");
     }
-    const indexContent = await fs7.readFile(indexPath, "utf-8");
+    const indexContent = await fs10.readFile(indexPath, "utf-8");
     const missingSchemas = [];
     for (const modelName of models) {
       const hasCreateSchema = indexContent.includes(`${modelName}CreateInputSchema`);
@@ -2829,8 +3773,8 @@ import { PrismaClient } from '@prisma/client';
 // Create shared Prisma client instance
 export const prisma = new PrismaClient();
 `;
-  const filePath = path10.join(context.outputDir, "prisma-client.ts");
-  await fs8.writeFile(filePath, template, "utf-8");
+  const filePath = path13.join(context.outputDir, "prisma-client.ts");
+  await fs11.writeFile(filePath, template, "utf-8");
 }
 import_generator_helper.generatorHandler({
   onManifest() {
@@ -2849,7 +3793,7 @@ import_generator_helper.generatorHandler({
       validateConfig(config, modelNames);
       const context = createGeneratorContext(config, options.dmmf, config.output);
       try {
-        await fs8.mkdir(context.outputDir, { recursive: true });
+        await fs11.mkdir(context.outputDir, { recursive: true });
       } catch (error) {
         throw new FileSystemError("create directory", context.outputDir, error);
       }
@@ -2884,9 +3828,9 @@ import_generator_helper.generatorHandler({
           model,
           selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
         };
-        const modelDir = path10.join(context.outputDir, lowerModelName);
+        const modelDir = path13.join(context.outputDir, lowerModelName);
         try {
-          await fs8.mkdir(modelDir, { recursive: true });
+          await fs11.mkdir(modelDir, { recursive: true });
         } catch (error) {
           throw new FileSystemError("create directory", modelDir, error);
         }
@@ -2901,11 +3845,20 @@ import_generator_helper.generatorHandler({
             generateJotaiAtoms(modelInfo, context, modelDir).catch((error) => {
               throw new TemplateGenerationError("atoms", modelName, error);
             }),
-            generateReactHooks(modelInfo, context, modelDir).catch((error) => {
+            generateEnhancedReactHooks(modelInfo, context, modelDir).catch((error) => {
               throw new TemplateGenerationError("hooks", modelName, error);
+            }),
+            generateFormProviders(modelInfo, context, modelDir).catch((error) => {
+              throw new TemplateGenerationError("form-providers", modelName, error);
+            }),
+            generateSmartFormHook(modelInfo, context, modelDir).catch((error) => {
+              throw new TemplateGenerationError("smart-form", modelName, error);
             }),
             generateTypes(modelInfo, context, modelDir).catch((error) => {
               throw new TemplateGenerationError("types", modelName, error);
+            }),
+            generateNamespaceExports(modelInfo, context, modelDir).catch((error) => {
+              throw new TemplateGenerationError("namespace", modelName, error);
             })
           ]);
         } catch (error) {
@@ -2916,7 +3869,7 @@ import_generator_helper.generatorHandler({
         }
       }
       try {
-        await generateBarrelExports(config, context);
+        await generateEnhancedBarrelExports(config, context);
       } catch (error) {
         throw new TemplateGenerationError("barrel exports", "all models", error);
       }

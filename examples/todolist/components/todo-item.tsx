@@ -11,9 +11,10 @@ interface TodoItemProps {
 	onToggleComplete: () => void;
 	onUpdate: (updates: Partial<Todo>) => void;
 	onDelete: () => void;
+	onEdit?: () => void;
 }
 
-export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete }: TodoItemProps) {
+export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete, onEdit }: TodoItemProps) {
 	const isCompleted = todo.status === "COMPLETED";
 	const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date() && !isCompleted;
 
@@ -81,10 +82,9 @@ export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete }: TodoIte
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() => {
-										/* TODO: Implement edit */
-									}}
+									onClick={onEdit}
 									className="h-8 w-8 p-0"
+									title="Edit todo"
 								>
 									<Edit className="h-4 w-4" />
 								</Button>

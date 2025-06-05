@@ -10,7 +10,7 @@ import type { Prisma } from '@prisma/client';
 // ENUMS
 /////////////////////////////////////////
 
-export const TransactionIsolationLevelSchema = z.enum(['ReadUncommitted','ReadCommitted','RepeatableRead','Serializable']);
+export const TransactionIsolationLevelSchema = z.enum(['Serializable']);
 
 export const UserScalarFieldEnumSchema = z.enum(['id','email','name','avatar','createdAt','updatedAt']);
 
@@ -19,8 +19,6 @@ export const CategoryScalarFieldEnumSchema = z.enum(['id','name','color','create
 export const TodoScalarFieldEnumSchema = z.enum(['id','title','description','status','priority','dueDate','completedAt','createdAt','updatedAt','userId','categoryId']);
 
 export const SortOrderSchema = z.enum(['asc','desc']);
-
-export const QueryModeSchema = z.enum(['default','insensitive']);
 
 export const NullsOrderSchema = z.enum(['first','last']);
 /////////////////////////////////////////
@@ -69,7 +67,7 @@ export const TodoSchema = z.object({
   completedAt: z.coerce.date().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  userId: z.string(),
+  userId: z.string().nullable(),
   categoryId: z.string().nullable(),
 })
 
@@ -313,9 +311,9 @@ export const TodoWhereInputSchema: z.ZodType<Prisma.TodoWhereInput> = z.object({
   completedAt: z.union([ z.lazy(() => DateTimeNullableFilterSchema),z.coerce.date() ]).optional().nullable(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  userId: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
+  userId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
   categoryId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
-  user: z.union([ z.lazy(() => UserRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
+  user: z.union([ z.lazy(() => UserNullableRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional().nullable(),
   category: z.union([ z.lazy(() => CategoryNullableRelationFilterSchema),z.lazy(() => CategoryWhereInputSchema) ]).optional().nullable(),
 }).strict();
 
@@ -329,7 +327,7 @@ export const TodoOrderByWithRelationInputSchema: z.ZodType<Prisma.TodoOrderByWit
   completedAt: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
-  userId: z.lazy(() => SortOrderSchema).optional(),
+  userId: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   categoryId: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   user: z.lazy(() => UserOrderByWithRelationInputSchema).optional(),
   category: z.lazy(() => CategoryOrderByWithRelationInputSchema).optional()
@@ -351,9 +349,9 @@ export const TodoWhereUniqueInputSchema: z.ZodType<Prisma.TodoWhereUniqueInput> 
   completedAt: z.union([ z.lazy(() => DateTimeNullableFilterSchema),z.coerce.date() ]).optional().nullable(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  userId: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
+  userId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
   categoryId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
-  user: z.union([ z.lazy(() => UserRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional(),
+  user: z.union([ z.lazy(() => UserNullableRelationFilterSchema),z.lazy(() => UserWhereInputSchema) ]).optional().nullable(),
   category: z.union([ z.lazy(() => CategoryNullableRelationFilterSchema),z.lazy(() => CategoryWhereInputSchema) ]).optional().nullable(),
 }).strict());
 
@@ -367,7 +365,7 @@ export const TodoOrderByWithAggregationInputSchema: z.ZodType<Prisma.TodoOrderBy
   completedAt: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   createdAt: z.lazy(() => SortOrderSchema).optional(),
   updatedAt: z.lazy(() => SortOrderSchema).optional(),
-  userId: z.lazy(() => SortOrderSchema).optional(),
+  userId: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   categoryId: z.union([ z.lazy(() => SortOrderSchema),z.lazy(() => SortOrderInputSchema) ]).optional(),
   _count: z.lazy(() => TodoCountOrderByAggregateInputSchema).optional(),
   _max: z.lazy(() => TodoMaxOrderByAggregateInputSchema).optional(),
@@ -387,7 +385,7 @@ export const TodoScalarWhereWithAggregatesInputSchema: z.ZodType<Prisma.TodoScal
   completedAt: z.union([ z.lazy(() => DateTimeNullableWithAggregatesFilterSchema),z.coerce.date() ]).optional().nullable(),
   createdAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeWithAggregatesFilterSchema),z.coerce.date() ]).optional(),
-  userId: z.union([ z.lazy(() => StringWithAggregatesFilterSchema),z.string() ]).optional(),
+  userId: z.union([ z.lazy(() => StringNullableWithAggregatesFilterSchema),z.string() ]).optional().nullable(),
   categoryId: z.union([ z.lazy(() => StringNullableWithAggregatesFilterSchema),z.string() ]).optional().nullable(),
 }).strict();
 
@@ -521,7 +519,7 @@ export const TodoCreateInputSchema: z.ZodType<Prisma.TodoCreateInput> = z.object
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  user: z.lazy(() => UserCreateNestedOneWithoutTodosInputSchema),
+  user: z.lazy(() => UserCreateNestedOneWithoutTodosInputSchema).optional(),
   category: z.lazy(() => CategoryCreateNestedOneWithoutTodosInputSchema).optional()
 }).strict();
 
@@ -535,7 +533,7 @@ export const TodoUncheckedCreateInputSchema: z.ZodType<Prisma.TodoUncheckedCreat
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  userId: z.string(),
+  userId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable()
 }).strict();
 
@@ -549,7 +547,7 @@ export const TodoUpdateInputSchema: z.ZodType<Prisma.TodoUpdateInput> = z.object
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  user: z.lazy(() => UserUpdateOneRequiredWithoutTodosNestedInputSchema).optional(),
+  user: z.lazy(() => UserUpdateOneWithoutTodosNestedInputSchema).optional(),
   category: z.lazy(() => CategoryUpdateOneWithoutTodosNestedInputSchema).optional()
 }).strict();
 
@@ -563,7 +561,7 @@ export const TodoUncheckedUpdateInputSchema: z.ZodType<Prisma.TodoUncheckedUpdat
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  userId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   categoryId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
 }).strict();
 
@@ -577,7 +575,7 @@ export const TodoCreateManyInputSchema: z.ZodType<Prisma.TodoCreateManyInput> = 
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  userId: z.string(),
+  userId: z.string().optional().nullable(),
   categoryId: z.string().optional().nullable()
 }).strict();
 
@@ -603,7 +601,7 @@ export const TodoUncheckedUpdateManyInputSchema: z.ZodType<Prisma.TodoUncheckedU
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  userId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   categoryId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
 }).strict();
 
@@ -618,7 +616,6 @@ export const StringFilterSchema: z.ZodType<Prisma.StringFilter> = z.object({
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
-  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringFilterSchema) ]).optional(),
 }).strict();
 
@@ -633,7 +630,6 @@ export const StringNullableFilterSchema: z.ZodType<Prisma.StringNullableFilter> 
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
-  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringNullableFilterSchema) ]).optional().nullable(),
 }).strict();
 
@@ -701,7 +697,6 @@ export const StringWithAggregatesFilterSchema: z.ZodType<Prisma.StringWithAggreg
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
-  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringWithAggregatesFilterSchema) ]).optional(),
   _count: z.lazy(() => NestedIntFilterSchema).optional(),
   _min: z.lazy(() => NestedStringFilterSchema).optional(),
@@ -719,7 +714,6 @@ export const StringNullableWithAggregatesFilterSchema: z.ZodType<Prisma.StringNu
   contains: z.string().optional(),
   startsWith: z.string().optional(),
   endsWith: z.string().optional(),
-  mode: z.lazy(() => QueryModeSchema).optional(),
   not: z.union([ z.string(),z.lazy(() => NestedStringNullableWithAggregatesFilterSchema) ]).optional().nullable(),
   _count: z.lazy(() => NestedIntNullableFilterSchema).optional(),
   _min: z.lazy(() => NestedStringNullableFilterSchema).optional(),
@@ -772,9 +766,9 @@ export const DateTimeNullableFilterSchema: z.ZodType<Prisma.DateTimeNullableFilt
   not: z.union([ z.coerce.date(),z.lazy(() => NestedDateTimeNullableFilterSchema) ]).optional().nullable(),
 }).strict();
 
-export const UserRelationFilterSchema: z.ZodType<Prisma.UserRelationFilter> = z.object({
-  is: z.lazy(() => UserWhereInputSchema).optional(),
-  isNot: z.lazy(() => UserWhereInputSchema).optional()
+export const UserNullableRelationFilterSchema: z.ZodType<Prisma.UserNullableRelationFilter> = z.object({
+  is: z.lazy(() => UserWhereInputSchema).optional().nullable(),
+  isNot: z.lazy(() => UserWhereInputSchema).optional().nullable()
 }).strict();
 
 export const CategoryNullableRelationFilterSchema: z.ZodType<Prisma.CategoryNullableRelationFilter> = z.object({
@@ -950,10 +944,12 @@ export const NullableDateTimeFieldUpdateOperationsInputSchema: z.ZodType<Prisma.
   set: z.coerce.date().optional().nullable()
 }).strict();
 
-export const UserUpdateOneRequiredWithoutTodosNestedInputSchema: z.ZodType<Prisma.UserUpdateOneRequiredWithoutTodosNestedInput> = z.object({
+export const UserUpdateOneWithoutTodosNestedInputSchema: z.ZodType<Prisma.UserUpdateOneWithoutTodosNestedInput> = z.object({
   create: z.union([ z.lazy(() => UserCreateWithoutTodosInputSchema),z.lazy(() => UserUncheckedCreateWithoutTodosInputSchema) ]).optional(),
   connectOrCreate: z.lazy(() => UserCreateOrConnectWithoutTodosInputSchema).optional(),
   upsert: z.lazy(() => UserUpsertWithoutTodosInputSchema).optional(),
+  disconnect: z.union([ z.boolean(),z.lazy(() => UserWhereInputSchema) ]).optional(),
+  delete: z.union([ z.boolean(),z.lazy(() => UserWhereInputSchema) ]).optional(),
   connect: z.lazy(() => UserWhereUniqueInputSchema).optional(),
   update: z.union([ z.lazy(() => UserUpdateToOneWithWhereWithoutTodosInputSchema),z.lazy(() => UserUpdateWithoutTodosInputSchema),z.lazy(() => UserUncheckedUpdateWithoutTodosInputSchema) ]).optional(),
 }).strict();
@@ -1135,7 +1131,6 @@ export const TodoCreateOrConnectWithoutUserInputSchema: z.ZodType<Prisma.TodoCre
 
 export const TodoCreateManyUserInputEnvelopeSchema: z.ZodType<Prisma.TodoCreateManyUserInputEnvelope> = z.object({
   data: z.union([ z.lazy(() => TodoCreateManyUserInputSchema),z.lazy(() => TodoCreateManyUserInputSchema).array() ]),
-  skipDuplicates: z.boolean().optional()
 }).strict();
 
 export const TodoUpsertWithWhereUniqueWithoutUserInputSchema: z.ZodType<Prisma.TodoUpsertWithWhereUniqueWithoutUserInput> = z.object({
@@ -1167,7 +1162,7 @@ export const TodoScalarWhereInputSchema: z.ZodType<Prisma.TodoScalarWhereInput> 
   completedAt: z.union([ z.lazy(() => DateTimeNullableFilterSchema),z.coerce.date() ]).optional().nullable(),
   createdAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
   updatedAt: z.union([ z.lazy(() => DateTimeFilterSchema),z.coerce.date() ]).optional(),
-  userId: z.union([ z.lazy(() => StringFilterSchema),z.string() ]).optional(),
+  userId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
   categoryId: z.union([ z.lazy(() => StringNullableFilterSchema),z.string() ]).optional().nullable(),
 }).strict();
 
@@ -1181,7 +1176,7 @@ export const TodoCreateWithoutCategoryInputSchema: z.ZodType<Prisma.TodoCreateWi
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  user: z.lazy(() => UserCreateNestedOneWithoutTodosInputSchema)
+  user: z.lazy(() => UserCreateNestedOneWithoutTodosInputSchema).optional()
 }).strict();
 
 export const TodoUncheckedCreateWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUncheckedCreateWithoutCategoryInput> = z.object({
@@ -1194,7 +1189,7 @@ export const TodoUncheckedCreateWithoutCategoryInputSchema: z.ZodType<Prisma.Tod
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  userId: z.string()
+  userId: z.string().optional().nullable()
 }).strict();
 
 export const TodoCreateOrConnectWithoutCategoryInputSchema: z.ZodType<Prisma.TodoCreateOrConnectWithoutCategoryInput> = z.object({
@@ -1204,7 +1199,6 @@ export const TodoCreateOrConnectWithoutCategoryInputSchema: z.ZodType<Prisma.Tod
 
 export const TodoCreateManyCategoryInputEnvelopeSchema: z.ZodType<Prisma.TodoCreateManyCategoryInputEnvelope> = z.object({
   data: z.union([ z.lazy(() => TodoCreateManyCategoryInputSchema),z.lazy(() => TodoCreateManyCategoryInputSchema).array() ]),
-  skipDuplicates: z.boolean().optional()
 }).strict();
 
 export const TodoUpsertWithWhereUniqueWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUpsertWithWhereUniqueWithoutCategoryInput> = z.object({
@@ -1381,7 +1375,7 @@ export const TodoCreateManyCategoryInputSchema: z.ZodType<Prisma.TodoCreateManyC
   completedAt: z.coerce.date().optional().nullable(),
   createdAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(),
-  userId: z.string()
+  userId: z.string().optional().nullable()
 }).strict();
 
 export const TodoUpdateWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUpdateWithoutCategoryInput> = z.object({
@@ -1394,7 +1388,7 @@ export const TodoUpdateWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUpdateWi
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  user: z.lazy(() => UserUpdateOneRequiredWithoutTodosNestedInputSchema).optional()
+  user: z.lazy(() => UserUpdateOneWithoutTodosNestedInputSchema).optional()
 }).strict();
 
 export const TodoUncheckedUpdateWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUncheckedUpdateWithoutCategoryInput> = z.object({
@@ -1407,7 +1401,7 @@ export const TodoUncheckedUpdateWithoutCategoryInputSchema: z.ZodType<Prisma.Tod
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  userId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
 }).strict();
 
 export const TodoUncheckedUpdateManyWithoutCategoryInputSchema: z.ZodType<Prisma.TodoUncheckedUpdateManyWithoutCategoryInput> = z.object({
@@ -1420,7 +1414,7 @@ export const TodoUncheckedUpdateManyWithoutCategoryInputSchema: z.ZodType<Prisma
   completedAt: z.union([ z.coerce.date(),z.lazy(() => NullableDateTimeFieldUpdateOperationsInputSchema) ]).optional().nullable(),
   createdAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
   updatedAt: z.union([ z.coerce.date(),z.lazy(() => DateTimeFieldUpdateOperationsInputSchema) ]).optional(),
-  userId: z.union([ z.string(),z.lazy(() => StringFieldUpdateOperationsInputSchema) ]).optional(),
+  userId: z.union([ z.string(),z.lazy(() => NullableStringFieldUpdateOperationsInputSchema) ]).optional().nullable(),
 }).strict();
 
 /////////////////////////////////////////
@@ -1629,12 +1623,10 @@ export const UserUpsertArgsSchema: z.ZodType<Prisma.UserUpsertArgs> = z.object({
 
 export const UserCreateManyArgsSchema: z.ZodType<Prisma.UserCreateManyArgs> = z.object({
   data: z.union([ UserCreateManyInputSchema,UserCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const UserCreateManyAndReturnArgsSchema: z.ZodType<Prisma.UserCreateManyAndReturnArgs> = z.object({
   data: z.union([ UserCreateManyInputSchema,UserCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const UserDeleteArgsSchema: z.ZodType<Prisma.UserDeleteArgs> = z.object({
@@ -1675,12 +1667,10 @@ export const CategoryUpsertArgsSchema: z.ZodType<Prisma.CategoryUpsertArgs> = z.
 
 export const CategoryCreateManyArgsSchema: z.ZodType<Prisma.CategoryCreateManyArgs> = z.object({
   data: z.union([ CategoryCreateManyInputSchema,CategoryCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const CategoryCreateManyAndReturnArgsSchema: z.ZodType<Prisma.CategoryCreateManyAndReturnArgs> = z.object({
   data: z.union([ CategoryCreateManyInputSchema,CategoryCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const CategoryDeleteArgsSchema: z.ZodType<Prisma.CategoryDeleteArgs> = z.object({
@@ -1721,12 +1711,10 @@ export const TodoUpsertArgsSchema: z.ZodType<Prisma.TodoUpsertArgs> = z.object({
 
 export const TodoCreateManyArgsSchema: z.ZodType<Prisma.TodoCreateManyArgs> = z.object({
   data: z.union([ TodoCreateManyInputSchema,TodoCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const TodoCreateManyAndReturnArgsSchema: z.ZodType<Prisma.TodoCreateManyAndReturnArgs> = z.object({
   data: z.union([ TodoCreateManyInputSchema,TodoCreateManyInputSchema.array() ]),
-  skipDuplicates: z.boolean().optional(),
 }).strict() ;
 
 export const TodoDeleteArgsSchema: z.ZodType<Prisma.TodoDeleteArgs> = z.object({

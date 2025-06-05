@@ -14,9 +14,12 @@ import {
 } from "./src/errors.js";
 import { generateServerActions } from "./src/templates/actions.js";
 import { generateJotaiAtoms } from "./src/templates/atoms.js";
-import { generateBarrelExports } from "./src/templates/barrel.js";
-import { generateReactHooks } from "./src/templates/hooks.js";
+import { generateEnhancedBarrelExports } from "./src/templates/enhanced-barrel.js";
+import { generateEnhancedReactHooks } from "./src/templates/enhanced-hooks.js";
+import { generateFormProviders } from "./src/templates/form-providers.js";
+import { generateNamespaceExports } from "./src/templates/namespace.js";
 import { generateApiRoutes } from "./src/templates/routes.js";
+import { generateSmartFormHook } from "./src/templates/smart-form-hook.js";
 import { generateTypes } from "./src/templates/types.js";
 import type { GeneratorContext } from "./src/types.js";
 import { capitalize, createGeneratorContext, pluralize } from "./src/utils.js";
@@ -128,11 +131,20 @@ generatorHandler({
 						generateJotaiAtoms(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("atoms", modelName, error);
 						}),
-						generateReactHooks(modelInfo, context, modelDir).catch((error) => {
+						generateEnhancedReactHooks(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("hooks", modelName, error);
+						}),
+						generateFormProviders(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("form-providers", modelName, error);
+						}),
+						generateSmartFormHook(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("smart-form", modelName, error);
 						}),
 						generateTypes(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("types", modelName, error);
+						}),
+						generateNamespaceExports(modelInfo, context, modelDir).catch((error) => {
+							throw new TemplateGenerationError("namespace", modelName, error);
 						}),
 					]);
 				} catch (error) {
@@ -145,7 +157,7 @@ generatorHandler({
 
 			// Generate barrel exports
 			try {
-				await generateBarrelExports(config, context);
+				await generateEnhancedBarrelExports(config, context);
 			} catch (error) {
 				throw new TemplateGenerationError("barrel exports", "all models", error);
 			}

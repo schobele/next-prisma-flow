@@ -25,8 +25,8 @@ generator flow {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ============================================================================
@@ -71,8 +71,8 @@ model Todo {
   updatedAt   DateTime  @updatedAt
 
   // Relationships
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
