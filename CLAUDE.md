@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **next-prisma-flow** v0.2.0, a Prisma generator that scaffolds full-stack typed code for Next.js applications with a modern, intuitive developer experience. It generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration from Prisma schemas.
+This is **next-prisma-flow** v0.2.1, a Prisma generator that scaffolds full-stack typed code for Next.js applications with a modern, intuitive developer experience. It generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration from Prisma schemas.
 
-### 🚀 What's New in v0.2.0
+### 🚀 What's New in v0.2.1
 
 - **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
 - **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
-- **Zero-config form integration** - Automatic validation and submission with `todos.hooks.useForm()`
+- **Specialized form hooks** - Dedicated create and update form hooks with proper type safety
 - **Enhanced developer experience** - Intuitive API that works out of the box
 - **Backward compatibility** - All v0.1.x APIs still work
 
@@ -40,8 +40,9 @@ const todos = {
   hooks: {
     useTodos,      // Unified hook with all CRUD operations
     useTodo,       // Individual item hook with form integration
-    useForm,       // Zero-config smart form with validation
-    // ... legacy hooks for backward compatibility
+    useCreateTodoForm,  // Specialized create form hook
+    useUpdateTodoForm,  // Specialized update form hook
+    // ... other utility hooks
   },
   actions: {
     create, update, delete, getAll, getById,
@@ -156,7 +157,7 @@ The generated code uses Jotai for state management with:
 
 ## Usage Examples
 
-### 🎯 Modern API (v0.2.0+)
+### 🎯 Modern API (v0.2.x)
 
 ```typescript
 // app/page.tsx
@@ -175,13 +176,14 @@ export default function TodoApp() {
   
   const { data: categoryList } = categories.hooks.useCategories()
   
-  // Zero-config form with auto-validation
-  const form = todos.hooks.useForm()
+  // Specialized form hooks with auto-validation
+  const createForm = todos.hooks.useCreateTodoForm()
+  const updateForm = todos.hooks.useUpdateTodoForm(id, todoData)
   
   return (
     <div>
-      <form onSubmit={form.submit}>
-        <input {...form.field('title')} placeholder="Todo title" />
+      <form onSubmit={createForm.submit}>
+        <input {...createForm.field('title')} placeholder="Todo title" />
         <button type="submit" disabled={!form.isValid || form.loading}>
           Add Todo
         </button>
@@ -209,8 +211,8 @@ function TodoItem({ id }: { id: string }) {
   
   return (
     <div>
-      <form onSubmit={form.submit}>
-        <input {...form.field('title')} />
+      <form onSubmit={updateForm.submit}>
+        <input {...updateForm.field('title')} />
         <button type="submit">Update</button>
       </form>
       <button onClick={() => deleteTodo()}>Delete</button>
@@ -272,4 +274,4 @@ export async function createTodoFromTemplate(template: TodoTemplate) {
 - Use the todolist example to validate changes before publishing
 - Generated code should follow the existing patterns for consistency
 - Security: Always configure `select` arrays to exclude sensitive fields
-- v0.2.0 maintains full backward compatibility with v0.1.x APIs
+- Clean, modern API focused on v0.2.x patterns

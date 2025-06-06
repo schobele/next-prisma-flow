@@ -2,13 +2,14 @@
 
 A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
 
-## 🚀 What's New in v0.2.0
+## 🚀 What's New in v0.2.1
 
 - **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
 - **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
-- **Zero-config form integration** - Automatic validation and submission with `todos.hooks.useForm()`
+- **Zero-config form integration** - Automatic validation and submission with specialized form hooks
 - **Enhanced developer experience** - Intuitive API that works out of the box
-- **Backward compatibility** - All v0.1.x APIs still work
+- **Specialized form hooks** - Dedicated create and update form hooks with proper type safety
+- **Improved documentation** - Better examples and cleaner API patterns
 
 ## Features
 
@@ -116,10 +117,10 @@ generated/flow/
 │   ├── form-provider.tsx
 │   ├── smart-form.ts
 │   └── namespace.ts
-├── actions.ts            # Legacy barrel exports for actions
-├── atoms.ts              # Legacy barrel exports for atoms
-├── hooks.ts              # Legacy barrel exports for hooks
-├── types.ts              # Legacy barrel exports for types
+├── actions.ts            # Direct exports for actions
+├── atoms.ts              # Direct exports for atoms
+├── hooks.ts              # Direct exports for hooks
+├── types.ts              # Direct exports for types
 ├── store.ts              # Central store setup
 ├── zod/                  # Zod schema exports
 │   └── index.ts
@@ -225,51 +226,6 @@ function UserProfile({ id }: { id: string }) {
 }
 ```
 
-#### Legacy API (v0.1.x) - Still Supported
-
-```typescript
-'use client';
-
-import { useUsers, useCreateUser } from '@/generated/flow/hooks';
-
-export default function UsersList() {
-  const { users, loading, error, refresh } = useUsers();
-  const { createUser, creating } = useCreateUser();
-
-  const handleCreateUser = async () => {
-    try {
-      await createUser({
-        name: 'John Doe',
-        email: 'john@example.com',
-        password: 'secure123'
-      });
-    } catch (error) {
-      console.error('Failed to create user:', error);
-    }
-  };
-
-  if (loading) return <div>Loading users...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div>
-      <button onClick={handleCreateUser} disabled={creating}>
-        {creating ? 'Creating...' : 'Create User'}
-      </button>
-      
-      <button onClick={refresh}>Refresh</button>
-      
-      <ul>
-        {users.map(user => (
-          <li key={user.id}>
-            {user.name} ({user.email})
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
 
 ## Configuration Options
 
@@ -498,32 +454,16 @@ function BatchUserActions() {
 }
 ```
 
-### Legacy API (v0.1.x)
-
-#### Custom Error Handling
-
-```typescript
-import { useUsers } from '@/generated/flow/hooks';
-
-function UsersWithErrorBoundary() {
-  const { users, error } = useUsers();
-  
-  if (error) {
-    return <div className="error">Failed to load users: {error}</div>;
-  }
-  
-  return <UsersList users={users} />;
-}
-```
+### Server-Side Usage
 
 #### Direct Server Action Usage
 
 ```typescript
-import { createUser } from '@/generated/flow/user/actions';
+import { users } from '@/generated/flow';
 
 // In a server component or server action
 async function handleServerSideUserCreation() {
-  const user = await createUser({
+  const user = await users.actions.create({
     name: 'Server User',
     email: 'server@example.com'
   });
@@ -532,93 +472,19 @@ async function handleServerSideUserCreation() {
 }
 ```
 
-## Migration from v0.1.x to v0.2.0
-
-### No Breaking Changes 🎉
-
-All v0.1.x APIs continue to work exactly as before. You can upgrade to v0.2.0 and migrate gradually.
-
-### Recommended Migration Path
-
-#### 1. Import Style (Optional but Recommended)
-
-**Before (v0.1.x):**
-```typescript
-import { useUsers, useCreateUser } from '@/generated/flow/hooks';
-import { createUser } from '@/generated/flow/user/actions';
-```
-
-**After (v0.2.0+):**
-```typescript
-import { users } from '@/generated/flow';
-// Everything is available under users.hooks, users.actions, etc.
-```
-
-#### 2. Hook Consolidation (Optional)
-
-**Before (v0.1.x):**
-```typescript
-const { users, loading, error } = useUsers();
-const { createUser } = useCreateUser();
-const { updateUser } = useUpdateUser();
-const { deleteUser } = useDeleteUser();
-```
-
-**After (v0.2.0+):**
-```typescript
-const { 
-  data: users, 
-  loading, 
-  error,
-  createUser, 
-  updateUser, 
-  deleteUser 
-} = users.hooks.useUsers();
-```
-
-#### 3. Form Integration (New Feature)
-
-**Enhanced with v0.2.0:**
-```typescript
-// Zero-config forms with validation
-const form = users.hooks.useCreateUserForm();
-
-return (
-  <form onSubmit={form.submit}>
-    <input {...form.field('name')} />
-    <input {...form.field('email')} />
-    <button type="submit" disabled={!form.isValid}>
-      Create User
-    </button>
-  </form>
-);
-```
-
-### Key Benefits of Migrating
-
-1. **Cleaner Imports** - Single namespace import instead of multiple
-2. **Unified Hooks** - One hook with all CRUD operations
-3. **Smart Forms** - Zero-config form integration with validation
-4. **Better DX** - More intuitive and discoverable API
-5. **Future-Ready** - Built for upcoming features
-
-### Migration Timeline
-
-- **Immediate**: Upgrade to v0.2.0 (no code changes needed)
-- **Gradual**: Migrate components one at a time using new APIs
-- **Optional**: Old APIs will be supported indefinitely
 
 ## Best Practices
 
-### 1. Use Modern API (v0.2.0+)
-Prefer the new namespace imports for better DX:
+### 1. Use Modern API (v0.2.x)
+Always use the new namespace imports for better DX:
 
 ```typescript
 // ✅ Good - Modern namespace import
 import { users, todos } from '@/generated/flow';
 
-// ❌ Avoid - Legacy multiple imports (still works)
-import { useUsers, useCreateUser } from '@/generated/flow/hooks';
+// Access everything through the namespace
+const { data, createUser } = users.hooks.useUsers();
+const form = users.hooks.useCreateUserForm();
 ```
 
 ### 2. Security First
@@ -628,17 +494,17 @@ Always configure `select` to exclude sensitive fields:
 userSelect = ["id", "name", "email"]  # Excludes password, internal fields
 ```
 
-### 3. Leverage Smart Forms
-Use the new form hooks for better UX:
+### 3. Leverage Specialized Form Hooks
+Use the dedicated form hooks for create and update operations:
 
 ```typescript
-// ✅ Good - Smart form with validation
-const form = users.hooks.useCreateUserForm();
-return <form onSubmit={form.submit}>...</form>;
+// ✅ Good - Specialized create form
+const createForm = users.hooks.useCreateUserForm();
+return <form onSubmit={createForm.submit}>...</form>;
 
-// ❌ Avoid - Manual form handling
-const { createUser } = users.hooks.useUsers();
-const handleSubmit = async (e) => { /* manual validation */ };
+// ✅ Good - Specialized update form
+const updateForm = users.hooks.useUpdateUserForm(id, userData);
+return <form onSubmit={updateForm.submit}>...</form>;
 ```
 
 ### 4. Use Type Imports
