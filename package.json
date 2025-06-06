@@ -54,6 +54,7 @@
 		"husky": "^9.1.7",
 		"jotai": "^2.6.0",
 		"jotai-immer": "^0.4.1",
+		"jotai-devtools": "^0.10.0",
 		"zod-prisma-types": "^3.2.4"
 	},
 	"peerDependencies": {

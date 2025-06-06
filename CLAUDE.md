@@ -8,11 +8,12 @@ This is **next-prisma-flow** v0.2.1, a Prisma generator that scaffolds full-stac
 
 ### 🚀 What's New in v0.2.1
 
+- **FlowProvider** - Global state management with SSR support, error boundaries, and dev tools
 - **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
 - **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
 - **Specialized form hooks** - Dedicated create and update form hooks with proper type safety
 - **Enhanced developer experience** - Intuitive API that works out of the box
-- **Backward compatibility** - All v0.1.x APIs still work
+- **Improved documentation** - Better examples and cleaner API patterns
 
 ### Core Architecture
 
@@ -275,3 +276,48 @@ export async function createTodoFromTemplate(template: TodoTemplate) {
 - Generated code should follow the existing patterns for consistency
 - Security: Always configure `select` arrays to exclude sensitive fields
 - Clean, modern API focused on v0.2.x patterns
+
+## FlowProvider Benefits
+
+The new **FlowProvider** adds significant value:
+
+### 🚀 **SSR/Hydration Benefits**
+- **Hydration Safety**: Prevent hydration mismatches by managing initial state properly
+- **Server-Side Data**: Pre-populate atoms with server-rendered data
+- **SSG Support**: Enable static generation with initial data
+
+### 🔧 **Developer Experience**
+- **Zero Setup**: Automatic Jotai store configuration 
+- **Global Configuration**: App-wide settings (error handling, loading states)
+- **DevTools Integration**: Automatic React DevTools setup
+- **Hot Reload**: Better state persistence during development
+
+### 🎯 **State Management**
+- **Store Isolation**: Clean store instances for testing/SSR
+- **Global Error Boundary**: Centralized error handling for all Flow operations
+- **Loading Orchestration**: Global loading states and coordination
+- **Cache Management**: Automatic cache invalidation and refresh strategies
+
+### Usage Example
+
+```typescript
+// app/layout.tsx
+import { FlowProvider } from './generated/flow'
+
+export default function RootLayout({ children }) {
+  return (
+    <FlowProvider
+      config={{
+        devTools: true,
+        errorBoundary: true,
+        autoRefresh: false,
+      }}
+      onError={(error, context, modelName) => {
+        console.error(`[Flow Error] ${context}:`, error);
+      }}
+    >
+      {children}
+    </FlowProvider>
+  )
+}
+```

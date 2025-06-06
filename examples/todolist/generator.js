@@ -1340,8 +1340,8 @@ var require_dist2 = __commonJS((exports, module) => {
 
 // index.ts
 var import_generator_helper = __toESM(require_dist2(), 1);
-import fs11 from "node:fs/promises";
-import path13 from "node:path";
+import fs12 from "node:fs/promises";
+import path14 from "node:path";
 
 // src/config.ts
 import path from "node:path";
@@ -2040,6 +2040,31 @@ ${namedExports}
 // Global utilities
 export * from './store';
 export * from './types';
+
+// Flow Provider for SSR, state management, and error handling
+export { 
+  FlowProvider,
+  useFlowContext,
+  useFlowConfig,
+  useFlowUser,
+  useFlowStore,
+  useFlowErrorBoundary,
+  useFlowDebug
+} from './flow-provider';
+export type { 
+  FlowProviderProps
+} from './flow-provider';
+export type { 
+  FlowContextValue,
+  FlowDebugInfo,
+  FlowErrorBoundaryRef
+} from './flow-context';
+export type { 
+  FlowConfig,
+  DEFAULT_FLOW_CONFIG,
+  createFlowConfig,
+  validateFlowConfig
+} from './flow-config';
 `;
   const filePath = path5.join(context.outputDir, "index.ts");
   await fs3.writeFile(filePath, template, "utf-8");
@@ -2917,9 +2942,532 @@ export function use${modelName}Exists(id: string): boolean {
   await fs4.writeFile(filePath, template, "utf-8");
 }
 
-// src/templates/form-providers.ts
+// src/templates/flow-provider.ts
 import fs5 from "node:fs/promises";
 import path7 from "node:path";
+async function generateFlowProvider(config, context) {
+  await Promise.all([
+    generateFlowProviderComponent(config, context),
+    generateFlowContext(config, context),
+    generateFlowConfig(config, context)
+  ]);
+}
+async function generateFlowProviderComponent(config, context) {
+  const modelAtomImports = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `import {
+  base${pluralName}Atom,
+  ${lowerPluralName}LoadingAtom,
+  ${lowerPluralName}ErrorAtom,
+} from './${lowerName}/atoms';`;
+  }).join(`
+`);
+  const initialDataTypes = config.models.map((modelName) => `${modelName.toLowerCase()}: Record<string, ${modelName}>`).join(`;
+  `);
+  const storeInitialization = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `  // Initialize ${modelName} state
+  if (initialData?.${lowerPluralName}) {
+    store.set(base${pluralName}Atom, initialData.${lowerPluralName});
+  }`;
+  }).join(`
+`);
+  const debugAtoms = config.models.map((modelName) => {
+    const lowerName = modelName.toLowerCase();
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(lowerName);
+    return `    ${lowerName}: {
+      data: base${pluralName}Atom,
+      loading: ${lowerPluralName}LoadingAtom,
+      error: ${lowerPluralName}ErrorAtom,
+    },`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}'use client';
+
+import React, { createContext, useContext, useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
+import { Provider as JotaiProvider, createStore } from 'jotai';
+import { DevTools } from 'jotai-devtools';
+${modelAtomImports}
+import type { FlowConfig, FlowContextValue, FlowState, FlowErrorBoundaryRef } from './flow-config';
+
+// ============================================================================
+// PROVIDER PROPS & CONTEXT
+// ============================================================================
+
+export interface FlowProviderProps {
+  children: React.ReactNode;
+  
+  // SSR/Initial state support
+  initialData?: Partial<FlowState>;
+  
+  // Global configuration
+  config?: Partial<FlowConfig>;
+  
+  // Auth/User context
+  user?: any | null;
+  
+  // Global event handlers
+  onError?: (error: Error, context: string, modelName?: string) => void;
+  onLoading?: (isLoading: boolean, modelName?: string) => void;
+  
+  // Store customization (for testing/SSR)
+  store?: ReturnType<typeof createStore>;
+}
+
+const FlowContext = createContext<FlowContextValue | null>(null);
+
+// ============================================================================
+// FLOW PROVIDER COMPONENT
+// ============================================================================
+
+export function FlowProvider({
+  children,
+  initialData,
+  config: userConfig,
+  user,
+  onError,
+  onLoading,
+  store: externalStore,
+}: FlowProviderProps) {
+  // Create or use provided store
+  const store = useMemo(() => {
+    const storeInstance = externalStore || createStore();
+    
+${storeInitialization}
+    
+    return storeInstance;
+  }, [externalStore, initialData]);
+
+  // Merge user config with defaults
+  const config = useMemo((): FlowConfig => ({
+    errorBoundary: true,
+    devTools: process.env.NODE_ENV === 'development',
+    autoRefresh: false,
+    refreshInterval: 30000,
+    ssrSafe: true,
+    batchUpdates: true,
+    optimisticUpdates: true,
+    ...userConfig,
+  }), [userConfig]);
+
+  // Error boundary ref for programmatic error handling
+  const errorBoundaryRef = useRef<FlowErrorBoundaryRef | null>(null);
+
+  // Global error handler
+  const handleError = useMemo(() => (error: Error, context: string, modelName?: string) => {
+    console.error(\`[Flow Error] \${context}\${modelName ? \` (\${modelName})\` : ''}\`, error);
+    
+    if (onError) {
+      onError(error, context, modelName);
+    }
+    
+    // You could also report to error tracking service here
+    // reportError(error, { context, modelName, user: user?.id });
+  }, [onError, user]);
+
+  // Context value
+  const contextValue = useMemo((): FlowContextValue => ({
+    config,
+    user,
+    store,
+    onError: handleError,
+    onLoading,
+    errorBoundaryRef,
+    // Utility methods
+    clearAllData: () => {
+${config.models.map((modelName) => {
+    const pluralName = capitalize(pluralize(modelName));
+    const lowerPluralName = pluralize(modelName.toLowerCase());
+    return `      store.set(base${pluralName}Atom, {});
+      store.set(${lowerPluralName}LoadingAtom, false);
+      store.set(${lowerPluralName}ErrorAtom, null);`;
+  }).join(`
+`)}
+    },
+    getDebugInfo: () => ({
+      config,
+      user: user ? { id: user.id, email: user.email } : null,
+      hasErrors: Object.values({
+${config.models.map((modelName) => {
+    const lowerPluralName = pluralize(modelName.toLowerCase());
+    return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}ErrorAtom),`;
+  }).join(`
+`)}
+      }).some(Boolean),
+      isLoading: Object.values({
+${config.models.map((modelName) => {
+    const lowerPluralName = pluralize(modelName.toLowerCase());
+    return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}LoadingAtom),`;
+  }).join(`
+`)}
+      }).some(Boolean),
+      timestamp: new Date().toISOString(),
+    }),
+  }), [config, user, store, handleError, onLoading]);
+
+  // Development helpers
+  useEffect(() => {
+    if (config.devTools && typeof window !== 'undefined') {
+      // Expose debug utilities to window for development
+      (window as any).__FLOW_DEBUG__ = {
+        store,
+        context: contextValue,
+        atoms: {
+${debugAtoms}
+        },
+      };
+      
+      console.log('\uD83C\uDF0A Flow Provider initialized with debug tools');
+      console.log('Available at: window.__FLOW_DEBUG__');
+    }
+  }, [config.devTools, store, contextValue]);
+
+  return (
+    <FlowContext.Provider value={contextValue}>
+      <JotaiProvider store={store}>
+        {config.errorBoundary ? (
+          <FlowErrorBoundary 
+            ref={errorBoundaryRef}
+            onError={handleError}
+            fallback={config.errorFallback}
+          >
+            {config.devTools && <DevTools />}
+            {children}
+          </FlowErrorBoundary>
+        ) : (
+          <>
+            {config.devTools && <DevTools />}
+            {children}
+          </>
+        )}
+      </JotaiProvider>
+    </FlowContext.Provider>
+  );
+}
+
+// ============================================================================
+// ERROR BOUNDARY
+// ============================================================================
+
+interface FlowErrorBoundaryProps {
+  children: React.ReactNode;
+  onError: (error: Error, context: string) => void;
+  fallback?: React.ComponentType<{ error: Error; reset: () => void }>;
+}
+
+const FlowErrorBoundary = forwardRef<FlowErrorBoundaryRef, FlowErrorBoundaryProps>(
+  function FlowErrorBoundary(props, ref) {
+    const [state, setState] = React.useState<{ hasError: boolean; error: Error | null }>({
+      hasError: false,
+      error: null,
+    });
+
+    const reset = React.useCallback(() => {
+      setState({ hasError: false, error: null });
+    }, []);
+
+    useImperativeHandle(ref, () => ({
+      reset,
+    }), [reset]);
+
+    React.useEffect(() => {
+      const handleError = (event: ErrorEvent) => {
+        setState({ hasError: true, error: new Error(event.message) });
+        props.onError(new Error(event.message), 'Global Error Handler');
+      };
+
+      const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+        const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+        setState({ hasError: true, error });
+        props.onError(error, 'Unhandled Promise Rejection');
+      };
+
+      window.addEventListener('error', handleError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+      return () => {
+        window.removeEventListener('error', handleError);
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      };
+    }, [props]);
+
+    if (state.hasError && state.error) {
+      const FallbackComponent = props.fallback || DefaultErrorFallback;
+      return React.createElement(FallbackComponent, { error: state.error, reset });
+    }
+
+    return React.createElement(React.Fragment, null, props.children);
+  }
+);
+
+// Default error fallback component
+function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => void }) {
+  return (
+    <div style={{
+      padding: '2rem',
+      margin: '1rem',
+      border: '2px solid #ef4444',
+      borderRadius: '0.5rem',
+      backgroundColor: '#fef2f2',
+      color: '#dc2626'
+    }}>
+      <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', fontWeight: 'bold' }}>
+        Something went wrong
+      </h2>
+      <details style={{ marginBottom: '1rem' }}>
+        <summary style={{ cursor: 'pointer', marginBottom: '0.5rem' }}>
+          Error details
+        </summary>
+        <pre style={{ 
+          fontSize: '0.875rem', 
+          overflow: 'auto', 
+          padding: '0.5rem',
+          backgroundColor: '#fee2e2',
+          borderRadius: '0.25rem'
+        }}>
+          {error.message}
+        </pre>
+      </details>
+      <button
+        onClick={reset}
+        style={{
+          padding: '0.5rem 1rem',
+          backgroundColor: '#dc2626',
+          color: 'white',
+          border: 'none',
+          borderRadius: '0.25rem',
+          cursor: 'pointer'
+        }}
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// CONTEXT HOOKS
+// ============================================================================
+
+export function useFlowContext(): FlowContextValue {
+  const context = useContext(FlowContext);
+  if (!context) {
+    throw new Error('useFlowContext must be used within a FlowProvider');
+  }
+  return context;
+}
+
+export function useFlowConfig(): FlowConfig {
+  return useFlowContext().config;
+}
+
+export function useFlowUser<T = any>(): T | null {
+  return useFlowContext().user;
+}
+
+export function useFlowStore() {
+  return useFlowContext().store;
+}
+
+export function useFlowErrorBoundary() {
+  const { errorBoundaryRef, onError } = useFlowContext();
+  
+  return {
+    reset: () => errorBoundaryRef.current?.reset?.(),
+    reportError: (error: Error, context: string) => onError(error, context),
+  };
+}
+
+// Development helper hook
+export function useFlowDebug() {
+  const context = useFlowContext();
+  
+  return {
+    getDebugInfo: context.getDebugInfo,
+    clearAllData: context.clearAllData,
+    store: context.store,
+    config: context.config,
+  };
+}
+`;
+  const filePath = path7.join(context.outputDir, "flow-provider.tsx");
+  await fs5.writeFile(filePath, template, "utf-8");
+}
+async function generateFlowContext(config, context) {
+  const template = `${formatGeneratedFileHeader()}// Flow context type definitions and utilities
+
+import type { createStore } from 'jotai';
+import type { FlowConfig, FlowState } from './flow-config';
+
+// ============================================================================
+// ERROR BOUNDARY REF TYPE
+// ============================================================================
+
+export interface FlowErrorBoundaryRef {
+  reset: () => void;
+}
+
+// ============================================================================
+// CONTEXT VALUE TYPE
+// ============================================================================
+
+export interface FlowContextValue {
+  // Configuration
+  config: FlowConfig;
+  
+  // User/Auth context
+  user: any | null;
+  
+  // Jotai store instance
+  store: ReturnType<typeof createStore>;
+  
+  // Event handlers
+  onError: (error: Error, context: string, modelName?: string) => void;
+  onLoading?: (isLoading: boolean, modelName?: string) => void;
+  
+  // Error boundary ref
+  errorBoundaryRef: React.MutableRefObject<FlowErrorBoundaryRef | null>;
+  
+  // Utility methods
+  clearAllData: () => void;
+  getDebugInfo: () => FlowDebugInfo;
+}
+
+// ============================================================================
+// DEBUG INFO TYPE
+// ============================================================================
+
+export interface FlowDebugInfo {
+  config: FlowConfig;
+  user: { id: string; email?: string } | null;
+  hasErrors: boolean;
+  isLoading: boolean;
+  timestamp: string;
+}
+
+// ============================================================================
+// UTILITY TYPES
+// ============================================================================
+
+export type FlowErrorHandler = (error: Error, context: string, modelName?: string) => void;
+export type FlowLoadingHandler = (isLoading: boolean, modelName?: string) => void;
+
+export interface FlowErrorFallbackProps {
+  error: Error;
+  reset: () => void;
+}
+
+export type FlowErrorFallbackComponent = React.ComponentType<FlowErrorFallbackProps>;
+`;
+  const filePath = path7.join(context.outputDir, "flow-context.ts");
+  await fs5.writeFile(filePath, template, "utf-8");
+}
+async function generateFlowConfig(config, context) {
+  const stateTypeFields = config.models.map((modelName) => {
+    const lowerPluralName = pluralize(modelName.toLowerCase());
+    return `  ${lowerPluralName}: Record<string, ${modelName}>;
+  ${lowerPluralName}Loading: boolean;
+  ${lowerPluralName}Error: string | null;`;
+  }).join(`
+`);
+  const template = `${formatGeneratedFileHeader()}// Flow configuration types and state definitions
+
+import type React from 'react';
+${config.models.map((model) => `import type { ${model} } from './${model.toLowerCase()}/types';`).join(`
+`)}
+
+// ============================================================================
+// FLOW CONFIGURATION
+// ============================================================================
+
+export interface FlowConfig {
+  // Error handling
+  errorBoundary: boolean;
+  errorFallback?: React.ComponentType<{ error: Error; reset: () => void }>;
+  
+  // Development tools
+  devTools: boolean;
+  
+  // Auto-refresh configuration
+  autoRefresh: boolean;
+  refreshInterval: number; // milliseconds
+  
+  // SSR/Hydration
+  ssrSafe: boolean;
+  
+  // Performance optimizations
+  batchUpdates: boolean;
+  optimisticUpdates: boolean;
+  
+  // Custom settings
+  [key: string]: any;
+}
+
+// ============================================================================
+// FLOW STATE TYPE
+// ============================================================================
+
+export interface FlowState {
+${stateTypeFields}
+}
+
+// ============================================================================
+// DEFAULT CONFIGURATION
+// ============================================================================
+
+export const DEFAULT_FLOW_CONFIG: FlowConfig = {
+  errorBoundary: true,
+  devTools: process.env.NODE_ENV === 'development',
+  autoRefresh: false,
+  refreshInterval: 30000,
+  ssrSafe: true,
+  batchUpdates: true,
+  optimisticUpdates: true,
+};
+
+// ============================================================================
+// CONFIGURATION HELPERS
+// ============================================================================
+
+export function createFlowConfig(userConfig?: Partial<FlowConfig>): FlowConfig {
+  return {
+    ...DEFAULT_FLOW_CONFIG,
+    ...userConfig,
+  };
+}
+
+export function validateFlowConfig(config: Partial<FlowConfig>): string[] {
+  const errors: string[] = [];
+  
+  if (config.refreshInterval !== undefined && config.refreshInterval < 1000) {
+    errors.push('refreshInterval must be at least 1000ms');
+  }
+  
+  if (config.errorBoundary === false && config.errorFallback) {
+    errors.push('errorFallback requires errorBoundary to be true');
+  }
+  
+  return errors;
+}
+
+// ============================================================================
+// TYPE EXPORTS FOR CONVENIENCE
+// ============================================================================
+
+export type { FlowContextValue, FlowDebugInfo, FlowErrorBoundaryRef } from './flow-context';
+`;
+  const filePath = path7.join(context.outputDir, "flow-config.ts");
+  await fs5.writeFile(filePath, template, "utf-8");
+}
+
+// src/templates/form-providers.ts
+import fs6 from "node:fs/promises";
+import path8 from "node:path";
 async function generateFormProviders(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -3164,13 +3712,13 @@ export function use${modelName}FormState() {
   };
 }
 `;
-  const filePath = path7.join(modelDir, "form-provider.tsx");
-  await fs5.writeFile(filePath, template, "utf-8");
+  const filePath = path8.join(modelDir, "form-provider.tsx");
+  await fs6.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/namespace.ts
-import fs6 from "node:fs/promises";
-import path8 from "node:path";
+import fs7 from "node:fs/promises";
+import path9 from "node:path";
 async function generateNamespaceExports(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}// Model-specific namespace export for ${modelName}
@@ -3203,13 +3751,13 @@ export default ${lowerName};
 // Also export all the individual pieces for direct access
 export { hooks, actions, atoms, types, providers };
 `;
-  const filePath = path8.join(modelDir, "namespace.ts");
-  await fs6.writeFile(filePath, template, "utf-8");
+  const filePath = path9.join(modelDir, "namespace.ts");
+  await fs7.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/routes.ts
-import fs7 from "node:fs/promises";
-import path9 from "node:path";
+import fs8 from "node:fs/promises";
+import path10 from "node:path";
 async function generateApiRoutes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
@@ -3315,13 +3863,13 @@ export const routesHandlers = {
 	DELETE,
 };
 `;
-  const filePath = path9.join(modelDir, "routes.ts");
-  await fs7.writeFile(filePath, template, "utf-8");
+  const filePath = path10.join(modelDir, "routes.ts");
+  await fs8.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/smart-form-hook.ts
-import fs8 from "node:fs/promises";
-import path10 from "node:path";
+import fs9 from "node:fs/promises";
+import path11 from "node:path";
 async function generateSmartFormHook(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -3500,13 +4048,13 @@ export function use${modelName}UpdateForm(id: string, initialData?: any) {
   });
 }
 `;
-  const filePath = path10.join(modelDir, "smart-form.ts");
-  await fs8.writeFile(filePath, template, "utf-8");
+  const filePath = path11.join(modelDir, "smart-form.ts");
+  await fs9.writeFile(filePath, template, "utf-8");
 }
 
 // src/templates/types.ts
-import fs9 from "node:fs/promises";
-import path11 from "node:path";
+import fs10 from "node:fs/promises";
+import path12 from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -3656,14 +4204,14 @@ export interface ${modelName}ValidationErrors {
   message: string;
 }
 `;
-  const filePath = path11.join(modelDir, "types.ts");
-  await fs9.writeFile(filePath, template, "utf-8");
+  const filePath = path12.join(modelDir, "types.ts");
+  await fs10.writeFile(filePath, template, "utf-8");
 }
 
 // src/zod-generator.ts
 import { spawn } from "node:child_process";
-import fs10 from "node:fs/promises";
-import path12 from "node:path";
+import fs11 from "node:fs/promises";
+import path13 from "node:path";
 class ZodGenerationError extends FlowGeneratorError {
   constructor(message, cause) {
     super(`Zod generation failed: ${message}`, cause);
@@ -3672,9 +4220,9 @@ class ZodGenerationError extends FlowGeneratorError {
 }
 async function generateZodSchemas(options, outputDir, models) {
   console.log("\uD83D\uDCE6 Generating integrated Zod schemas...");
-  const zodOutputDir = path12.join(outputDir, "zod");
+  const zodOutputDir = path13.join(outputDir, "zod");
   try {
-    await fs10.mkdir(zodOutputDir, { recursive: true });
+    await fs11.mkdir(zodOutputDir, { recursive: true });
   } catch (error) {
     throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
   }
@@ -3687,13 +4235,13 @@ async function generateZodSchemas(options, outputDir, models) {
     throw new ZodGenerationError("Failed to generate Zod schemas", error);
   } finally {
     try {
-      await fs10.unlink(tempSchemaPath);
+      await fs11.unlink(tempSchemaPath);
     } catch {}
   }
 }
 async function createTempSchemaWithZodGenerator(options, zodOutputDir, models) {
   try {
-    const originalSchemaContent = await fs10.readFile(options.schemaPath, "utf-8");
+    const originalSchemaContent = await fs11.readFile(options.schemaPath, "utf-8");
     const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
     const zodGeneratorConfig = `
 generator zod {
@@ -3703,8 +4251,8 @@ generator zod {
 `;
     const modifiedSchema = `${schemaWithoutFlowGenerator}
 ${zodGeneratorConfig}`;
-    const tempSchemaPath = path12.join(path12.dirname(options.schemaPath), ".temp-zod-schema.prisma");
-    await fs10.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+    const tempSchemaPath = path13.join(path13.dirname(options.schemaPath), ".temp-zod-schema.prisma");
+    await fs11.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
     return tempSchemaPath;
   } catch (error) {
     throw new ZodGenerationError("Failed to create temporary schema file", error);
@@ -3740,12 +4288,12 @@ STDERR: ${stderr}`));
 }
 async function validateGeneratedSchemas(zodOutputDir, models) {
   try {
-    const indexPath = path12.join(zodOutputDir, "index.ts");
-    const indexExists = await fs10.access(indexPath).then(() => true).catch(() => false);
+    const indexPath = path13.join(zodOutputDir, "index.ts");
+    const indexExists = await fs11.access(indexPath).then(() => true).catch(() => false);
     if (!indexExists) {
       throw new Error("Zod index file was not generated");
     }
-    const indexContent = await fs10.readFile(indexPath, "utf-8");
+    const indexContent = await fs11.readFile(indexPath, "utf-8");
     const missingSchemas = [];
     for (const modelName of models) {
       const hasCreateSchema = indexContent.includes(`${modelName}CreateInputSchema`);
@@ -3773,8 +4321,8 @@ import { PrismaClient } from '@prisma/client';
 // Create shared Prisma client instance
 export const prisma = new PrismaClient();
 `;
-  const filePath = path13.join(context.outputDir, "prisma-client.ts");
-  await fs11.writeFile(filePath, template, "utf-8");
+  const filePath = path14.join(context.outputDir, "prisma-client.ts");
+  await fs12.writeFile(filePath, template, "utf-8");
 }
 import_generator_helper.generatorHandler({
   onManifest() {
@@ -3793,7 +4341,7 @@ import_generator_helper.generatorHandler({
       validateConfig(config, modelNames);
       const context = createGeneratorContext(config, options.dmmf, config.output);
       try {
-        await fs11.mkdir(context.outputDir, { recursive: true });
+        await fs12.mkdir(context.outputDir, { recursive: true });
       } catch (error) {
         throw new FileSystemError("create directory", context.outputDir, error);
       }
@@ -3828,9 +4376,9 @@ import_generator_helper.generatorHandler({
           model,
           selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
         };
-        const modelDir = path13.join(context.outputDir, lowerModelName);
+        const modelDir = path14.join(context.outputDir, lowerModelName);
         try {
-          await fs11.mkdir(modelDir, { recursive: true });
+          await fs12.mkdir(modelDir, { recursive: true });
         } catch (error) {
           throw new FileSystemError("create directory", modelDir, error);
         }
@@ -3867,6 +4415,11 @@ import_generator_helper.generatorHandler({
           }
           throw new TemplateGenerationError("unknown", modelName, error);
         }
+      }
+      try {
+        await generateFlowProvider(config, context);
+      } catch (error) {
+        throw new TemplateGenerationError("flow provider", "all models", error);
       }
       try {
         await generateEnhancedBarrelExports(config, context);

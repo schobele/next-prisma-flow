@@ -7,6 +7,7 @@ import { HookComparisonSection } from "@/components/hook-comparison";
 import { CategoryFilter } from "@/components/category-filter";
 import { TodoItem } from "@/components/todo-item";
 import { TodoStats } from "@/components/todo-stats";
+import { FlowProviderDemo } from "@/components/flow-provider-demo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,13 +28,8 @@ export default function TodoListPage() {
 	const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
 	// Enhanced unified hooks - everything you need in one place
-	const { 
-		data: todoData, 
-		loading: todosLoading, 
-		updateTodo, 
-		deleteTodo
-	} = todo.hooks.useTodos();
-	
+	const { data: todoData, loading: todosLoading, updateTodo, deleteTodo } = todo.hooks.useTodos();
+
 	const { data: categoryData } = category.hooks.useCategories();
 
 	// Filter and search todos
@@ -110,7 +106,8 @@ export default function TodoListPage() {
 		completed: todoData?.filter((t) => t.status === "COMPLETED").length || 0,
 		pending: todoData?.filter((t) => t.status === "PENDING").length || 0,
 		inProgress: todoData?.filter((t) => t.status === "IN_PROGRESS").length || 0,
-		overdue: todoData?.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length || 0,
+		overdue:
+			todoData?.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length || 0,
 	};
 
 	return (
@@ -120,15 +117,17 @@ export default function TodoListPage() {
 				<div className="mb-8">
 					<div className="flex items-center justify-between mb-4">
 						<div>
-							<h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">TodoList v0.2.0</h1>
-							<p className="text-gray-600 dark:text-gray-300">Enhanced API with specialized form hooks & type safety</p>
+							<h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">TodoList v0.2.1</h1>
+							<p className="text-gray-600 dark:text-gray-300">
+								Enhanced API with FlowProvider, specialized form hooks & type safety
+							</p>
 						</div>
 						<div className="flex gap-2">
 							<Button onClick={() => setShowAddForm(true)} className="bg-green-600 hover:bg-green-700 text-white">
 								<Plus className="h-4 w-4 mr-2" />
 								Create Todo
 							</Button>
-							<Button 
+							<Button
 								onClick={() => {
 									const firstTodo = todoData?.[0];
 									if (firstTodo) {
@@ -147,15 +146,16 @@ export default function TodoListPage() {
 					{/* Statistics */}
 					<TodoStats stats={stats} />
 
+					{/* FlowProvider Demo */}
+					<FlowProviderDemo />
+
 					{/* Documentation and Examples Accordion */}
 					<Card className="mt-6 border-2 border-blue-200 bg-blue-50/50">
 						<CardHeader>
 							<CardTitle className="text-lg flex items-center gap-2">
-								📚 Next Prisma Flow v0.2.0 Documentation
+								📚 Next Prisma Flow v0.2.1 Documentation
 							</CardTitle>
-							<p className="text-sm text-gray-600">
-								Explore specialized form hooks, code examples, and usage patterns
-							</p>
+							<p className="text-sm text-gray-600">Explore specialized form hooks, code examples, and usage patterns</p>
 						</CardHeader>
 						<CardContent className="p-0">
 							<Accordion type="single" collapsible className="w-full">
@@ -236,7 +236,7 @@ export default function TodoListPage() {
 												<h4 className="font-semibold text-sm mb-3 text-gray-700">Namespace Exports</h4>
 												<div className="bg-gray-50 p-4 rounded-lg">
 													<pre className="text-xs text-gray-700">
-{`import { todo } from '@/generated/flow';
+														{`import { todo } from '@/generated/flow';
 
 // Unified hooks for todo management
 const todos = todo.hooks.useTodos();
@@ -262,12 +262,20 @@ type TodoType = todo.types.Todo;`}
 												<h4 className="font-semibold text-sm mb-3 text-gray-700">Hook Signatures</h4>
 												<div className="space-y-3">
 													<div className="bg-green-50 p-3 rounded border border-green-200">
-														<div className="text-xs font-mono text-green-700 mb-1">useCreateTodoForm(initialData?: Partial&lt;TodoCreateInput&gt;)</div>
-														<div className="text-xs text-gray-600">{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading }"}</div>
+														<div className="text-xs font-mono text-green-700 mb-1">
+															useCreateTodoForm(initialData?: Partial&lt;TodoCreateInput&gt;)
+														</div>
+														<div className="text-xs text-gray-600">
+															{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading }"}
+														</div>
 													</div>
 													<div className="bg-blue-50 p-3 rounded border border-blue-200">
-														<div className="text-xs font-mono text-blue-700 mb-1">useUpdateTodoForm(id: string, initialData?: Partial&lt;TodoUpdateInput&gt;)</div>
-														<div className="text-xs text-gray-600">{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading, id }"}</div>
+														<div className="text-xs font-mono text-blue-700 mb-1">
+															useUpdateTodoForm(id: string, initialData?: Partial&lt;TodoUpdateInput&gt;)
+														</div>
+														<div className="text-xs text-gray-600">
+															{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading, id }"}
+														</div>
 													</div>
 												</div>
 											</div>
@@ -277,7 +285,7 @@ type TodoType = todo.types.Todo;`}
 												<h4 className="font-semibold text-sm mb-3 text-gray-700">Field Helper Pattern</h4>
 												<div className="bg-purple-50 p-4 rounded-lg">
 													<pre className="text-xs text-purple-700">
-{`const form = useCreateTodoForm();
+														{`const form = useCreateTodoForm();
 
 // Auto-wired field helper
 const titleField = form.field('title');
@@ -395,9 +403,7 @@ const titleField = form.field('title');
 												useCreateTodoForm()
 											</Button>
 										</div>
-										<p className="text-xs text-gray-400 mt-2">
-											Type-safe • Auto-validation • Auto-save
-										</p>
+										<p className="text-xs text-gray-400 mt-2">Type-safe • Auto-validation • Auto-save</p>
 									</CardContent>
 								</Card>
 							)}
@@ -469,19 +475,10 @@ const titleField = form.field('title');
 				</Tabs>
 
 				{/* Enhanced Smart Form Modal - Create */}
-				{showAddForm && (
-					<EnhancedTodoForm
-						onClose={() => setShowAddForm(false)}
-					/>
-				)}
+				{showAddForm && <EnhancedTodoForm onClose={() => setShowAddForm(false)} />}
 
 				{/* Enhanced Smart Form Modal - Edit */}
-				{editingTodo && (
-					<EnhancedTodoForm
-						initialData={editingTodo}
-						onClose={handleCloseEditForm}
-					/>
-				)}
+				{editingTodo && <EnhancedTodoForm initialData={editingTodo} onClose={handleCloseEditForm} />}
 			</div>
 		</div>
 	);

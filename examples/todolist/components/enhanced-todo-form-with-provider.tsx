@@ -21,14 +21,14 @@ interface EnhancedTodoFormWithProviderProps {
 // Form Fields Component - Now much cleaner!
 function TodoFormFields() {
 	const { data: categoryData } = category.hooks.useCategories();
-	
+
 	// Use the optimized field hooks - no useMemo needed!
-	const titleField = todo.providers.useTodoField('title');
-	const descriptionField = todo.providers.useTodoField('description');
-	const categoryField = todo.providers.useTodoField('categoryId');
-	const priorityField = todo.providers.useTodoField('priority');
-	const statusField = todo.providers.useTodoField('status');
-	const userField = todo.providers.useTodoField('userId');
+	const titleField = todo.providers.useTodoField("title");
+	const descriptionField = todo.providers.useTodoField("description");
+	const categoryField = todo.providers.useTodoField("categoryId");
+	const priorityField = todo.providers.useTodoField("priority");
+	const statusField = todo.providers.useTodoField("status");
+	const userField = todo.providers.useTodoField("userId");
 
 	return (
 		<div className="space-y-4">
@@ -41,9 +41,7 @@ function TodoFormFields() {
 					className={titleField.error ? "border-red-500" : ""}
 					placeholder="Enter todo title..."
 				/>
-				{titleField.error && (
-					<p className="text-sm text-red-500">{titleField.error}</p>
-				)}
+				{titleField.error && <p className="text-sm text-red-500">{titleField.error}</p>}
 			</div>
 
 			{/* Description Field */}
@@ -56,9 +54,7 @@ function TodoFormFields() {
 					placeholder="Enter description..."
 					rows={3}
 				/>
-				{descriptionField.error && (
-					<p className="text-sm text-red-500">{descriptionField.error}</p>
-				)}
+				{descriptionField.error && <p className="text-sm text-red-500">{descriptionField.error}</p>}
 			</div>
 
 			{/* Category Field */}
@@ -85,10 +81,7 @@ function TodoFormFields() {
 			{/* Priority Field */}
 			<div className="space-y-2">
 				<Label htmlFor="priority">Priority</Label>
-				<Select
-					value={priorityField.value || "MEDIUM"}
-					onValueChange={priorityField.onChange}
-				>
+				<Select value={priorityField.value || "MEDIUM"} onValueChange={priorityField.onChange}>
 					<SelectTrigger>
 						<SelectValue placeholder="Select priority" />
 					</SelectTrigger>
@@ -104,10 +97,7 @@ function TodoFormFields() {
 			{/* Status Field */}
 			<div className="space-y-2">
 				<Label htmlFor="status">Status</Label>
-				<Select
-					value={statusField.value || "PENDING"}
-					onValueChange={statusField.onChange}
-				>
+				<Select value={statusField.value || "PENDING"} onValueChange={statusField.onChange}>
 					<SelectTrigger>
 						<SelectValue placeholder="Select status" />
 					</SelectTrigger>
@@ -128,9 +118,7 @@ function TodoFormFields() {
 					className={userField.error ? "border-red-500" : ""}
 					placeholder="Enter user ID..."
 				/>
-				{userField.error && (
-					<p className="text-sm text-red-500">{userField.error}</p>
-				)}
+				{userField.error && <p className="text-sm text-red-500">{userField.error}</p>}
 			</div>
 		</div>
 	);
@@ -151,12 +139,7 @@ function TodoFormActions({ onClose }: { onClose: () => void }) {
 
 	return (
 		<div className="flex justify-end space-x-3">
-			<Button
-				type="button"
-				variant="outline"
-				onClick={onClose}
-				disabled={loading}
-			>
+			<Button type="button" variant="outline" onClick={onClose} disabled={loading}>
 				Cancel
 			</Button>
 			<Button
@@ -180,37 +163,26 @@ function EnhancedTodoFormContent({ onClose }: { onClose: () => void }) {
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
 			<Card className="w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-lg font-semibold">
-						{isCreateMode ? "Create New Todo" : "Edit Todo"}
-					</CardTitle>
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={onClose}
-						className="h-6 w-6 p-0"
-					>
+					<CardTitle className="text-lg font-semibold">{isCreateMode ? "Create New Todo" : "Edit Todo"}</CardTitle>
+					<Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0">
 						<X className="h-4 w-4" />
 					</Button>
 				</CardHeader>
-				
+
 				<CardContent className="space-y-6">
 					{/* Mode Indicator */}
 					<div className="bg-gray-50 p-3 rounded-lg">
 						<div className="flex items-center justify-between text-sm">
 							<span className="font-medium">Mode:</span>
-							<span className={`px-2 py-1 rounded text-xs font-medium ${
-								isCreateMode 
-									? "bg-green-100 text-green-700" 
-									: "bg-blue-100 text-blue-700"
-							}`}>
+							<span
+								className={`px-2 py-1 rounded text-xs font-medium ${
+									isCreateMode ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+								}`}
+							>
 								{isCreateMode ? "Create" : "Update"}
 							</span>
 						</div>
-						{isDirty && (
-							<div className="mt-1 text-xs text-orange-600">
-								Form has unsaved changes
-							</div>
-						)}
+						{isDirty && <div className="mt-1 text-xs text-orange-600">Form has unsaved changes</div>}
 					</div>
 
 					{/* Form Fields */}
@@ -227,10 +199,7 @@ function EnhancedTodoFormContent({ onClose }: { onClose: () => void }) {
 // Provider Wrapper Component
 export function EnhancedTodoFormWithProvider({ initialData, onClose }: EnhancedTodoFormWithProviderProps) {
 	return (
-		<todo.providers.TodoFormProvider 
-			initialData={initialData}
-			autoDetectMode={true}
-		>
+		<todo.providers.TodoFormProvider initialData={initialData} autoDetectMode={true}>
 			<EnhancedTodoFormContent onClose={onClose} />
 		</todo.providers.TodoFormProvider>
 	);

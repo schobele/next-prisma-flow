@@ -20,7 +20,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 	// Filter initialData to only include fields that are valid for update/create
 	const filteredInitialData = useMemo(() => {
 		if (!initialData) return initialData;
-		
+
 		// For update mode, we need to keep the id to determine mode, but filter out read-only fields
 		const { createdAt, updatedAt, user, category, ...updateableFields } = initialData;
 		return updateableFields;
@@ -28,30 +28,33 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 
 	// Determine mode
 	const isUpdateMode = !!(initialData && initialData.id);
-	
+
 	// Always call both hooks (required by Rules of Hooks) but only use one
 	const createForm = todo.hooks.useCreateTodoForm(!isUpdateMode ? filteredInitialData : undefined);
 	const updateForm = todo.hooks.useUpdateTodoForm(
-		isUpdateMode ? initialData.id : 'temp-id', 
-		isUpdateMode ? filteredInitialData : undefined
+		isUpdateMode ? initialData.id : "temp-id",
+		isUpdateMode ? filteredInitialData : undefined,
 	);
-	
+
 	// Use the appropriate form based on mode
 	const form = isUpdateMode ? updateForm : createForm;
 	const { data: categoryData } = category.hooks.useCategories();
 
 	// Memoize field handlers to prevent infinite re-renders
-	const titleField = useMemo(() => form.field('title'), [form.data.title, form.errors.title]);
-	const descriptionField = useMemo(() => form.field('description'), [form.data.description, form.errors.description]);
-	const categoryField = useMemo(() => form.field('categoryId'), [form.data.categoryId, form.errors.categoryId]);
-	const priorityField = useMemo(() => form.field('priority'), [form.data.priority, form.errors.priority]);
-	const statusField = useMemo(() => form.field('status'), [form.data.status, form.errors.status]);
-	const userField = useMemo(() => form.field('userId'), [form.data.userId, form.errors.userId]);
+	const titleField = useMemo(() => form.field("title"), [form.data.title, form.errors.title]);
+	const descriptionField = useMemo(() => form.field("description"), [form.data.description, form.errors.description]);
+	const categoryField = useMemo(() => form.field("categoryId"), [form.data.categoryId, form.errors.categoryId]);
+	const priorityField = useMemo(() => form.field("priority"), [form.data.priority, form.errors.priority]);
+	const statusField = useMemo(() => form.field("status"), [form.data.status, form.errors.status]);
+	const userField = useMemo(() => form.field("userId"), [form.data.userId, form.errors.userId]);
 
 	// Custom onChange handler for category to handle null values
-	const handleCategoryChange = useCallback((value: string) => {
-		categoryField.onChange(value === 'none' ? null : value);
-	}, [categoryField.onChange]);
+	const handleCategoryChange = useCallback(
+		(value: string) => {
+			categoryField.onChange(value === "none" ? null : value);
+		},
+		[categoryField.onChange],
+	);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -65,7 +68,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 		<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
 			<Card className="w-full max-w-md">
 				<CardHeader className="flex flex-row items-center justify-between">
-					<CardTitle>{initialData ? 'Edit Todo' : 'Create New Todo'}</CardTitle>
+					<CardTitle>{initialData ? "Edit Todo" : "Create New Todo"}</CardTitle>
 					{onClose && (
 						<Button variant="ghost" size="sm" onClick={onClose}>
 							<X className="h-4 w-4" />
@@ -85,9 +88,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 								onBlur={titleField.onBlur}
 								placeholder="Enter todo title"
 							/>
-							{titleField.error && (
-								<p className="text-sm text-red-500 mt-1">{titleField.error}</p>
-							)}
+							{titleField.error && <p className="text-sm text-red-500 mt-1">{titleField.error}</p>}
 						</div>
 
 						{/* Description Field */}
@@ -102,18 +103,13 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 								placeholder="Enter todo description (optional)"
 								rows={3}
 							/>
-							{descriptionField.error && (
-								<p className="text-sm text-red-500 mt-1">{descriptionField.error}</p>
-							)}
+							{descriptionField.error && <p className="text-sm text-red-500 mt-1">{descriptionField.error}</p>}
 						</div>
 
 						{/* Category Field */}
 						<div>
 							<Label htmlFor="categoryId">Category</Label>
-							<Select
-								value={categoryField.value || 'none'}
-								onValueChange={handleCategoryChange}
-							>
+							<Select value={categoryField.value || "none"} onValueChange={handleCategoryChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select a category" />
 								</SelectTrigger>
@@ -126,18 +122,13 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 									))}
 								</SelectContent>
 							</Select>
-							{categoryField.error && (
-								<p className="text-sm text-red-500 mt-1">{categoryField.error}</p>
-							)}
+							{categoryField.error && <p className="text-sm text-red-500 mt-1">{categoryField.error}</p>}
 						</div>
 
 						{/* Priority Field */}
 						<div>
 							<Label htmlFor="priority">Priority</Label>
-							<Select
-								value={priorityField.value || 'MEDIUM'}
-								onValueChange={priorityField.onChange}
-							>
+							<Select value={priorityField.value || "MEDIUM"} onValueChange={priorityField.onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select priority" />
 								</SelectTrigger>
@@ -153,10 +144,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 						{initialData && (
 							<div>
 								<Label htmlFor="status">Status</Label>
-								<Select
-									value={statusField.value || 'PENDING'}
-									onValueChange={statusField.onChange}
-								>
+								<Select value={statusField.value || "PENDING"} onValueChange={statusField.onChange}>
 									<SelectTrigger>
 										<SelectValue placeholder="Select status" />
 									</SelectTrigger>
@@ -173,7 +161,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 						<input
 							type="hidden"
 							name={userField.name}
-							value={userField.value || 'user-1'} // Default user for demo
+							value={userField.value || "user-1"} // Default user for demo
 							onChange={(e) => userField.onChange(e.target.value)}
 						/>
 
@@ -190,24 +178,19 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 								type="submit"
 								disabled={!form.isValid || form.loading}
 								className="flex-1"
-								title={`Valid: ${form.isValid}, Loading: ${form.loading}, Errors: ${Object.keys(form.errors).join(', ')}`}
+								title={`Valid: ${form.isValid}, Loading: ${form.loading}, Errors: ${Object.keys(form.errors).join(", ")}`}
 							>
-								{form.loading ? 'Saving...' : (initialData ? 'Update Todo' : 'Create Todo')}
+								{form.loading ? "Saving..." : initialData ? "Update Todo" : "Create Todo"}
 							</Button>
-							
+
 							{onClose && (
 								<Button type="button" variant="outline" onClick={onClose}>
 									Cancel
 								</Button>
 							)}
-							
+
 							{form.isDirty && (
-								<Button 
-									type="button" 
-									variant="ghost" 
-									onClick={form.reset}
-									size="sm"
-								>
+								<Button type="button" variant="ghost" onClick={form.reset} size="sm">
 									Reset
 								</Button>
 							)}
@@ -228,17 +211,11 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 					<div className="mt-4 pt-4 border-t">
 						<div className="flex items-center justify-between">
 							<Label className="text-sm">Auto-save</Label>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => form.enableAutoSave(2000)}
-							>
+							<Button variant="outline" size="sm" onClick={() => form.enableAutoSave(2000)}>
 								Enable Auto-save
 							</Button>
 						</div>
-						<p className="text-xs text-gray-500 mt-1">
-							Automatically saves changes after 2 seconds of inactivity
-						</p>
+						<p className="text-xs text-gray-500 mt-1">Automatically saves changes after 2 seconds of inactivity</p>
 					</div>
 				</CardContent>
 			</Card>

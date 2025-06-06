@@ -200,11 +200,11 @@ function TypeSafeComponent() {
   };
 
   return <div>Fully type-safe!</div>;
-}`
+}`,
 };
 
 export function CodeExamplesSection() {
-	const [selectedExample, setSelectedExample] = useState('createHook');
+	const [selectedExample, setSelectedExample] = useState("createHook");
 	const [copied, setCopied] = useState(false);
 
 	const copyToClipboard = async (text: string) => {
@@ -227,12 +227,24 @@ export function CodeExamplesSection() {
 			<CardContent>
 				<Tabs value={selectedExample} onValueChange={setSelectedExample} className="w-full">
 					<TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
-						<TabsTrigger value="createHook" className="text-xs">Create Hook</TabsTrigger>
-						<TabsTrigger value="updateHook" className="text-xs">Update Hook</TabsTrigger>
-						<TabsTrigger value="autoSave" className="text-xs">Auto-save</TabsTrigger>
-						<TabsTrigger value="validation" className="text-xs">Validation</TabsTrigger>
-						<TabsTrigger value="namespace" className="text-xs">Namespace</TabsTrigger>
-						<TabsTrigger value="typescript" className="text-xs">TypeScript</TabsTrigger>
+						<TabsTrigger value="createHook" className="text-xs">
+							Create Hook
+						</TabsTrigger>
+						<TabsTrigger value="updateHook" className="text-xs">
+							Update Hook
+						</TabsTrigger>
+						<TabsTrigger value="autoSave" className="text-xs">
+							Auto-save
+						</TabsTrigger>
+						<TabsTrigger value="validation" className="text-xs">
+							Validation
+						</TabsTrigger>
+						<TabsTrigger value="namespace" className="text-xs">
+							Namespace
+						</TabsTrigger>
+						<TabsTrigger value="typescript" className="text-xs">
+							TypeScript
+						</TabsTrigger>
 					</TabsList>
 
 					{Object.entries(codeExamples).map(([key, code]) => (
@@ -245,7 +257,7 @@ export function CodeExamplesSection() {
 									onClick={() => copyToClipboard(code)}
 								>
 									<Copy className="h-3 w-3 mr-1" />
-									{copied ? 'Copied!' : 'Copy'}
+									{copied ? "Copied!" : "Copy"}
 								</Button>
 								<pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto text-sm">
 									<code>{code}</code>
@@ -262,7 +274,9 @@ export function CodeExamplesSection() {
 							<CardTitle className="text-sm text-green-800">useCreateTodoForm()</CardTitle>
 						</CardHeader>
 						<CardContent className="text-xs space-y-1">
-							<p>• Uses <code>TodoCreateInputSchema</code></p>
+							<p>
+								• Uses <code>TodoCreateInputSchema</code>
+							</p>
 							<p>• Fields marked as required</p>
 							<p>• Auto-resets after successful creation</p>
 							<p>• Strict validation for new entities</p>
@@ -274,7 +288,9 @@ export function CodeExamplesSection() {
 							<CardTitle className="text-sm text-blue-800">useUpdateTodoForm(id, data)</CardTitle>
 						</CardHeader>
 						<CardContent className="text-xs space-y-1">
-							<p>• Uses <code>TodoUpdateInputSchema</code></p>
+							<p>
+								• Uses <code>TodoUpdateInputSchema</code>
+							</p>
 							<p>• Fields marked as optional</p>
 							<p>• Includes ID for update operations</p>
 							<p>• Allows partial updates</p>

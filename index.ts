@@ -16,6 +16,7 @@ import { generateServerActions } from "./src/templates/actions.js";
 import { generateJotaiAtoms } from "./src/templates/atoms.js";
 import { generateEnhancedBarrelExports } from "./src/templates/enhanced-barrel.js";
 import { generateEnhancedReactHooks } from "./src/templates/enhanced-hooks.js";
+import { generateFlowProvider } from "./src/templates/flow-provider.js";
 import { generateFormProviders } from "./src/templates/form-providers.js";
 import { generateNamespaceExports } from "./src/templates/namespace.js";
 import { generateApiRoutes } from "./src/templates/routes.js";
@@ -153,6 +154,13 @@ generatorHandler({
 					}
 					throw new TemplateGenerationError("unknown", modelName, error);
 				}
+			}
+
+			// Generate Flow Provider
+			try {
+				await generateFlowProvider(config, context);
+			} catch (error) {
+				throw new TemplateGenerationError("flow provider", "all models", error);
 			}
 
 			// Generate barrel exports

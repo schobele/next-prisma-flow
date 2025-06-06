@@ -79,13 +79,7 @@ export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete, onEdit }:
 
 							{/* Actions */}
 							<div className="flex items-center gap-2 ml-4">
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={onEdit}
-									className="h-8 w-8 p-0"
-									title="Edit todo"
-								>
+								<Button variant="ghost" size="sm" onClick={onEdit} className="h-8 w-8 p-0" title="Edit todo">
 									<Edit className="h-4 w-4" />
 								</Button>
 								<Button
@@ -125,7 +119,10 @@ export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete, onEdit }:
 
 							{/* Due Date */}
 							{todo.dueDate && (
-								<Badge variant="outline" className={isOverdue ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200"}>
+								<Badge
+									variant="outline"
+									className={isOverdue ? "border-red-300 bg-red-50 text-red-700" : "border-gray-200"}
+								>
 									<Calendar className="h-3 w-3 mr-1" />
 									{format(new Date(todo.dueDate), "MMM d, yyyy")}
 									{isOverdue && <AlertTriangle className="h-3 w-3 ml-1" />}
@@ -143,7 +140,9 @@ export function TodoItem({ todo, onToggleComplete, onUpdate, onDelete, onEdit }:
 
 						{/* Completion Info */}
 						{isCompleted && todo.completedAt && (
-							<p className="text-xs text-green-600 mt-2">✓ Completed on {format(new Date(todo.completedAt), "MMM d, yyyy")}</p>
+							<p className="text-xs text-green-600 mt-2">
+								✓ Completed on {format(new Date(todo.completedAt), "MMM d, yyyy")}
+							</p>
 						)}
 					</div>
 				</div>

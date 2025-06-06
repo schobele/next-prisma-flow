@@ -121,6 +121,31 @@ ${namedExports}
 // Global utilities
 export * from './store';
 export * from './types';
+
+// Flow Provider for SSR, state management, and error handling
+export { 
+  FlowProvider,
+  useFlowContext,
+  useFlowConfig,
+  useFlowUser,
+  useFlowStore,
+  useFlowErrorBoundary,
+  useFlowDebug
+} from './flow-provider';
+export type { 
+  FlowProviderProps
+} from './flow-provider';
+export type { 
+  FlowContextValue,
+  FlowDebugInfo,
+  FlowErrorBoundaryRef
+} from './flow-context';
+export type { 
+  FlowConfig,
+  DEFAULT_FLOW_CONFIG,
+  createFlowConfig,
+  validateFlowConfig
+} from './flow-config';
 `;
 
 	const filePath = path.join(context.outputDir, "index.ts");

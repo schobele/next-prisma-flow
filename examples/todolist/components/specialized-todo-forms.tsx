@@ -51,16 +51,14 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 							<Label htmlFor="title">Title *</Label>
 							<Input
 								id="title"
-								name={form.field('title').name}
-								value={form.field('title').value}
-								onChange={(e) => form.field('title').onChange(e.target.value)}
-								onBlur={form.field('title').onBlur}
+								name={form.field("title").name}
+								value={form.field("title").value}
+								onChange={(e) => form.field("title").onChange(e.target.value)}
+								onBlur={form.field("title").onBlur}
 								placeholder="Enter todo title"
 								required
 							/>
-							{form.field('title').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('title').error}</p>
-							)}
+							{form.field("title").error && <p className="text-sm text-red-500 mt-1">{form.field("title").error}</p>}
 						</div>
 
 						{/* Description Field */}
@@ -68,25 +66,22 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 							<Label htmlFor="description">Description</Label>
 							<Textarea
 								id="description"
-								name={form.field('description').name}
-								value={form.field('description').value}
-								onChange={(e) => form.field('description').onChange(e.target.value)}
-								onBlur={form.field('description').onBlur}
+								name={form.field("description").name}
+								value={form.field("description").value}
+								onChange={(e) => form.field("description").onChange(e.target.value)}
+								onBlur={form.field("description").onBlur}
 								placeholder="Enter todo description (optional)"
 								rows={3}
 							/>
-							{form.field('description').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('description').error}</p>
+							{form.field("description").error && (
+								<p className="text-sm text-red-500 mt-1">{form.field("description").error}</p>
 							)}
 						</div>
 
 						{/* Category Field */}
 						<div>
 							<Label htmlFor="categoryId">Category</Label>
-							<Select
-								value={form.field("categoryId").value || ''}
-								onValueChange={form.field('categoryId').onChange}
-							>
+							<Select value={form.field("categoryId").value || ""} onValueChange={form.field("categoryId").onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select a category" />
 								</SelectTrigger>
@@ -99,18 +94,15 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 									))}
 								</SelectContent>
 							</Select>
-							{form.field('categoryId').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('categoryId').error}</p>
+							{form.field("categoryId").error && (
+								<p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>
 							)}
 						</div>
 
 						{/* Priority Field */}
 						<div>
 							<Label htmlFor="priority">Priority</Label>
-							<Select
-								value={form.field('priority').value || 'MEDIUM'}
-								onValueChange={form.field('priority').onChange}
-							>
+							<Select value={form.field("priority").value || "MEDIUM"} onValueChange={form.field("priority").onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select priority" />
 								</SelectTrigger>
@@ -125,9 +117,9 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 						{/* User ID (hidden, auto-filled) */}
 						<input
 							type="hidden"
-							name={form.field('userId').name}
-							value={form.field('userId').value || 'user-1'} // Default user for demo
-							onChange={(e) => form.field('userId').onChange(e.target.value)}
+							name={form.field("userId").name}
+							value={form.field("userId").value || "user-1"} // Default user for demo
+							onChange={(e) => form.field("userId").onChange(e.target.value)}
 						/>
 
 						{/* Form Status */}
@@ -139,27 +131,18 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 
 						{/* Form Actions */}
 						<div className="flex gap-2 pt-4">
-							<Button
-								type="submit"
-								disabled={!form.isValid || form.loading}
-								className="flex-1"
-							>
-								{form.loading ? 'Creating...' : 'Create Todo'}
+							<Button type="submit" disabled={!form.isValid || form.loading} className="flex-1">
+								{form.loading ? "Creating..." : "Create Todo"}
 							</Button>
-							
+
 							{onClose && (
 								<Button type="button" variant="outline" onClick={onClose}>
 									Cancel
 								</Button>
 							)}
-							
+
 							{form.isDirty && (
-								<Button 
-									type="button" 
-									variant="ghost" 
-									onClick={form.reset}
-									size="sm"
-								>
+								<Button type="button" variant="ghost" onClick={form.reset} size="sm">
 									Reset
 								</Button>
 							)}
@@ -214,15 +197,13 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 							<Label htmlFor="title">Title</Label>
 							<Input
 								id="title"
-								name={form.field('title').name}
-								value={form.field('title').value}
-								onChange={(e) => form.field('title').onChange(e.target.value)}
-								onBlur={form.field('title').onBlur}
+								name={form.field("title").name}
+								value={form.field("title").value}
+								onChange={(e) => form.field("title").onChange(e.target.value)}
+								onBlur={form.field("title").onBlur}
 								placeholder="Enter todo title"
 							/>
-							{form.field('title').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('title').error}</p>
-							)}
+							{form.field("title").error && <p className="text-sm text-red-500 mt-1">{form.field("title").error}</p>}
 						</div>
 
 						{/* Description Field */}
@@ -230,25 +211,22 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 							<Label htmlFor="description">Description</Label>
 							<Textarea
 								id="description"
-								name={form.field('description').name}
-								value={form.field('description').value}
-								onChange={(e) => form.field('description').onChange(e.target.value)}
-								onBlur={form.field('description').onBlur}
+								name={form.field("description").name}
+								value={form.field("description").value}
+								onChange={(e) => form.field("description").onChange(e.target.value)}
+								onBlur={form.field("description").onBlur}
 								placeholder="Enter todo description (optional)"
 								rows={3}
 							/>
-							{form.field('description').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('description').error}</p>
+							{form.field("description").error && (
+								<p className="text-sm text-red-500 mt-1">{form.field("description").error}</p>
 							)}
 						</div>
 
 						{/* Category Field */}
 						<div>
 							<Label htmlFor="categoryId">Category</Label>
-							<Select
-								value={form.field("categoryId").value || ''}
-								onValueChange={form.field('categoryId').onChange}
-							>
+							<Select value={form.field("categoryId").value || ""} onValueChange={form.field("categoryId").onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select a category" />
 								</SelectTrigger>
@@ -261,18 +239,15 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 									))}
 								</SelectContent>
 							</Select>
-							{form.field('categoryId').error && (
-								<p className="text-sm text-red-500 mt-1">{form.field('categoryId').error}</p>
+							{form.field("categoryId").error && (
+								<p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>
 							)}
 						</div>
 
 						{/* Priority Field */}
 						<div>
 							<Label htmlFor="priority">Priority</Label>
-							<Select
-								value={form.field('priority').value || ''}
-								onValueChange={form.field('priority').onChange}
-							>
+							<Select value={form.field("priority").value || ""} onValueChange={form.field("priority").onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select priority" />
 								</SelectTrigger>
@@ -287,10 +262,7 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 						{/* Status Field */}
 						<div>
 							<Label htmlFor="status">Status</Label>
-							<Select
-								value={form.field('status').value || ''}
-								onValueChange={form.field('status').onChange}
-							>
+							<Select value={form.field("status").value || ""} onValueChange={form.field("status").onChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Select status" />
 								</SelectTrigger>
@@ -312,33 +284,24 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 						{/* Form Info */}
 						<div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
 							<p>Updating Todo ID: {form.id}</p>
-							<p>Form Dirty: {form.isDirty ? 'Yes' : 'No'}</p>
-							<p>Form Valid: {form.isValid ? 'Yes' : 'No'}</p>
+							<p>Form Dirty: {form.isDirty ? "Yes" : "No"}</p>
+							<p>Form Valid: {form.isValid ? "Yes" : "No"}</p>
 						</div>
 
 						{/* Form Actions */}
 						<div className="flex gap-2 pt-4">
-							<Button
-								type="submit"
-								disabled={!form.isValid || form.loading}
-								className="flex-1"
-							>
-								{form.loading ? 'Updating...' : 'Update Todo'}
+							<Button type="submit" disabled={!form.isValid || form.loading} className="flex-1">
+								{form.loading ? "Updating..." : "Update Todo"}
 							</Button>
-							
+
 							{onClose && (
 								<Button type="button" variant="outline" onClick={onClose}>
 									Cancel
 								</Button>
 							)}
-							
+
 							{form.isDirty && (
-								<Button 
-									type="button" 
-									variant="ghost" 
-									onClick={form.reset}
-									size="sm"
-								>
+								<Button type="button" variant="ghost" onClick={form.reset} size="sm">
 									Reset
 								</Button>
 							)}
@@ -348,17 +311,11 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 						<div className="mt-4 pt-4 border-t">
 							<div className="flex items-center justify-between">
 								<Label className="text-sm">Auto-save</Label>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => form.enableAutoSave(2000)}
-								>
+								<Button variant="outline" size="sm" onClick={() => form.enableAutoSave(2000)}>
 									Enable Auto-save
 								</Button>
 							</div>
-							<p className="text-xs text-gray-500 mt-1">
-								Automatically saves changes after 2 seconds of inactivity
-							</p>
+							<p className="text-xs text-gray-500 mt-1">Automatically saves changes after 2 seconds of inactivity</p>
 						</div>
 					</form>
 				</CardContent>
@@ -372,22 +329,19 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 // ============================================================================
 
 function FeatureShowcase() {
-	const [hookType, setHookType] = useState<'create' | 'update'>('create');
+	const [hookType, setHookType] = useState<"create" | "update">("create");
 	const { data: todoData } = todo.hooks.useTodos();
 	const firstTodo = todoData?.[0];
 
 	// Switch between create and update hooks for demo
-	const createForm = todo.hooks.useCreateTodoForm({ 
-		title: 'Demo Todo',
-		priority: 'HIGH' as any
+	const createForm = todo.hooks.useCreateTodoForm({
+		title: "Demo Todo",
+		priority: "HIGH" as any,
 	});
-	
-	const updateForm = todo.hooks.useUpdateTodoForm(
-		firstTodo?.id || 'demo-id', 
-		firstTodo || { title: 'Demo Update' }
-	);
 
-	const activeForm = hookType === 'create' ? createForm : updateForm;
+	const updateForm = todo.hooks.useUpdateTodoForm(firstTodo?.id || "demo-id", firstTodo || { title: "Demo Update" });
+
+	const activeForm = hookType === "create" ? createForm : updateForm;
 
 	return (
 		<div className="space-y-6">
@@ -395,17 +349,17 @@ function FeatureShowcase() {
 			<div className="flex gap-2">
 				<Button
 					size="sm"
-					variant={hookType === 'create' ? 'default' : 'outline'}
-					onClick={() => setHookType('create')}
-					className={hookType === 'create' ? 'bg-green-600' : ''}
+					variant={hookType === "create" ? "default" : "outline"}
+					onClick={() => setHookType("create")}
+					className={hookType === "create" ? "bg-green-600" : ""}
 				>
 					Create Hook
 				</Button>
 				<Button
 					size="sm"
-					variant={hookType === 'update' ? 'default' : 'outline'}
-					onClick={() => setHookType('update')}
-					className={hookType === 'update' ? 'bg-blue-600' : ''}
+					variant={hookType === "update" ? "default" : "outline"}
+					onClick={() => setHookType("update")}
+					className={hookType === "update" ? "bg-blue-600" : ""}
 				>
 					Update Hook
 				</Button>
@@ -420,19 +374,19 @@ function FeatureShowcase() {
 					<CardContent className="space-y-2 text-xs">
 						<div className="grid grid-cols-2 gap-2">
 							<div className="bg-gray-50 p-2 rounded">
-								<strong>Valid:</strong> {activeForm.isValid ? '✅' : '❌'}
+								<strong>Valid:</strong> {activeForm.isValid ? "✅" : "❌"}
 							</div>
 							<div className="bg-gray-50 p-2 rounded">
-								<strong>Dirty:</strong> {activeForm.isDirty ? '✅' : '❌'}
+								<strong>Dirty:</strong> {activeForm.isDirty ? "✅" : "❌"}
 							</div>
 							<div className="bg-gray-50 p-2 rounded">
-								<strong>Loading:</strong> {activeForm.loading ? '⏳' : '✅'}
+								<strong>Loading:</strong> {activeForm.loading ? "⏳" : "✅"}
 							</div>
 							<div className="bg-gray-50 p-2 rounded">
 								<strong>Errors:</strong> {Object.keys(activeForm.errors).length}
 							</div>
 						</div>
-						{hookType === 'update' && 'id' in activeForm && (
+						{hookType === "update" && "id" in activeForm && (
 							<div className="bg-blue-50 p-2 rounded">
 								<strong>ID:</strong> {activeForm.id}
 							</div>
@@ -462,41 +416,28 @@ function FeatureShowcase() {
 						<Label htmlFor="demo-title">Title Field</Label>
 						<Input
 							id="demo-title"
-							name={activeForm.field('title').name}
-							value={activeForm.field('title').value}
-							onChange={(e) => activeForm.field('title').onChange(e.target.value)}
-							onBlur={activeForm.field('title').onBlur}
+							name={activeForm.field("title").name}
+							value={activeForm.field("title").value}
+							onChange={(e) => activeForm.field("title").onChange(e.target.value)}
+							onBlur={activeForm.field("title").onBlur}
 							placeholder="Type to see live validation..."
 						/>
-						{activeForm.field('title').error && (
-							<p className="text-xs text-red-500 mt-1">{activeForm.field('title').error}</p>
+						{activeForm.field("title").error && (
+							<p className="text-xs text-red-500 mt-1">{activeForm.field("title").error}</p>
 						)}
 						<p className="text-xs text-gray-500 mt-1">
-							Required: {activeForm.field('title').required ? 'Yes' : 'No'} 
-							| Value: "{activeForm.field('title').value}"
+							Required: {activeForm.field("title").required ? "Yes" : "No"}| Value: "{activeForm.field("title").value}"
 						</p>
 					</div>
 
 					<div className="flex gap-2">
-						<Button 
-							size="sm" 
-							onClick={() => activeForm.reset()}
-							variant="outline"
-						>
+						<Button size="sm" onClick={() => activeForm.reset()} variant="outline">
 							Reset Form
 						</Button>
-						<Button 
-							size="sm" 
-							onClick={() => activeForm.validate()}
-							variant="outline"
-						>
+						<Button size="sm" onClick={() => activeForm.validate()} variant="outline">
 							Validate
 						</Button>
-						<Button 
-							size="sm" 
-							onClick={() => activeForm.enableAutoSave(1000)}
-							variant="outline"
-						>
+						<Button size="sm" onClick={() => activeForm.enableAutoSave(1000)} variant="outline">
 							Enable Auto-save
 						</Button>
 					</div>
@@ -519,7 +460,7 @@ function FeatureShowcase() {
 								<li>• errors</li>
 								<li>• loading</li>
 								<li>• error</li>
-								{hookType === 'update' && <li>• id</li>}
+								{hookType === "update" && <li>• id</li>}
 							</ul>
 						</div>
 						<div>
@@ -563,13 +504,10 @@ export function SpecializedFormsDemo() {
 		<div className="space-y-6">
 			{/* Main Demo Buttons */}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-				<Button 
-					onClick={() => setShowCreateForm(true)}
-					className="bg-green-600 hover:bg-green-700 text-white"
-				>
+				<Button onClick={() => setShowCreateForm(true)} className="bg-green-600 hover:bg-green-700 text-white">
 					🆕 Create Form Demo
 				</Button>
-				<Button 
+				<Button
 					onClick={() => {
 						const firstTodo = todoData?.[0];
 						if (firstTodo) {
@@ -582,7 +520,7 @@ export function SpecializedFormsDemo() {
 				>
 					✏️ Update Form Demo
 				</Button>
-				<Button 
+				<Button
 					onClick={() => setShowFeatureDemo(!showFeatureDemo)}
 					variant="outline"
 					className="border-purple-300 text-purple-700 hover:bg-purple-50"
@@ -608,7 +546,7 @@ export function SpecializedFormsDemo() {
 				<CreateTodoForm
 					onClose={() => setShowCreateForm(false)}
 					onSuccess={(newTodo) => {
-						console.log('✅ Created todo with useCreateTodoForm:', newTodo);
+						console.log("✅ Created todo with useCreateTodoForm:", newTodo);
 						alert(`✅ Todo "${newTodo.title}" created successfully using useCreateTodoForm!`);
 					}}
 				/>
@@ -624,7 +562,7 @@ export function SpecializedFormsDemo() {
 						setSelectedTodoForEdit(null);
 					}}
 					onSuccess={(updatedTodo) => {
-						console.log('✅ Updated todo with useUpdateTodoForm:', updatedTodo);
+						console.log("✅ Updated todo with useUpdateTodoForm:", updatedTodo);
 						alert(`✅ Todo "${updatedTodo.title}" updated successfully using useUpdateTodoForm!`);
 					}}
 				/>

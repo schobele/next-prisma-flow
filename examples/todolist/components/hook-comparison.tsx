@@ -12,13 +12,10 @@ export function HookComparisonSection() {
 					<Wrench className="h-5 w-5" />
 					Specialized Form Hooks Architecture
 				</CardTitle>
-				<p className="text-sm text-emerald-700">
-					Type-safe, purpose-built hooks for create and update operations
-				</p>
+				<p className="text-sm text-emerald-700">Type-safe, purpose-built hooks for create and update operations</p>
 			</CardHeader>
 			<CardContent>
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
 					{/* Create Hook */}
 					<Card className="border-green-300 bg-green-50/50">
 						<CardHeader className="pb-3">
@@ -32,7 +29,7 @@ export function HookComparisonSection() {
 							<div className="text-sm">
 								<code className="bg-green-100 px-2 py-1 rounded">useCreateTodoForm(initial?)</code>
 							</div>
-							
+
 							<div className="space-y-2 text-xs">
 								<div className="flex items-center gap-2">
 									<CheckCircle className="h-3 w-3 text-green-500" />
@@ -78,7 +75,7 @@ export function HookComparisonSection() {
 							<div className="text-sm">
 								<code className="bg-blue-100 px-2 py-1 rounded">useUpdateTodoForm(id, data?)</code>
 							</div>
-							
+
 							<div className="space-y-2 text-xs">
 								<div className="flex items-center gap-2">
 									<CheckCircle className="h-3 w-3 text-green-500" />
@@ -137,7 +134,6 @@ export function HookComparisonSection() {
 						</div>
 					</div>
 				</div>
-
 			</CardContent>
 		</Card>
 	);
