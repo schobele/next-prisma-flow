@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>next-prisma-flow - Full-Stack TypeScript State Management</title>
+    <meta name="description" content="A Prisma generator that scaffolds full-stack typed code for Next.js applications with modern state management">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --fg: #e5e5e5;
+            --accent: #00ff41;
+            --secondary: #666;
+            --border: #333;
+            --code-bg: #111;
+            --selection: #00ff4120;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        ::selection {
+            background: var(--selection);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.05em;
+        }
+
+        .subtitle {
+            color: var(--secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .version {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .section {
+            margin-bottom: 4rem;
+        }
+
+        h2 {
+            color: var(--accent);
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-left: 3px solid var(--accent);
+            padding-left: 1rem;
+        }
+
+        h3 {
+            color: var(--fg);
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            margin-top: 2rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--fg);
+        }
+
+        .highlight {
+            color: var(--accent);
+        }
+
+        code {
+            background: var(--code-bg);
+            color: var(--accent);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--fg);
+        }
+
+        .code-header {
+            background: var(--border);
+            color: var(--secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px 6px 0 0;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            font-size: 0.8rem;
+            margin-bottom: 0;
+        }
+
+        .code-header + pre {
+            margin-top: 0;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .feature {
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--code-bg), var(--bg));
+        }
+
+        .feature h4 {
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .feature p {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .install-box {
+            background: var(--code-bg);
+            border: 2px solid var(--accent);
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .install-box code {
+            font-size: 1.1rem;
+            background: none;
+        }
+
+        .syntax-keyword { color: #ff79c6; }
+        .syntax-string { color: #f1fa8c; }
+        .syntax-comment { color: #6272a4; }
+        .syntax-function { color: #50fa7b; }
+        .syntax-type { color: #8be9fd; }
+        .syntax-operator { color: #ff79c6; }
+
+        ul {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+            color: var(--fg);
+        }
+
+        .compact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .compact-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            border-top: 1px solid var(--border);
+            color: var(--secondary);
+            font-size: 0.9rem;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>next-prisma-flow</h1>
+            <p class="subtitle">Full-stack TypeScript state management from your Prisma schema</p>
+            <span class="version">v0.2.2</span>
+        </header>
+
+        <section class="section">
+            <h2>Overview</h2>
+            <p>A Prisma generator that scaffolds <span class="highlight">full-stack typed code</span> for Next.js applications. Generate API routes, server actions, Jotai state management, React hooks, and smart form integration from your Prisma schema.</p>
+            
+            <div class="features">
+                <div class="feature">
+                    <h4>Type-Safe APIs</h4>
+                    <p>Generated API routes with complete TypeScript safety from database to frontend</p>
+                </div>
+                <div class="feature">
+                    <h4>Smart State Management</h4>
+                    <p>Jotai atoms with optimistic updates, error handling, and automatic cache invalidation</p>
+                </div>
+                <div class="feature">
+                    <h4>Form Integration</h4>
+                    <p>Specialized form hooks with validation, auto-save, and perfect type inference</p>
+                </div>
+                <div class="feature">
+                    <h4>Server Actions</h4>
+                    <p>Next.js 14+ server actions with relationship handling and business logic</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Installation</h2>
+            <div class="install-box">
+                <code>npm install next-prisma-flow</code>
+            </div>
+
+            <h3>Setup</h3>
+            <div class="code-header">prisma/schema.prisma</div>
+            <pre><code><span class="syntax-keyword">generator</span> <span class="syntax-function">flow</span> {
+  <span class="syntax-keyword">provider</span> = <span class="syntax-string">"next-prisma-flow"</span>
+  <span class="syntax-keyword">output</span>   = <span class="syntax-string">"./generated/flow"</span>
+  <span class="syntax-keyword">models</span>   = [<span class="syntax-string">"User"</span>, <span class="syntax-string">"Todo"</span>, <span class="syntax-string">"Category"</span>]
+  
+  <span class="syntax-comment">// Model-specific configuration</span>
+  <span class="syntax-keyword">todoSelect</span>     = [<span class="syntax-string">"id"</span>, <span class="syntax-string">"title"</span>, <span class="syntax-string">"status"</span>, <span class="syntax-string">"userId"</span>]
+  <span class="syntax-keyword">todoOptimistic</span> = <span class="syntax-string">"merge"</span>
+  <span class="syntax-keyword">todoPagination</span> = <span class="syntax-string">"true"</span>
+}
+
+<span class="syntax-keyword">model</span> <span class="syntax-type">Todo</span> {
+  <span class="syntax-keyword">id</span>          <span class="syntax-type">String</span>   <span class="syntax-operator">@id @default(cuid())</span>
+  <span class="syntax-keyword">title</span>       <span class="syntax-type">String</span>
+  <span class="syntax-keyword">description</span> <span class="syntax-type">String?</span>
+  <span class="syntax-keyword">status</span>      <span class="syntax-type">Status</span>   <span class="syntax-operator">@default(PENDING)</span>
+  <span class="syntax-keyword">userId</span>      <span class="syntax-type">String</span>
+  <span class="syntax-keyword">user</span>        <span class="syntax-type">User</span>     <span class="syntax-operator">@relation(fields: [userId], references: [id])</span>
+}</code></pre>
+
+            <div class="code-header">app/layout.tsx</div>
+            <pre><code><span class="syntax-keyword">import</span> { <span class="syntax-function">FlowProvider</span> } <span class="syntax-keyword">from</span> <span class="syntax-string">'./generated/flow'</span>
+
+<span class="syntax-keyword">export default function</span> <span class="syntax-function">RootLayout</span>({ <span class="syntax-keyword">children</span> }) {
+  <span class="syntax-keyword">return</span> (
+    <span class="syntax-operator">&lt;</span><span class="syntax-type">FlowProvider</span>
+      <span class="syntax-keyword">config</span>={{
+        <span class="syntax-keyword">devTools</span>: <span class="syntax-keyword">true</span>,
+        <span class="syntax-keyword">errorBoundary</span>: <span class="syntax-keyword">true</span>,
+        <span class="syntax-keyword">autoRefresh</span>: <span class="syntax-keyword">false</span>,
+      }}
+    <span class="syntax-operator">&gt;</span>
+      {<span class="syntax-keyword">children</span>}
+    <span class="syntax-operator">&lt;/</span><span class="syntax-type">FlowProvider</span><span class="syntax-operator">&gt;</span>
+  )
+}</code></pre>
+        </section>
+
+        <section class="section">
+            <h2>Generated Code</h2>
+            <p>Run <code>npx prisma generate</code> to create a complete typed state management layer:</p>
+
+            <div class="compact-grid">
+                <div>
+                    <h3>Modern API (v0.2.x)</h3>
+                    <div class="code-header">components/TodoList.tsx</div>
+                    <pre><code><span class="syntax-keyword">import</span> { <span class="syntax-function">todo</span> } <span class="syntax-keyword">from</span> <span class="syntax-string">'./generated/flow'</span>
+
+<span class="syntax-keyword">export function</span> <span class="syntax-function">TodoList</span>() {
+  <span class="syntax-comment">// One hook, everything you need</span>
+  <span class="syntax-keyword">const</span> { 
+    <span class="syntax-keyword">data</span>: todoList,
+    <span class="syntax-keyword">createTodo</span>, 
+    <span class="syntax-keyword">updateTodo</span>, 
+    <span class="syntax-keyword">deleteTodo</span>,
+    <span class="syntax-keyword">loading</span>, 
+    <span class="syntax-keyword">error</span> 
+  } = <span class="syntax-function">todo.hooks.useTodos</span>()
+  
+  <span class="syntax-comment">// Specialized form hooks</span>
+  <span class="syntax-keyword">const</span> createForm = <span class="syntax-function">todo.hooks.useCreateTodoForm</span>()
+  
+  <span class="syntax-keyword">return</span> (
+    <span class="syntax-operator">&lt;</span><span class="syntax-type">div</span><span class="syntax-operator">&gt;</span>
+      <span class="syntax-operator">&lt;</span><span class="syntax-type">form</span> <span class="syntax-keyword">onSubmit</span>={createForm.submit}<span class="syntax-operator">&gt;</span>
+        <span class="syntax-operator">&lt;</span><span class="syntax-type">input</span> {...createForm.field(<span class="syntax-string">'title'</span>)} <span class="syntax-operator">/&gt;</span>
+        <span class="syntax-operator">&lt;</span><span class="syntax-type">button</span> <span class="syntax-keyword">disabled</span>={!createForm.isValid}<span class="syntax-operator">&gt;</span>
+          Add Todo
+        <span class="syntax-operator">&lt;/</span><span class="syntax-type">button</span><span class="syntax-operator">&gt;</span>
+      <span class="syntax-operator">&lt;/</span><span class="syntax-type">form</span><span class="syntax-operator">&gt;</span>
+      
+      {todoList.map(<span class="syntax-keyword">todo</span> <span class="syntax-operator">=&gt;</span> (
+        <span class="syntax-operator">&lt;</span><span class="syntax-type">TodoItem</span> <span class="syntax-keyword">key</span>={todo.id} <span class="syntax-keyword">todo</span>={todo} <span class="syntax-operator">/&gt;</span>
+      ))}
+    <span class="syntax-operator">&lt;/</span><span class="syntax-type">div</span><span class="syntax-operator">&gt;</span>
+  )
+}</code></pre>
+                </div>
+
+                <div>
+                    <h3>Advanced Patterns</h3>
+                    <div class="code-header">hooks/useMyTodos.ts</div>
+                    <pre><code><span class="syntax-keyword">import</span> { <span class="syntax-function">atom</span> } <span class="syntax-keyword">from</span> <span class="syntax-string">'jotai'</span>
+<span class="syntax-keyword">import</span> { <span class="syntax-function">todo</span> } <span class="syntax-keyword">from</span> <span class="syntax-string">'./generated/flow'</span>
+
+<span class="syntax-comment">// Direct atom access for custom state</span>
+<span class="syntax-keyword">const</span> { <span class="syntax-keyword">todosAtom</span> } = todo.atoms
+
+<span class="syntax-keyword">export const</span> <span class="syntax-function">urgentTodosAtom</span> = <span class="syntax-function">atom</span>((<span class="syntax-keyword">get</span>) <span class="syntax-operator">=&gt;</span> {
+  <span class="syntax-keyword">const</span> allTodos = <span class="syntax-function">get</span>(todosAtom)
+  <span class="syntax-keyword">return</span> Object.values(allTodos)
+    .filter(<span class="syntax-keyword">t</span> <span class="syntax-operator">=&gt;</span> t.priority === <span class="syntax-string">'HIGH'</span>)
+})
+
+<span class="syntax-comment">// Programmatic actions</span>
+<span class="syntax-keyword">export async function</span> <span class="syntax-function">bulkMarkComplete</span>(ids) {
+  <span class="syntax-keyword">await</span> Promise.all(
+    ids.map(<span class="syntax-keyword">id</span> <span class="syntax-operator">=&gt;</span> 
+      <span class="syntax-function">todo.actions.update</span>(id, { 
+        <span class="syntax-keyword">status</span>: <span class="syntax-string">'COMPLETED'</span> 
+      })
+    )
+  )
+}</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Generated Structure</h2>
+            <p>For each model, the generator creates a complete typed interface:</p>
+
+            <div class="code-header">generated/flow/todo/</div>
+            <pre><code>├── <span class="syntax-function">actions.ts</span>      <span class="syntax-comment"># Server actions with business logic</span>
+├── <span class="syntax-function">atoms.ts</span>        <span class="syntax-comment"># Jotai atoms for state management</span>
+├── <span class="syntax-function">hooks.ts</span>        <span class="syntax-comment"># Enhanced React hooks</span>
+├── <span class="syntax-function">routes.ts</span>       <span class="syntax-comment"># Next.js API route handlers</span>
+├── <span class="syntax-function">types.ts</span>        <span class="syntax-comment"># TypeScript type definitions</span>
+├── <span class="syntax-function">smart-form.ts</span>   <span class="syntax-comment"># Form hook implementations</span>
+└── <span class="syntax-function">namespace.ts</span>    <span class="syntax-comment"># Organized exports</span></code></pre>
+
+            <h3>Namespace Exports</h3>
+            <div class="code-header">Modern API Structure</div>
+            <pre><code><span class="syntax-keyword">import</span> { <span class="syntax-function">todo</span>, <span class="syntax-function">category</span> } <span class="syntax-keyword">from</span> <span class="syntax-string">'./generated/flow'</span>
+
+<span class="syntax-keyword">const</span> todo = {
+  <span class="syntax-keyword">hooks</span>: {
+    <span class="syntax-function">useTodos</span>,           <span class="syntax-comment">// Unified CRUD operations</span>
+    <span class="syntax-function">useTodo</span>,            <span class="syntax-comment">// Individual item management</span>
+    <span class="syntax-function">useCreateTodoForm</span>,  <span class="syntax-comment">// Specialized create form</span>
+    <span class="syntax-function">useUpdateTodoForm</span>,  <span class="syntax-comment">// Specialized update form</span>
+  },
+  <span class="syntax-keyword">actions</span>: {
+    <span class="syntax-function">create</span>, <span class="syntax-function">update</span>, <span class="syntax-function">delete</span>, <span class="syntax-function">getAll</span>, <span class="syntax-function">getById</span>,
+    <span class="syntax-function">createMany</span>, <span class="syntax-function">deleteMany</span>,
+  },
+  <span class="syntax-keyword">atoms</span>: {
+    <span class="syntax-function">todosAtom</span>, <span class="syntax-function">todosLoadingAtom</span>, <span class="syntax-function">todosErrorAtom</span>,
+  },
+  <span class="syntax-keyword">types</span>: { <span class="syntax-function">Todo</span>, <span class="syntax-function">TodoCreateInput</span>, <span class="syntax-function">TodoUpdateInput</span> },
+  <span class="syntax-keyword">schemas</span>: { <span class="syntax-function">create</span>: TodoCreateInputSchema, <span class="syntax-function">update</span>: TodoUpdateInputSchema }
+}</code></pre>
+        </section>
+
+        <section class="section">
+            <h2>FlowProvider Benefits</h2>
+            <p>The new <span class="highlight">FlowProvider</span> adds significant architectural value:</p>
+
+            <div class="features">
+                <div class="feature">
+                    <h4>SSR/Hydration Safety</h4>
+                    <p>Prevents hydration mismatches and enables server-side data pre-population</p>
+                </div>
+                <div class="feature">
+                    <h4>Global Error Boundary</h4>
+                    <p>Centralized error handling for all Flow operations with custom handlers</p>
+                </div>
+                <div class="feature">
+                    <h4>Development Tools</h4>
+                    <p>Automatic React DevTools integration and debug utilities</p>
+                </div>
+                <div class="feature">
+                    <h4>Store Isolation</h4>
+                    <p>Clean store instances for testing and SSR environments</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Configuration</h2>
+            <p>Fine-tune generation with model-specific settings:</p>
+
+            <div class="code-header">Schema Configuration</div>
+            <pre><code><span class="syntax-keyword">generator</span> <span class="syntax-function">flow</span> {
+  <span class="syntax-keyword">provider</span> = <span class="syntax-string">"next-prisma-flow"</span>
+  <span class="syntax-keyword">output</span>   = <span class="syntax-string">"./generated/flow"</span>
+  <span class="syntax-keyword">models</span>   = [<span class="syntax-string">"User"</span>, <span class="syntax-string">"Todo"</span>, <span class="syntax-string">"Category"</span>]
+  
+  <span class="syntax-comment"># Security & Performance</span>
+  <span class="syntax-keyword">userSelect</span>     = [<span class="syntax-string">"id"</span>, <span class="syntax-string">"name"</span>, <span class="syntax-string">"email"</span>]  <span class="syntax-comment"># Field whitelist</span>
+  <span class="syntax-keyword">userOptimistic</span> = <span class="syntax-string">"merge"</span>                      <span class="syntax-comment"># Update strategy</span>
+  
+  <span class="syntax-keyword">todoSelect</span>     = [<span class="syntax-string">"id"</span>, <span class="syntax-string">"title"</span>, <span class="syntax-string">"status"</span>, <span class="syntax-string">"userId"</span>]
+  <span class="syntax-keyword">todoOptimistic</span> = <span class="syntax-string">"overwrite"</span>
+  <span class="syntax-keyword">todoPagination</span> = <span class="syntax-string">"true"</span>                     <span class="syntax-comment"># Enable pagination</span>
+}</code></pre>
+
+            <h3>Available Options</h3>
+            <ul>
+                <li><code>select</code> - Array of fields to expose (security whitelist)</li>
+                <li><code>optimistic</code> - Update strategy: "merge", "overwrite", "manual"</li>
+                <li><code>pagination</code> - Enable pagination utilities</li>
+                <li><code>zodPrismaImport</code> - Path to zod-prisma-types schemas</li>
+                <li><code>prismaImport</code> - Path to Prisma client instance</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>
+                Contact: <a href="https://github.com/schobele">Leo Schoberwalter</a> • 
+                <a href="https://github.com/schobele/next-prisma-flow">GitHub</a> • 
+                <a href="https://www.npmjs.com/package/next-prisma-flow">npm</a> 
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
