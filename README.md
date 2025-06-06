@@ -1,15 +1,21 @@
 # Next Prisma Flow Generator
 
+[![npm version](https://badge.fury.io/js/next-prisma-flow.svg)](https://www.npmjs.com/package/next-prisma-flow)
+[![Documentation](https://img.shields.io/badge/docs-live-brightgreen.svg)](https://schobele.github.io/next-prisma-flow)
+[![GitHub](https://img.shields.io/badge/GitHub-repository-blue.svg)](https://github.com/schobele/next-prisma-flow)
+
+> **📖 [View Full Documentation](https://schobele.github.io/next-prisma-flow)** - Complete guides, examples, and API reference
+
 A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
 
-## 🚀 What's New in v0.2.1
+## 🚀 What's New in v0.2.2
 
-- **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
-- **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
-- **Zero-config form integration** - Automatic validation and submission with specialized form hooks
-- **Enhanced developer experience** - Intuitive API that works out of the box
-- **Specialized form hooks** - Dedicated create and update form hooks with proper type safety
-- **Improved documentation** - Better examples and cleaner API patterns
+- **FlowProvider** - Global state management with SSR support, error boundaries, and dev tools
+- **Enhanced Developer Experience** - React DevTools integration and automatic debug utilities  
+- **Global Error Handling** - Centralized error boundaries for all Flow operations
+- **Development Tools** - Built-in debug controls and state inspection tools
+- **Improved Documentation** - Complete static documentation site with examples
+- **Better SSR Support** - Hydration safety and server-side data pre-population
 
 ## Features
 
