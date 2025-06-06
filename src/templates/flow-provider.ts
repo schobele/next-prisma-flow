@@ -1,12 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { FlowGeneratorConfig, GeneratorContext } from "../types.js";
-import { formatGeneratedFileHeader, capitalize, pluralize } from "../utils.js";
+import { capitalize, formatGeneratedFileHeader, pluralize } from "../utils.js";
 
-export async function generateFlowProvider(
-	config: FlowGeneratorConfig,
-	context: GeneratorContext,
-): Promise<void> {
+export async function generateFlowProvider(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	await Promise.all([
 		generateFlowProviderComponent(config, context),
 		generateFlowContext(config, context),
@@ -14,10 +11,7 @@ export async function generateFlowProvider(
 	]);
 }
 
-async function generateFlowProviderComponent(
-	config: FlowGeneratorConfig,
-	context: GeneratorContext,
-): Promise<void> {
+async function generateFlowProviderComponent(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	const modelAtomImports = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
@@ -154,33 +148,33 @@ ${storeInitialization}
     // Utility methods
     clearAllData: () => {
 ${config.models
-		.map((modelName) => {
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(modelName.toLowerCase());
-			return `      store.set(base${pluralName}Atom, {});
+	.map((modelName) => {
+		const pluralName = capitalize(pluralize(modelName));
+		const lowerPluralName = pluralize(modelName.toLowerCase());
+		return `      store.set(base${pluralName}Atom, {});
       store.set(${lowerPluralName}LoadingAtom, false);
       store.set(${lowerPluralName}ErrorAtom, null);`;
-		})
-		.join("\n")}
+	})
+	.join("\n")}
     },
     getDebugInfo: () => ({
       config,
       user: user ? { id: user.id, email: user.email } : null,
       hasErrors: Object.values({
 ${config.models
-		.map((modelName) => {
-			const lowerPluralName = pluralize(modelName.toLowerCase());
-			return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}ErrorAtom),`;
-		})
-		.join("\n")}
+	.map((modelName) => {
+		const lowerPluralName = pluralize(modelName.toLowerCase());
+		return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}ErrorAtom),`;
+	})
+	.join("\n")}
       }).some(Boolean),
       isLoading: Object.values({
 ${config.models
-		.map((modelName) => {
-			const lowerPluralName = pluralize(modelName.toLowerCase());
-			return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}LoadingAtom),`;
-		})
-		.join("\n")}
+	.map((modelName) => {
+		const lowerPluralName = pluralize(modelName.toLowerCase());
+		return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}LoadingAtom),`;
+	})
+	.join("\n")}
       }).some(Boolean),
       timestamp: new Date().toISOString(),
     }),
@@ -376,10 +370,7 @@ export function useFlowDebug() {
 	await fs.writeFile(filePath, template, "utf-8");
 }
 
-async function generateFlowContext(
-	config: FlowGeneratorConfig,
-	context: GeneratorContext,
-): Promise<void> {
+async function generateFlowContext(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	const template = `${formatGeneratedFileHeader()}// Flow context type definitions and utilities
 
 import type { createStore } from 'jotai';
@@ -450,10 +441,7 @@ export type FlowErrorFallbackComponent = React.ComponentType<FlowErrorFallbackPr
 	await fs.writeFile(filePath, template, "utf-8");
 }
 
-async function generateFlowConfig(
-	config: FlowGeneratorConfig,
-	context: GeneratorContext,
-): Promise<void> {
+async function generateFlowConfig(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	const stateTypeFields = config.models
 		.map((modelName) => {
 			const lowerPluralName = pluralize(modelName.toLowerCase());
