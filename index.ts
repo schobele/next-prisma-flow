@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile, ensureDirectory } from "./src/utils.js";
+import { join } from "node:path";
 import { type GeneratorOptions, generatorHandler } from "@prisma/generator-helper";
 
 import { parseGeneratorConfig, validateConfig } from "./src/config.js";
@@ -23,7 +23,7 @@ import { generateApiRoutes } from "./src/templates/routes.js";
 import { generateSmartFormHook } from "./src/templates/smart-form-hook.js";
 import { generateTypes } from "./src/templates/types.js";
 import type { GeneratorContext } from "./src/types.js";
-import { capitalize, createGeneratorContext, pluralize } from "./src/utils.js";
+import { capitalize, createGeneratorContext, plural } from "./src/utils.js";
 import { ZodGenerationError } from "./src/zod-generator.js";
 import { generateZodSchemas } from "./src/zod-generator.js";
 
@@ -38,8 +38,8 @@ import { PrismaClient } from '@prisma/client';
 export const prisma = new PrismaClient();
 `;
 
-	const filePath = path.join(context.outputDir, "prisma-client.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "prisma-client.ts");
+	await writeFile(filePath, template);
 }
 
 generatorHandler({
@@ -66,7 +66,7 @@ generatorHandler({
 
 			// Ensure output directory exists
 			try {
-				await fs.mkdir(context.outputDir, { recursive: true });
+				await ensureDirectory(context.outputDir);
 			} catch (error) {
 				throw new FileSystemError("create directory", context.outputDir, error);
 			}
@@ -98,8 +98,8 @@ generatorHandler({
 
 				const lowerModelName = modelName.toLowerCase();
 				const modelConfig = config[lowerModelName] || {};
-				const pluralName = capitalize(pluralize(modelName));
-				const lowerPluralName = pluralize(lowerModelName);
+				const pluralName = capitalize(plural(modelName));
+				const lowerPluralName = plural(lowerModelName);
 
 				const modelInfo = {
 					name: modelName,
@@ -113,9 +113,9 @@ generatorHandler({
 				};
 
 				// Create model-specific directory
-				const modelDir = path.join(context.outputDir, lowerModelName);
+				const modelDir = join(context.outputDir, lowerModelName);
 				try {
-					await fs.mkdir(modelDir, { recursive: true });
+					await ensureDirectory(modelDir);
 				} catch (error) {
 					throw new FileSystemError("create directory", modelDir, error);
 				}

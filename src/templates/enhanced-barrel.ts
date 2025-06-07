@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { FlowGeneratorConfig, GeneratorContext } from "../types.js";
-import { capitalize, formatGeneratedFileHeader, pluralize } from "../utils.js";
+import { capitalize, formatGeneratedFileHeader, plural } from "../utils.js";
 
 export async function generateEnhancedBarrelExports(
 	config: FlowGeneratorConfig,
@@ -16,8 +16,8 @@ export async function generateEnhancedBarrelExports(
 
 async function generateModelBarrelExport(modelName: string, context: GeneratorContext): Promise<void> {
 	const lowerName = modelName.toLowerCase();
-	const pluralName = capitalize(pluralize(modelName));
-	const lowerPluralName = pluralize(lowerName);
+	const pluralName = capitalize(plural(modelName));
+	const lowerPluralName = plural(lowerName);
 
 	const template = `${formatGeneratedFileHeader()}// Barrel export for ${modelName} module
 
@@ -81,8 +81,8 @@ export {
 } from './smart-form';
 `;
 
-	const filePath = path.join(context.outputDir, lowerName, "index.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, lowerName, "index.ts");
+	await writeFile(filePath, template);
 }
 
 async function generateEnhancedMainIndex(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
@@ -148,8 +148,8 @@ export type {
 } from './flow-config';
 `;
 
-	const filePath = path.join(context.outputDir, "index.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "index.ts");
+	await writeFile(filePath, template);
 }
 
 async function generateNamespacedTypes(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
@@ -238,16 +238,16 @@ export interface EntityState<T = any> {
 }
 `;
 
-	const filePath = path.join(context.outputDir, "types.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "types.ts");
+	await writeFile(filePath, template);
 }
 
 async function generateStoreSetup(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	const atomImports = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `import {
   base${pluralName}Atom,
   ${lowerPluralName}LoadingAtom,
@@ -259,8 +259,8 @@ async function generateStoreSetup(config: FlowGeneratorConfig, context: Generato
 	const atomExports = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `  ${lowerName}: {
     data: base${pluralName}Atom,
     loading: ${lowerPluralName}LoadingAtom,
@@ -272,8 +272,8 @@ async function generateStoreSetup(config: FlowGeneratorConfig, context: Generato
 	const clearDataStatements = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `  flowStore.set(base${pluralName}Atom, {});
   flowStore.set(${lowerPluralName}LoadingAtom, false);
   flowStore.set(${lowerPluralName}ErrorAtom, null);`;
@@ -346,8 +346,8 @@ export interface FlowState {
 ${config.models
 	.map((modelName) => {
 		const lowerName = modelName.toLowerCase();
-		const pluralName = capitalize(pluralize(modelName));
-		const lowerPluralName = pluralize(lowerName);
+		const pluralName = capitalize(plural(modelName));
+		const lowerPluralName = plural(lowerName);
 		return `  ${lowerPluralName}: ReturnType<typeof base${pluralName}Atom['read']>;
   ${lowerPluralName}Loading: boolean;
   ${lowerPluralName}Error: string | null;`;
@@ -361,8 +361,8 @@ export function getFlowSnapshot(): FlowState {
 ${config.models
 	.map((modelName) => {
 		const lowerName = modelName.toLowerCase();
-		const pluralName = capitalize(pluralize(modelName));
-		const lowerPluralName = pluralize(lowerName);
+		const pluralName = capitalize(plural(modelName));
+		const lowerPluralName = plural(lowerName);
 		return `    ${lowerPluralName}: flowStore.get(base${pluralName}Atom),
     ${lowerPluralName}Loading: flowStore.get(${lowerPluralName}LoadingAtom),
     ${lowerPluralName}Error: flowStore.get(${lowerPluralName}ErrorAtom),`;
@@ -383,6 +383,6 @@ if (typeof window !== 'undefined' && (window as any).__REACT_DEVTOOLS_GLOBAL_HOO
 }
 `;
 
-	const filePath = path.join(context.outputDir, "store.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "store.ts");
+	await writeFile(filePath, template);
 }

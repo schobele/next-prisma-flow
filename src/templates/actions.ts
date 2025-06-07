@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
 import { createSelectObjectWithRelations, formatGeneratedFileHeader, getPrismaImportPath } from "../utils.js";
 
@@ -119,6 +119,6 @@ export async function deleteMany${pluralName}(ids: string[]): Promise<{ count: n
 }
 `;
 
-	const filePath = path.join(modelDir, "actions.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "actions.ts");
+	await writeFile(filePath, template);
 }

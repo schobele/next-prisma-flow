@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
 import { formatGeneratedFileHeader } from "../utils.js";
 
@@ -187,6 +187,6 @@ export function use${modelName}UpdateForm(id: string, initialData?: any) {
 }
 `;
 
-	const filePath = path.join(modelDir, "smart-form.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "smart-form.ts");
+	await writeFile(filePath, template);
 }

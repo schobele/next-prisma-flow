@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
 import { formatGeneratedFileHeader } from "../utils.js";
 
@@ -41,6 +41,6 @@ export default ${lowerName};
 export { hooks, actions, atoms, types, providers };
 `;
 
-	const filePath = path.join(modelDir, "namespace.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "namespace.ts");
+	await writeFile(filePath, template);
 }

@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { readFile, writeFile, ensureDirectory, fileExists, deleteFile } from "./utils.js";
+import { join, dirname } from "node:path";
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import { FlowGeneratorError } from "./errors.js";
 
@@ -22,11 +22,11 @@ export async function generateZodSchemas(
 ): Promise<void> {
 	console.log("📦 Generating integrated Zod schemas...");
 
-	const zodOutputDir = path.join(outputDir, "zod");
+	const zodOutputDir = join(outputDir, "zod");
 
 	// Ensure zod output directory exists
 	try {
-		await fs.mkdir(zodOutputDir, { recursive: true });
+		await ensureDirectory(zodOutputDir);
 	} catch (error) {
 		throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
 	}
@@ -47,7 +47,7 @@ export async function generateZodSchemas(
 	} finally {
 		// Clean up temporary schema file
 		try {
-			await fs.unlink(tempSchemaPath);
+			await deleteFile(tempSchemaPath);
 		} catch {
 			// Ignore cleanup errors
 		}
@@ -66,7 +66,7 @@ async function createTempSchemaWithZodGenerator(
 		// Create temporary schema for zod generation
 
 		// Read the original schema content
-		const originalSchemaContent = await fs.readFile(options.schemaPath, "utf-8");
+		const originalSchemaContent = await readFile(options.schemaPath);
 
 		// Remove any existing flow generator to avoid conflicts
 		const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
@@ -83,8 +83,8 @@ generator zod {
 		const modifiedSchema = `${schemaWithoutFlowGenerator}\n${zodGeneratorConfig}`;
 
 		// Create temporary schema file
-		const tempSchemaPath = path.join(path.dirname(options.schemaPath), ".temp-zod-schema.prisma");
-		await fs.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+		const tempSchemaPath = join(dirname(options.schemaPath), ".temp-zod-schema.prisma");
+		await writeFile(tempSchemaPath, modifiedSchema);
 
 		// Temporary schema created for zod generation
 		return tempSchemaPath;
@@ -134,18 +134,15 @@ async function executeZodPrismaTypes(schemaPath: string): Promise<void> {
 async function validateGeneratedSchemas(zodOutputDir: string, models: string[]): Promise<void> {
 	try {
 		// Check if the main index file was created
-		const indexPath = path.join(zodOutputDir, "index.ts");
-		const indexExists = await fs
-			.access(indexPath)
-			.then(() => true)
-			.catch(() => false);
+		const indexPath = join(zodOutputDir, "index.ts");
+		const indexExists = await fileExists(indexPath);
 
 		if (!indexExists) {
 			throw new Error("Zod index file was not generated");
 		}
 
 		// Read the generated index file to verify schemas for our models
-		const indexContent = await fs.readFile(indexPath, "utf-8");
+		const indexContent = await readFile(indexPath);
 
 		// Check that schemas for our specified models were generated
 		const missingSchemas: string[] = [];

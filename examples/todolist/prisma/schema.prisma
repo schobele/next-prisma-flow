@@ -59,6 +59,18 @@ model Category {
   @@map("categories")
 }
 
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  todos Todo[]
+
+  @@map("tags")
+}
+
 model Todo {
   id          String    @id @default(uuid())
   title       String
@@ -71,11 +83,13 @@ model Todo {
   updatedAt   DateTime  @updatedAt
 
   // Relationships
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
+
+  tags Tag[]
 
   @@map("todos")
 }

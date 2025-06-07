@@ -1,3 +1,20 @@
+# CONSTITUTION
+1. Keep going until the job is completely solved before ending your turn.
+2. Use your tools don’t guess. If your’re unsure about code or files, open them– do not hallucinate.
+3. Plan, then reflect. Plan thoroughly before every tool call and reflect on the outcome after.
+
+# Rules, Code Style & Best Practices
+
+- Prefer for...of instead of forEach. (biomelint/complexity/noForEach)
+- Default to using Bun instead of Node.js.
+- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
+- Use `bun test` instead of `jest` or `vitest`
+- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
+- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
+- Bun automatically loads .env, so don't use dotenv.
+- Always run `bun run check:fix` after making changes to fix formatting and linting.
+- Always run `bun run tsc` after making changes to check for type errors.
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
@@ -5,6 +22,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 This is **next-prisma-flow** v0.2.1, a Prisma generator that scaffolds full-stack typed code for Next.js applications with a modern, intuitive developer experience. It generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration from Prisma schemas.
+
+Process for working on the generator:
+1. First update the baseline to design and implement new features
+1. Update the generator and implement the new features
+2. Run the test suite to ensure compatibility
+3. Document any breaking changes or improvements
+4. Update version compatibility notes
+
+## Baseline
+
+The baseline is the golden standard for the generator. It is the reference implementation of the generator. It is used to test the generator and to ensure that the generator is working correctly. Always ensure the generator is working correctly against the baseline by running the test suite.
+
+@baseline/README.md
+
 
 ### 🚀 What's New in v0.2.1
 
@@ -72,8 +103,8 @@ bun run dev
 bun test
 
 # Lint and format code
-bun run lint
-bun run lint:fix
+bun run check
+bun run check:fix
 
 # Test with example project
 cd examples/todolist

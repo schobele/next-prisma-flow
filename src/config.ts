@@ -1,4 +1,4 @@
-import path from "node:path";
+import * as path from "node:path";
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import { ConfigurationError, ModelNotFoundError } from "./errors.js";
 import type { FlowGeneratorConfig, ModelConfig } from "./types.js";

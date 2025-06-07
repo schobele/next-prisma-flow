@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
 import {
 	createSelectObjectWithRelations,
@@ -169,6 +169,6 @@ export interface ${modelName}ValidationErrors {
 }
 `;
 
-	const filePath = path.join(modelDir, "types.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "types.ts");
+	await writeFile(filePath, template);
 }

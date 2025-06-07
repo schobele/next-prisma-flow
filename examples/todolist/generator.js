@@ -34,6 +34,333 @@ var __toCommonJS = (from) => {
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
+// node_modules/pluralize/pluralize.js
+var require_pluralize = __commonJS((exports, module) => {
+  (function(root, pluralize) {
+    if (typeof exports === "object" && typeof module === "object") {
+      module.exports = pluralize();
+    } else if (typeof define === "function" && define.amd) {
+      define(function() {
+        return pluralize();
+      });
+    } else {
+      root.pluralize = pluralize();
+    }
+  })(exports, function() {
+    var pluralRules = [];
+    var singularRules = [];
+    var uncountables = {};
+    var irregularPlurals = {};
+    var irregularSingles = {};
+    function sanitizeRule(rule) {
+      if (typeof rule === "string") {
+        return new RegExp("^" + rule + "$", "i");
+      }
+      return rule;
+    }
+    function restoreCase(word, token) {
+      if (word === token)
+        return token;
+      if (word === word.toLowerCase())
+        return token.toLowerCase();
+      if (word === word.toUpperCase())
+        return token.toUpperCase();
+      if (word[0] === word[0].toUpperCase()) {
+        return token.charAt(0).toUpperCase() + token.substr(1).toLowerCase();
+      }
+      return token.toLowerCase();
+    }
+    function interpolate(str, args) {
+      return str.replace(/\$(\d{1,2})/g, function(match, index) {
+        return args[index] || "";
+      });
+    }
+    function replace(word, rule) {
+      return word.replace(rule[0], function(match, index) {
+        var result = interpolate(rule[1], arguments);
+        if (match === "") {
+          return restoreCase(word[index - 1], result);
+        }
+        return restoreCase(match, result);
+      });
+    }
+    function sanitizeWord(token, word, rules) {
+      if (!token.length || uncountables.hasOwnProperty(token)) {
+        return word;
+      }
+      var len = rules.length;
+      while (len--) {
+        var rule = rules[len];
+        if (rule[0].test(word))
+          return replace(word, rule);
+      }
+      return word;
+    }
+    function replaceWord(replaceMap, keepMap, rules) {
+      return function(word) {
+        var token = word.toLowerCase();
+        if (keepMap.hasOwnProperty(token)) {
+          return restoreCase(word, token);
+        }
+        if (replaceMap.hasOwnProperty(token)) {
+          return restoreCase(word, replaceMap[token]);
+        }
+        return sanitizeWord(token, word, rules);
+      };
+    }
+    function checkWord(replaceMap, keepMap, rules, bool) {
+      return function(word) {
+        var token = word.toLowerCase();
+        if (keepMap.hasOwnProperty(token))
+          return true;
+        if (replaceMap.hasOwnProperty(token))
+          return false;
+        return sanitizeWord(token, token, rules) === token;
+      };
+    }
+    function pluralize(word, count, inclusive) {
+      var pluralized = count === 1 ? pluralize.singular(word) : pluralize.plural(word);
+      return (inclusive ? count + " " : "") + pluralized;
+    }
+    pluralize.plural = replaceWord(irregularSingles, irregularPlurals, pluralRules);
+    pluralize.isPlural = checkWord(irregularSingles, irregularPlurals, pluralRules);
+    pluralize.singular = replaceWord(irregularPlurals, irregularSingles, singularRules);
+    pluralize.isSingular = checkWord(irregularPlurals, irregularSingles, singularRules);
+    pluralize.addPluralRule = function(rule, replacement) {
+      pluralRules.push([sanitizeRule(rule), replacement]);
+    };
+    pluralize.addSingularRule = function(rule, replacement) {
+      singularRules.push([sanitizeRule(rule), replacement]);
+    };
+    pluralize.addUncountableRule = function(word) {
+      if (typeof word === "string") {
+        uncountables[word.toLowerCase()] = true;
+        return;
+      }
+      pluralize.addPluralRule(word, "$0");
+      pluralize.addSingularRule(word, "$0");
+    };
+    pluralize.addIrregularRule = function(single, plural) {
+      plural = plural.toLowerCase();
+      single = single.toLowerCase();
+      irregularSingles[single] = plural;
+      irregularPlurals[plural] = single;
+    };
+    [
+      ["I", "we"],
+      ["me", "us"],
+      ["he", "they"],
+      ["she", "they"],
+      ["them", "them"],
+      ["myself", "ourselves"],
+      ["yourself", "yourselves"],
+      ["itself", "themselves"],
+      ["herself", "themselves"],
+      ["himself", "themselves"],
+      ["themself", "themselves"],
+      ["is", "are"],
+      ["was", "were"],
+      ["has", "have"],
+      ["this", "these"],
+      ["that", "those"],
+      ["echo", "echoes"],
+      ["dingo", "dingoes"],
+      ["volcano", "volcanoes"],
+      ["tornado", "tornadoes"],
+      ["torpedo", "torpedoes"],
+      ["genus", "genera"],
+      ["viscus", "viscera"],
+      ["stigma", "stigmata"],
+      ["stoma", "stomata"],
+      ["dogma", "dogmata"],
+      ["lemma", "lemmata"],
+      ["schema", "schemata"],
+      ["anathema", "anathemata"],
+      ["ox", "oxen"],
+      ["axe", "axes"],
+      ["die", "dice"],
+      ["yes", "yeses"],
+      ["foot", "feet"],
+      ["eave", "eaves"],
+      ["goose", "geese"],
+      ["tooth", "teeth"],
+      ["quiz", "quizzes"],
+      ["human", "humans"],
+      ["proof", "proofs"],
+      ["carve", "carves"],
+      ["valve", "valves"],
+      ["looey", "looies"],
+      ["thief", "thieves"],
+      ["groove", "grooves"],
+      ["pickaxe", "pickaxes"],
+      ["passerby", "passersby"]
+    ].forEach(function(rule) {
+      return pluralize.addIrregularRule(rule[0], rule[1]);
+    });
+    [
+      [/s?$/i, "s"],
+      [/[^\u0000-\u007F]$/i, "$0"],
+      [/([^aeiou]ese)$/i, "$1"],
+      [/(ax|test)is$/i, "$1es"],
+      [/(alias|[^aou]us|t[lm]as|gas|ris)$/i, "$1es"],
+      [/(e[mn]u)s?$/i, "$1s"],
+      [/([^l]ias|[aeiou]las|[ejzr]as|[iu]am)$/i, "$1"],
+      [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1i"],
+      [/(alumn|alg|vertebr)(?:a|ae)$/i, "$1ae"],
+      [/(seraph|cherub)(?:im)?$/i, "$1im"],
+      [/(her|at|gr)o$/i, "$1oes"],
+      [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|automat|quor)(?:a|um)$/i, "$1a"],
+      [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)(?:a|on)$/i, "$1a"],
+      [/sis$/i, "ses"],
+      [/(?:(kni|wi|li)fe|(ar|l|ea|eo|oa|hoo)f)$/i, "$1$2ves"],
+      [/([^aeiouy]|qu)y$/i, "$1ies"],
+      [/([^ch][ieo][ln])ey$/i, "$1ies"],
+      [/(x|ch|ss|sh|zz)$/i, "$1es"],
+      [/(matr|cod|mur|sil|vert|ind|append)(?:ix|ex)$/i, "$1ices"],
+      [/\b((?:tit)?m|l)(?:ice|ouse)$/i, "$1ice"],
+      [/(pe)(?:rson|ople)$/i, "$1ople"],
+      [/(child)(?:ren)?$/i, "$1ren"],
+      [/eaux$/i, "$0"],
+      [/m[ae]n$/i, "men"],
+      ["thou", "you"]
+    ].forEach(function(rule) {
+      return pluralize.addPluralRule(rule[0], rule[1]);
+    });
+    [
+      [/s$/i, ""],
+      [/(ss)$/i, "$1"],
+      [/(wi|kni|(?:after|half|high|low|mid|non|night|[^\w]|^)li)ves$/i, "$1fe"],
+      [/(ar|(?:wo|[ae])l|[eo][ao])ves$/i, "$1f"],
+      [/ies$/i, "y"],
+      [/\b([pl]|zomb|(?:neck|cross)?t|coll|faer|food|gen|goon|group|lass|talk|goal|cut)ies$/i, "$1ie"],
+      [/\b(mon|smil)ies$/i, "$1ey"],
+      [/\b((?:tit)?m|l)ice$/i, "$1ouse"],
+      [/(seraph|cherub)im$/i, "$1"],
+      [/(x|ch|ss|sh|zz|tto|go|cho|alias|[^aou]us|t[lm]as|gas|(?:her|at|gr)o|[aeiou]ris)(?:es)?$/i, "$1"],
+      [/(analy|diagno|parenthe|progno|synop|the|empha|cri|ne)(?:sis|ses)$/i, "$1sis"],
+      [/(movie|twelve|abuse|e[mn]u)s$/i, "$1"],
+      [/(test)(?:is|es)$/i, "$1is"],
+      [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1us"],
+      [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|quor)a$/i, "$1um"],
+      [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)a$/i, "$1on"],
+      [/(alumn|alg|vertebr)ae$/i, "$1a"],
+      [/(cod|mur|sil|vert|ind)ices$/i, "$1ex"],
+      [/(matr|append)ices$/i, "$1ix"],
+      [/(pe)(rson|ople)$/i, "$1rson"],
+      [/(child)ren$/i, "$1"],
+      [/(eau)x?$/i, "$1"],
+      [/men$/i, "man"]
+    ].forEach(function(rule) {
+      return pluralize.addSingularRule(rule[0], rule[1]);
+    });
+    [
+      "adulthood",
+      "advice",
+      "agenda",
+      "aid",
+      "aircraft",
+      "alcohol",
+      "ammo",
+      "analytics",
+      "anime",
+      "athletics",
+      "audio",
+      "bison",
+      "blood",
+      "bream",
+      "buffalo",
+      "butter",
+      "carp",
+      "cash",
+      "chassis",
+      "chess",
+      "clothing",
+      "cod",
+      "commerce",
+      "cooperation",
+      "corps",
+      "debris",
+      "diabetes",
+      "digestion",
+      "elk",
+      "energy",
+      "equipment",
+      "excretion",
+      "expertise",
+      "firmware",
+      "flounder",
+      "fun",
+      "gallows",
+      "garbage",
+      "graffiti",
+      "hardware",
+      "headquarters",
+      "health",
+      "herpes",
+      "highjinks",
+      "homework",
+      "housework",
+      "information",
+      "jeans",
+      "justice",
+      "kudos",
+      "labour",
+      "literature",
+      "machinery",
+      "mackerel",
+      "mail",
+      "media",
+      "mews",
+      "moose",
+      "music",
+      "mud",
+      "manga",
+      "news",
+      "only",
+      "personnel",
+      "pike",
+      "plankton",
+      "pliers",
+      "police",
+      "pollution",
+      "premises",
+      "rain",
+      "research",
+      "rice",
+      "salmon",
+      "scissors",
+      "series",
+      "sewage",
+      "shambles",
+      "shrimp",
+      "software",
+      "species",
+      "staff",
+      "swine",
+      "tennis",
+      "traffic",
+      "transportation",
+      "trout",
+      "tuna",
+      "wealth",
+      "welfare",
+      "whiting",
+      "wildebeest",
+      "wildlife",
+      "you",
+      /pok[eé]mon$/i,
+      /[^aeiou]ese$/i,
+      /deer$/i,
+      /fish$/i,
+      /measles$/i,
+      /o[iu]s$/i,
+      /pox$/i,
+      /sheep$/i
+    ].forEach(pluralize.addUncountableRule);
+    return pluralize;
+  });
+});
+
 // node_modules/@prisma/generator-helper/dist/chunk-EOPVK4AE.js
 var require_chunk_EOPVK4AE = __commonJS((exports, module) => {
   var __create2 = Object.create;
@@ -467,7 +794,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
       module2.exports = isexe;
       isexe.sync = sync;
       var fs = (0, import_chunk_QGM4M3NI.__require)("fs");
-      function checkPathExt(path, options) {
+      function checkPathExt(path2, options) {
         var pathext = options.pathExt !== undefined ? options.pathExt : process.env.PATHEXT;
         if (!pathext) {
           return true;
@@ -478,25 +805,25 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
         }
         for (var i = 0;i < pathext.length; i++) {
           var p = pathext[i].toLowerCase();
-          if (p && path.substr(-p.length).toLowerCase() === p) {
+          if (p && path2.substr(-p.length).toLowerCase() === p) {
             return true;
           }
         }
         return false;
       }
-      function checkStat(stat, path, options) {
+      function checkStat(stat, path2, options) {
         if (!stat.isSymbolicLink() && !stat.isFile()) {
           return false;
         }
-        return checkPathExt(path, options);
+        return checkPathExt(path2, options);
       }
-      function isexe(path, options, cb) {
-        fs.stat(path, function(er, stat) {
-          cb(er, er ? false : checkStat(stat, path, options));
+      function isexe(path2, options, cb) {
+        fs.stat(path2, function(er, stat) {
+          cb(er, er ? false : checkStat(stat, path2, options));
         });
       }
-      function sync(path, options) {
-        return checkStat(fs.statSync(path), path, options);
+      function sync(path2, options) {
+        return checkStat(fs.statSync(path2), path2, options);
       }
     }
   });
@@ -505,13 +832,13 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
       module2.exports = isexe;
       isexe.sync = sync;
       var fs = (0, import_chunk_QGM4M3NI.__require)("fs");
-      function isexe(path, options, cb) {
-        fs.stat(path, function(er, stat) {
+      function isexe(path2, options, cb) {
+        fs.stat(path2, function(er, stat) {
           cb(er, er ? false : checkStat(stat, options));
         });
       }
-      function sync(path, options) {
-        return checkStat(fs.statSync(path), options);
+      function sync(path2, options) {
+        return checkStat(fs.statSync(path2), options);
       }
       function checkStat(stat, options) {
         return stat.isFile() && checkMode(stat, options);
@@ -542,7 +869,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
       }
       module2.exports = isexe;
       isexe.sync = sync;
-      function isexe(path, options, cb) {
+      function isexe(path2, options, cb) {
         if (typeof options === "function") {
           cb = options;
           options = {};
@@ -551,17 +878,17 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
           if (typeof Promise !== "function") {
             throw new TypeError("callback not provided");
           }
-          return new Promise(function(resolve, reject) {
-            isexe(path, options || {}, function(er, is) {
+          return new Promise(function(resolve3, reject) {
+            isexe(path2, options || {}, function(er, is) {
               if (er) {
                 reject(er);
               } else {
-                resolve(is);
+                resolve3(is);
               }
             });
           });
         }
-        core(path, options || {}, function(er, is) {
+        core(path2, options || {}, function(er, is) {
           if (er) {
             if (er.code === "EACCES" || options && options.ignoreErrors) {
               er = null;
@@ -571,9 +898,9 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
           cb(er, is);
         });
       }
-      function sync(path, options) {
+      function sync(path2, options) {
         try {
-          return core.sync(path, options || {});
+          return core.sync(path2, options || {});
         } catch (er) {
           if (options && options.ignoreErrors || er.code === "EACCES") {
             return false;
@@ -587,7 +914,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
   var require_which = (0, import_chunk_QGM4M3NI.__commonJS)({
     "../../node_modules/.pnpm/which@2.0.2/node_modules/which/which.js"(exports2, module2) {
       var isWindows = process.platform === "win32" || process.env.OSTYPE === "cygwin" || process.env.OSTYPE === "msys";
-      var path = (0, import_chunk_QGM4M3NI.__require)("path");
+      var path2 = (0, import_chunk_QGM4M3NI.__require)("path");
       var COLON = isWindows ? ";" : ":";
       var isexe = require_isexe();
       var getNotFoundError = (cmd) => Object.assign(new Error(`not found: ${cmd}`), { code: "ENOENT" });
@@ -618,27 +945,27 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
           opt = {};
         const { pathEnv, pathExt, pathExtExe } = getPathInfo(cmd, opt);
         const found = [];
-        const step = (i) => new Promise((resolve, reject) => {
+        const step = (i) => new Promise((resolve3, reject) => {
           if (i === pathEnv.length)
-            return opt.all && found.length ? resolve(found) : reject(getNotFoundError(cmd));
+            return opt.all && found.length ? resolve3(found) : reject(getNotFoundError(cmd));
           const ppRaw = pathEnv[i];
           const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-          const pCmd = path.join(pathPart, cmd);
+          const pCmd = path2.join(pathPart, cmd);
           const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
-          resolve(subStep(p, i, 0));
+          resolve3(subStep(p, i, 0));
         });
-        const subStep = (p, i, ii) => new Promise((resolve, reject) => {
+        const subStep = (p, i, ii) => new Promise((resolve3, reject) => {
           if (ii === pathExt.length)
-            return resolve(step(i + 1));
+            return resolve3(step(i + 1));
           const ext = pathExt[ii];
           isexe(p + ext, { pathExt: pathExtExe }, (er, is) => {
             if (!er && is) {
               if (opt.all)
                 found.push(p + ext);
               else
-                return resolve(p + ext);
+                return resolve3(p + ext);
             }
-            return resolve(subStep(p, i, ii + 1));
+            return resolve3(subStep(p, i, ii + 1));
           });
         });
         return cb ? step(0).then((res) => cb(null, res), cb) : step(0);
@@ -650,7 +977,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
         for (let i = 0;i < pathEnv.length; i++) {
           const ppRaw = pathEnv[i];
           const pathPart = /^".*"$/.test(ppRaw) ? ppRaw.slice(1, -1) : ppRaw;
-          const pCmd = path.join(pathPart, cmd);
+          const pCmd = path2.join(pathPart, cmd);
           const p = !pathPart && /^\.[\\\/]/.test(cmd) ? cmd.slice(0, 2) + pCmd : pCmd;
           for (let j = 0;j < pathExt.length; j++) {
             const cur = p + pathExt[j];
@@ -691,7 +1018,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
   });
   var require_resolveCommand = (0, import_chunk_QGM4M3NI.__commonJS)({
     "../../node_modules/.pnpm/cross-spawn@7.0.3/node_modules/cross-spawn/lib/util/resolveCommand.js"(exports2, module2) {
-      var path = (0, import_chunk_QGM4M3NI.__require)("path");
+      var path2 = (0, import_chunk_QGM4M3NI.__require)("path");
       var which = require_which();
       var getPathKey = require_path_key();
       function resolveCommandAttempt(parsed, withoutPathExt) {
@@ -708,7 +1035,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
         try {
           resolved = which.sync(parsed.command, {
             path: env[getPathKey({ env })],
-            pathExt: withoutPathExt ? path.delimiter : undefined
+            pathExt: withoutPathExt ? path2.delimiter : undefined
           });
         } catch (e) {} finally {
           if (shouldSwitchCwd) {
@@ -716,7 +1043,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
           }
         }
         if (resolved) {
-          resolved = path.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
+          resolved = path2.resolve(hasCustomCwd ? parsed.options.cwd : "", resolved);
         }
         return resolved;
       }
@@ -761,8 +1088,8 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
         if (!match) {
           return null;
         }
-        const [path, argument] = match[0].replace(/#! ?/, "").split(" ");
-        const binary = path.split("/").pop();
+        const [path2, argument] = match[0].replace(/#! ?/, "").split(" ");
+        const binary = path2.split("/").pop();
         if (binary === "env") {
           return argument;
         }
@@ -790,7 +1117,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
   });
   var require_parse = (0, import_chunk_QGM4M3NI.__commonJS)({
     "../../node_modules/.pnpm/cross-spawn@7.0.3/node_modules/cross-spawn/lib/parse.js"(exports2, module2) {
-      var path = (0, import_chunk_QGM4M3NI.__require)("path");
+      var path2 = (0, import_chunk_QGM4M3NI.__require)("path");
       var resolveCommand = require_resolveCommand();
       var escape = require_escape();
       var readShebang = require_readShebang();
@@ -815,7 +1142,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
         const needsShell = !isExecutableRegExp.test(commandFile);
         if (parsed.options.forceShell || needsShell) {
           const needsDoubleEscapeMetaChars = isCmdShimRegExp.test(commandFile);
-          parsed.command = path.normalize(parsed.command);
+          parsed.command = path2.normalize(parsed.command);
           parsed.command = escape.command(parsed.command);
           parsed.args = parsed.args.map((arg) => escape.argument(arg, needsDoubleEscapeMetaChars));
           const shellCommand = [parsed.command].concat(parsed.args).join(" ");
@@ -996,7 +1323,7 @@ var require_chunk_XSSRFZR7 = __commonJS((exports, module) => {
       return this.initPromise;
     }
     initSingleton() {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve3, reject) => {
         if (this.isNode) {
           this.child = (0, import_child_process.fork)(this.pathOrCommand, [], {
             stdio: ["pipe", "inherit", "pipe", "ipc"],
@@ -1052,7 +1379,7 @@ ${this.errorLogs}`);
             this.handleResponse(data);
           }
         });
-        this.child.on("spawn", resolve);
+        this.child.on("spawn", resolve3);
       });
     }
     rejectAllHandlers(error) {
@@ -1108,13 +1435,13 @@ ${this.errorLogs}`);
         let interval;
         let timeout;
         Promise.race([
-          new Promise((resolve) => {
-            timeout = setTimeout(resolve, timeoutMs);
+          new Promise((resolve3) => {
+            timeout = setTimeout(resolve3, timeoutMs);
           }),
-          new Promise((resolve) => {
+          new Promise((resolve3) => {
             interval = setInterval(() => {
               if (this.exited) {
-                return resolve("exited");
+                return resolve3("exited");
               }
             }, intervalMs);
           })
@@ -1129,14 +1456,14 @@ ${this.errorLogs}`);
       }
     }
     rpcMethod(method, mapResult = (x) => x) {
-      return (params) => new Promise((resolve, reject) => {
+      return (params) => new Promise((resolve3, reject) => {
         if (this.pendingError) {
           reject(this.pendingError);
           return;
         }
         const messageId = this.getMessageId();
         this.handlers[messageId] = {
-          resolve: (result) => resolve(mapResult(result)),
+          resolve: (result) => resolve3(mapResult(result)),
           reject
         };
         this.sendMessage({
@@ -1338,13 +1665,12 @@ var require_dist2 = __commonJS((exports, module) => {
   var import_chunk_6F4PWJZI = __toCommonJS(exports_chunk_6F4PWJZI);
 });
 
-// index.ts
-var import_generator_helper = __toESM(require_dist2(), 1);
-import fs12 from "node:fs/promises";
-import path14 from "node:path";
+// src/utils.ts
+var pluralize = __toESM(require_pluralize(), 1);
+import { join, resolve as resolve2, relative as relative2, dirname as dirname2 } from "node:path";
 
 // src/config.ts
-import path from "node:path";
+import * as path from "node:path";
 
 // src/errors.ts
 class FlowGeneratorError extends Error {
@@ -1467,18 +1793,13 @@ function validateConfig(config, modelNames) {
   }
 }
 
-// src/templates/actions.ts
-import fs from "node:fs/promises";
-import path3 from "node:path";
-
 // src/utils.ts
-import path2 from "node:path";
 function createGeneratorContext(config, dmmf, outputPath) {
   return {
     config,
     dmmf,
-    outputDir: path2.resolve(outputPath),
-    zodDir: path2.join(path2.resolve(outputPath), "zod"),
+    outputDir: resolve2(outputPath),
+    zodDir: join(resolve2(outputPath), "zod"),
     prismaImport: config.prismaImport || "@prisma/client"
   };
 }
@@ -1491,6 +1812,9 @@ function getZodImportPath(nestingLevel = 0) {
 }
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+function plural2(word) {
+  return pluralize.plural(word);
 }
 function createSelectObjectWithRelations(modelInfo, context, visited = new Set) {
   const selectEntries = [];
@@ -1571,8 +1895,8 @@ function getModelConfigFromContext(modelName, context) {
   return {
     name: modelName,
     lowerName: lowerModelName,
-    pluralName: capitalize(pluralize(modelName)),
-    lowerPluralName: pluralize(lowerModelName),
+    pluralName: capitalize(plural2(modelName)),
+    lowerPluralName: plural2(lowerModelName),
     config: modelConfig,
     model,
     selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
@@ -1585,60 +1909,32 @@ function formatGeneratedFileHeader() {
 
 `;
 }
-function pluralize(word) {
-  const irregulars = {
-    person: "people",
-    child: "children",
-    foot: "feet",
-    tooth: "teeth",
-    mouse: "mice",
-    goose: "geese",
-    man: "men",
-    woman: "women",
-    ox: "oxen",
-    sheep: "sheep",
-    deer: "deer",
-    fish: "fish",
-    species: "species",
-    series: "series",
-    todo: "todos",
-    photo: "photos",
-    piano: "pianos",
-    halo: "halos"
-  };
-  const lowerWord = word.toLowerCase();
-  if (irregulars[lowerWord]) {
-    return irregulars[lowerWord];
-  }
-  const irregular = Object.entries(irregulars).find(([singular]) => singular.toLowerCase() === lowerWord);
-  if (irregular) {
-    return irregular[1];
-  }
-  if (lowerWord.endsWith("y")) {
-    if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
-      return `${word.slice(0, -1)}ies`;
-    }
-    return `${word}s`;
-  }
-  if (lowerWord.endsWith("s") || lowerWord.endsWith("sh") || lowerWord.endsWith("ch") || lowerWord.endsWith("x") || lowerWord.endsWith("z")) {
-    return `${word}es`;
-  }
-  if (lowerWord.endsWith("f")) {
-    return `${word.slice(0, -1)}ves`;
-  }
-  if (lowerWord.endsWith("fe")) {
-    return `${word.slice(0, -2)}ves`;
-  }
-  if (lowerWord.endsWith("o")) {
-    if (lowerWord.length > 1 && !"aeiou".includes(lowerWord[lowerWord.length - 2])) {
-      return `${word}es`;
-    }
-    return `${word}s`;
-  }
-  return `${word}s`;
+async function writeFile(filePath, content) {
+  await Bun.write(filePath, content);
+}
+async function readFile(filePath) {
+  const file = Bun.file(filePath);
+  return await file.text();
+}
+async function fileExists(filePath) {
+  const file = Bun.file(filePath);
+  return await file.exists();
+}
+async function deleteFile(filePath) {
+  const file = Bun.file(filePath);
+  await file.delete();
+}
+async function ensureDirectory(dirPath) {
+  const { mkdir } = await import("node:fs/promises");
+  await mkdir(dirPath, { recursive: true });
 }
 
+// index.ts
+var import_generator_helper = __toESM(require_dist2(), 1);
+import { join as join13 } from "node:path";
+
 // src/templates/actions.ts
+import { join as join2 } from "node:path";
 async function generateServerActions(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -1741,13 +2037,12 @@ export async function deleteMany${pluralName}(ids: string[]): Promise<{ count: n
   return result;
 }
 `;
-  const filePath = path3.join(modelDir, "actions.ts");
-  await fs.writeFile(filePath, template, "utf-8");
+  const filePath = join2(modelDir, "actions.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/atoms.ts
-import fs2 from "node:fs/promises";
-import path4 from "node:path";
+import { join as join3 } from "node:path";
 async function generateJotaiAtoms(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from 'jotai';
@@ -1929,13 +2224,12 @@ export const is${pluralName}EmptyAtom = atom((get) => {
   return count === 0;
 });
 `;
-  const filePath = path4.join(modelDir, "atoms.ts");
-  await fs2.writeFile(filePath, template, "utf-8");
+  const filePath = join3(modelDir, "atoms.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/enhanced-barrel.ts
-import fs3 from "node:fs/promises";
-import path5 from "node:path";
+import { join as join4 } from "node:path";
 async function generateEnhancedBarrelExports(config, context) {
   await Promise.all([
     generateEnhancedMainIndex(config, context),
@@ -1945,8 +2239,8 @@ async function generateEnhancedBarrelExports(config, context) {
 }
 async function generateModelBarrelExport(modelName, context) {
   const lowerName = modelName.toLowerCase();
-  const pluralName = capitalize(pluralize(modelName));
-  const lowerPluralName = pluralize(lowerName);
+  const pluralName = capitalize(plural2(modelName));
+  const lowerPluralName = plural2(lowerName);
   const template = `${formatGeneratedFileHeader()}// Barrel export for ${modelName} module
 
 // Export namespace as default
@@ -2008,8 +2302,8 @@ export {
   use${modelName}UpdateForm,
 } from './smart-form';
 `;
-  const filePath = path5.join(context.outputDir, lowerName, "index.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
+  const filePath = join4(context.outputDir, lowerName, "index.ts");
+  await writeFile(filePath, template);
 }
 async function generateEnhancedMainIndex(config, context) {
   await Promise.all(config.models.map(async (modelName) => {
@@ -2066,8 +2360,8 @@ export type {
   validateFlowConfig
 } from './flow-config';
 `;
-  const filePath = path5.join(context.outputDir, "index.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
+  const filePath = join4(context.outputDir, "index.ts");
+  await writeFile(filePath, template);
 }
 async function generateNamespacedTypes(config, context) {
   const typeExports = config.models.map((modelName) => {
@@ -2152,14 +2446,14 @@ export interface EntityState<T = any> {
   optimisticUpdates: Record<string, OptimisticUpdate<T>>;
 }
 `;
-  const filePath = path5.join(context.outputDir, "types.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
+  const filePath = join4(context.outputDir, "types.ts");
+  await writeFile(filePath, template);
 }
 async function generateStoreSetup(config, context) {
   const atomImports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `import {
   base${pluralName}Atom,
   ${lowerPluralName}LoadingAtom,
@@ -2169,8 +2463,8 @@ async function generateStoreSetup(config, context) {
 `);
   const atomExports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `  ${lowerName}: {
     data: base${pluralName}Atom,
     loading: ${lowerPluralName}LoadingAtom,
@@ -2180,8 +2474,8 @@ async function generateStoreSetup(config, context) {
 `);
   const clearDataStatements = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `  flowStore.set(base${pluralName}Atom, {});
   flowStore.set(${lowerPluralName}LoadingAtom, false);
   flowStore.set(${lowerPluralName}ErrorAtom, null);`;
@@ -2252,8 +2546,8 @@ export function logFlowState() {
 export interface FlowState {
 ${config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `  ${lowerPluralName}: ReturnType<typeof base${pluralName}Atom['read']>;
   ${lowerPluralName}Loading: boolean;
   ${lowerPluralName}Error: string | null;`;
@@ -2266,8 +2560,8 @@ export function getFlowSnapshot(): FlowState {
   return {
 ${config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `    ${lowerPluralName}: flowStore.get(base${pluralName}Atom),
     ${lowerPluralName}Loading: flowStore.get(${lowerPluralName}LoadingAtom),
     ${lowerPluralName}Error: flowStore.get(${lowerPluralName}ErrorAtom),`;
@@ -2287,13 +2581,12 @@ if (typeof window !== 'undefined' && (window as any).__REACT_DEVTOOLS_GLOBAL_HOO
   };
 }
 `;
-  const filePath = path5.join(context.outputDir, "store.ts");
-  await fs3.writeFile(filePath, template, "utf-8");
+  const filePath = join4(context.outputDir, "store.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/enhanced-hooks.ts
-import fs4 from "node:fs/promises";
-import path6 from "node:path";
+import { join as join5 } from "node:path";
 async function generateEnhancedReactHooks(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -2938,13 +3231,12 @@ export function use${modelName}Exists(id: string): boolean {
 }
 
 `;
-  const filePath = path6.join(modelDir, "hooks.ts");
-  await fs4.writeFile(filePath, template, "utf-8");
+  const filePath = join5(modelDir, "hooks.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/flow-provider.ts
-import fs5 from "node:fs/promises";
-import path7 from "node:path";
+import { join as join6 } from "node:path";
 async function generateFlowProvider(config, context) {
   await Promise.all([
     generateFlowProviderComponent(config, context),
@@ -2955,8 +3247,8 @@ async function generateFlowProvider(config, context) {
 async function generateFlowProviderComponent(config, context) {
   const modelAtomImports = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `import {
   base${pluralName}Atom,
   ${lowerPluralName}LoadingAtom,
@@ -2968,8 +3260,8 @@ async function generateFlowProviderComponent(config, context) {
   `);
   const storeInitialization = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `  // Initialize ${modelName} state
   if (initialData?.${lowerPluralName}) {
     store.set(base${pluralName}Atom, initialData.${lowerPluralName});
@@ -2978,8 +3270,8 @@ async function generateFlowProviderComponent(config, context) {
 `);
   const debugAtoms = config.models.map((modelName) => {
     const lowerName = modelName.toLowerCase();
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(lowerName);
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(lowerName);
     return `    ${lowerName}: {
       data: base${pluralName}Atom,
       loading: ${lowerPluralName}LoadingAtom,
@@ -3081,8 +3373,8 @@ ${storeInitialization}
     // Utility methods
     clearAllData: () => {
 ${config.models.map((modelName) => {
-    const pluralName = capitalize(pluralize(modelName));
-    const lowerPluralName = pluralize(modelName.toLowerCase());
+    const pluralName = capitalize(plural2(modelName));
+    const lowerPluralName = plural2(modelName.toLowerCase());
     return `      store.set(base${pluralName}Atom, {});
       store.set(${lowerPluralName}LoadingAtom, false);
       store.set(${lowerPluralName}ErrorAtom, null);`;
@@ -3094,14 +3386,14 @@ ${config.models.map((modelName) => {
       user: user ? { id: user.id, email: user.email } : null,
       hasErrors: Object.values({
 ${config.models.map((modelName) => {
-    const lowerPluralName = pluralize(modelName.toLowerCase());
+    const lowerPluralName = plural2(modelName.toLowerCase());
     return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}ErrorAtom),`;
   }).join(`
 `)}
       }).some(Boolean),
       isLoading: Object.values({
 ${config.models.map((modelName) => {
-    const lowerPluralName = pluralize(modelName.toLowerCase());
+    const lowerPluralName = plural2(modelName.toLowerCase());
     return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}LoadingAtom),`;
   }).join(`
 `)}
@@ -3295,8 +3587,8 @@ export function useFlowDebug() {
   };
 }
 `;
-  const filePath = path7.join(context.outputDir, "flow-provider.tsx");
-  await fs5.writeFile(filePath, template, "utf-8");
+  const filePath = join6(context.outputDir, "flow-provider.tsx");
+  await writeFile(filePath, template);
 }
 async function generateFlowContext(config, context) {
   const template = `${formatGeneratedFileHeader()}// Flow context type definitions and utilities
@@ -3364,12 +3656,12 @@ export interface FlowErrorFallbackProps {
 
 export type FlowErrorFallbackComponent = React.ComponentType<FlowErrorFallbackProps>;
 `;
-  const filePath = path7.join(context.outputDir, "flow-context.ts");
-  await fs5.writeFile(filePath, template, "utf-8");
+  const filePath = join6(context.outputDir, "flow-context.ts");
+  await writeFile(filePath, template);
 }
 async function generateFlowConfig(config, context) {
   const stateTypeFields = config.models.map((modelName) => {
-    const lowerPluralName = pluralize(modelName.toLowerCase());
+    const lowerPluralName = plural2(modelName.toLowerCase());
     return `  ${lowerPluralName}: Record<string, ${modelName}>;
   ${lowerPluralName}Loading: boolean;
   ${lowerPluralName}Error: string | null;`;
@@ -3461,13 +3753,12 @@ export function validateFlowConfig(config: Partial<FlowConfig>): string[] {
 
 export type { FlowContextValue, FlowDebugInfo, FlowErrorBoundaryRef } from './flow-context';
 `;
-  const filePath = path7.join(context.outputDir, "flow-config.ts");
-  await fs5.writeFile(filePath, template, "utf-8");
+  const filePath = join6(context.outputDir, "flow-config.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/form-providers.ts
-import fs6 from "node:fs/promises";
-import path8 from "node:path";
+import { join as join7 } from "node:path";
 async function generateFormProviders(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -3712,13 +4003,12 @@ export function use${modelName}FormState() {
   };
 }
 `;
-  const filePath = path8.join(modelDir, "form-provider.tsx");
-  await fs6.writeFile(filePath, template, "utf-8");
+  const filePath = join7(modelDir, "form-provider.tsx");
+  await writeFile(filePath, template);
 }
 
 // src/templates/namespace.ts
-import fs7 from "node:fs/promises";
-import path9 from "node:path";
+import { join as join8 } from "node:path";
 async function generateNamespaceExports(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}// Model-specific namespace export for ${modelName}
@@ -3751,13 +4041,12 @@ export default ${lowerName};
 // Also export all the individual pieces for direct access
 export { hooks, actions, atoms, types, providers };
 `;
-  const filePath = path9.join(modelDir, "namespace.ts");
-  await fs7.writeFile(filePath, template, "utf-8");
+  const filePath = join8(modelDir, "namespace.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/routes.ts
-import fs8 from "node:fs/promises";
-import path10 from "node:path";
+import { join as join9 } from "node:path";
 async function generateApiRoutes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { type NextRequest, NextResponse } from 'next/server';
@@ -3863,13 +4152,12 @@ export const routesHandlers = {
 	DELETE,
 };
 `;
-  const filePath = path10.join(modelDir, "routes.ts");
-  await fs8.writeFile(filePath, template, "utf-8");
+  const filePath = join9(modelDir, "routes.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/smart-form-hook.ts
-import fs9 from "node:fs/promises";
-import path11 from "node:path";
+import { join as join10 } from "node:path";
 async function generateSmartFormHook(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}'use client';
@@ -4048,13 +4336,12 @@ export function use${modelName}UpdateForm(id: string, initialData?: any) {
   });
 }
 `;
-  const filePath = path11.join(modelDir, "smart-form.ts");
-  await fs9.writeFile(filePath, template, "utf-8");
+  const filePath = join10(modelDir, "smart-form.ts");
+  await writeFile(filePath, template);
 }
 
 // src/templates/types.ts
-import fs10 from "node:fs/promises";
-import path12 from "node:path";
+import { join as join11 } from "node:path";
 async function generateTypes(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
   const selectObject = createSelectObjectWithRelations(modelInfo, context);
@@ -4204,14 +4491,13 @@ export interface ${modelName}ValidationErrors {
   message: string;
 }
 `;
-  const filePath = path12.join(modelDir, "types.ts");
-  await fs10.writeFile(filePath, template, "utf-8");
+  const filePath = join11(modelDir, "types.ts");
+  await writeFile(filePath, template);
 }
 
 // src/zod-generator.ts
 import { spawn } from "node:child_process";
-import fs11 from "node:fs/promises";
-import path13 from "node:path";
+import { join as join12, dirname as dirname3 } from "node:path";
 class ZodGenerationError extends FlowGeneratorError {
   constructor(message, cause) {
     super(`Zod generation failed: ${message}`, cause);
@@ -4220,9 +4506,9 @@ class ZodGenerationError extends FlowGeneratorError {
 }
 async function generateZodSchemas(options, outputDir, models) {
   console.log("\uD83D\uDCE6 Generating integrated Zod schemas...");
-  const zodOutputDir = path13.join(outputDir, "zod");
+  const zodOutputDir = join12(outputDir, "zod");
   try {
-    await fs11.mkdir(zodOutputDir, { recursive: true });
+    await ensureDirectory(zodOutputDir);
   } catch (error) {
     throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
   }
@@ -4235,13 +4521,13 @@ async function generateZodSchemas(options, outputDir, models) {
     throw new ZodGenerationError("Failed to generate Zod schemas", error);
   } finally {
     try {
-      await fs11.unlink(tempSchemaPath);
+      await deleteFile(tempSchemaPath);
     } catch {}
   }
 }
 async function createTempSchemaWithZodGenerator(options, zodOutputDir, models) {
   try {
-    const originalSchemaContent = await fs11.readFile(options.schemaPath, "utf-8");
+    const originalSchemaContent = await readFile(options.schemaPath);
     const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
     const zodGeneratorConfig = `
 generator zod {
@@ -4251,15 +4537,15 @@ generator zod {
 `;
     const modifiedSchema = `${schemaWithoutFlowGenerator}
 ${zodGeneratorConfig}`;
-    const tempSchemaPath = path13.join(path13.dirname(options.schemaPath), ".temp-zod-schema.prisma");
-    await fs11.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+    const tempSchemaPath = join12(dirname3(options.schemaPath), ".temp-zod-schema.prisma");
+    await writeFile(tempSchemaPath, modifiedSchema);
     return tempSchemaPath;
   } catch (error) {
     throw new ZodGenerationError("Failed to create temporary schema file", error);
   }
 }
 async function executeZodPrismaTypes(schemaPath) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve3, reject) => {
     const child = spawn("npx", ["prisma", "generate", "--schema", schemaPath], {
       stdio: ["ignore", "pipe", "pipe"],
       shell: true
@@ -4274,7 +4560,7 @@ async function executeZodPrismaTypes(schemaPath) {
     });
     child.on("close", (code) => {
       if (code === 0) {
-        resolve();
+        resolve3();
       } else {
         reject(new Error(`Zod generation failed with code ${code}:
 STDOUT: ${stdout}
@@ -4288,12 +4574,12 @@ STDERR: ${stderr}`));
 }
 async function validateGeneratedSchemas(zodOutputDir, models) {
   try {
-    const indexPath = path13.join(zodOutputDir, "index.ts");
-    const indexExists = await fs11.access(indexPath).then(() => true).catch(() => false);
+    const indexPath = join12(zodOutputDir, "index.ts");
+    const indexExists = await fileExists(indexPath);
     if (!indexExists) {
       throw new Error("Zod index file was not generated");
     }
-    const indexContent = await fs11.readFile(indexPath, "utf-8");
+    const indexContent = await readFile(indexPath);
     const missingSchemas = [];
     for (const modelName of models) {
       const hasCreateSchema = indexContent.includes(`${modelName}CreateInputSchema`);
@@ -4321,8 +4607,8 @@ import { PrismaClient } from '@prisma/client';
 // Create shared Prisma client instance
 export const prisma = new PrismaClient();
 `;
-  const filePath = path14.join(context.outputDir, "prisma-client.ts");
-  await fs12.writeFile(filePath, template, "utf-8");
+  const filePath = join13(context.outputDir, "prisma-client.ts");
+  await writeFile(filePath, template);
 }
 import_generator_helper.generatorHandler({
   onManifest() {
@@ -4341,7 +4627,7 @@ import_generator_helper.generatorHandler({
       validateConfig(config, modelNames);
       const context = createGeneratorContext(config, options.dmmf, config.output);
       try {
-        await fs12.mkdir(context.outputDir, { recursive: true });
+        await ensureDirectory(context.outputDir);
       } catch (error) {
         throw new FileSystemError("create directory", context.outputDir, error);
       }
@@ -4365,8 +4651,8 @@ import_generator_helper.generatorHandler({
         }
         const lowerModelName = modelName.toLowerCase();
         const modelConfig = config[lowerModelName] || {};
-        const pluralName = capitalize(pluralize(modelName));
-        const lowerPluralName = pluralize(lowerModelName);
+        const pluralName = capitalize(plural2(modelName));
+        const lowerPluralName = plural2(lowerModelName);
         const modelInfo = {
           name: modelName,
           lowerName: lowerModelName,
@@ -4376,9 +4662,9 @@ import_generator_helper.generatorHandler({
           model,
           selectFields: modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name)
         };
-        const modelDir = path14.join(context.outputDir, lowerModelName);
+        const modelDir = join13(context.outputDir, lowerModelName);
         try {
-          await fs12.mkdir(modelDir, { recursive: true });
+          await ensureDirectory(modelDir);
         } catch (error) {
           throw new FileSystemError("create directory", modelDir, error);
         }

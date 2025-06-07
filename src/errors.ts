@@ -1,7 +1,7 @@
 export class FlowGeneratorError extends Error {
 	constructor(
 		message: string,
-		public cause?: unknown,
+		public override cause?: unknown,
 	) {
 		super(message);
 		this.name = "FlowGeneratorError";

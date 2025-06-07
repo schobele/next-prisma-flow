@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { FlowGeneratorConfig, GeneratorContext } from "../types.js";
-import { capitalize, formatGeneratedFileHeader, pluralize } from "../utils.js";
+import { capitalize, formatGeneratedFileHeader, plural } from "../utils.js";
 
 export async function generateFlowProvider(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	await Promise.all([
@@ -15,8 +15,8 @@ async function generateFlowProviderComponent(config: FlowGeneratorConfig, contex
 	const modelAtomImports = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `import {
   base${pluralName}Atom,
   ${lowerPluralName}LoadingAtom,
@@ -32,8 +32,8 @@ async function generateFlowProviderComponent(config: FlowGeneratorConfig, contex
 	const storeInitialization = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `  // Initialize ${modelName} state
   if (initialData?.${lowerPluralName}) {
     store.set(base${pluralName}Atom, initialData.${lowerPluralName});
@@ -44,8 +44,8 @@ async function generateFlowProviderComponent(config: FlowGeneratorConfig, contex
 	const debugAtoms = config.models
 		.map((modelName) => {
 			const lowerName = modelName.toLowerCase();
-			const pluralName = capitalize(pluralize(modelName));
-			const lowerPluralName = pluralize(lowerName);
+			const pluralName = capitalize(plural(modelName));
+			const lowerPluralName = plural(lowerName);
 			return `    ${lowerName}: {
       data: base${pluralName}Atom,
       loading: ${lowerPluralName}LoadingAtom,
@@ -149,8 +149,8 @@ ${storeInitialization}
     clearAllData: () => {
 ${config.models
 	.map((modelName) => {
-		const pluralName = capitalize(pluralize(modelName));
-		const lowerPluralName = pluralize(modelName.toLowerCase());
+		const pluralName = capitalize(plural(modelName));
+		const lowerPluralName = plural(modelName.toLowerCase());
 		return `      store.set(base${pluralName}Atom, {});
       store.set(${lowerPluralName}LoadingAtom, false);
       store.set(${lowerPluralName}ErrorAtom, null);`;
@@ -163,7 +163,7 @@ ${config.models
       hasErrors: Object.values({
 ${config.models
 	.map((modelName) => {
-		const lowerPluralName = pluralize(modelName.toLowerCase());
+		const lowerPluralName = plural(modelName.toLowerCase());
 		return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}ErrorAtom),`;
 	})
 	.join("\n")}
@@ -171,7 +171,7 @@ ${config.models
       isLoading: Object.values({
 ${config.models
 	.map((modelName) => {
-		const lowerPluralName = pluralize(modelName.toLowerCase());
+		const lowerPluralName = plural(modelName.toLowerCase());
 		return `        ${modelName.toLowerCase()}: store.get(${lowerPluralName}LoadingAtom),`;
 	})
 	.join("\n")}
@@ -366,8 +366,8 @@ export function useFlowDebug() {
 }
 `;
 
-	const filePath = path.join(context.outputDir, "flow-provider.tsx");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "flow-provider.tsx");
+	await writeFile(filePath, template);
 }
 
 async function generateFlowContext(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
@@ -437,14 +437,14 @@ export interface FlowErrorFallbackProps {
 export type FlowErrorFallbackComponent = React.ComponentType<FlowErrorFallbackProps>;
 `;
 
-	const filePath = path.join(context.outputDir, "flow-context.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "flow-context.ts");
+	await writeFile(filePath, template);
 }
 
 async function generateFlowConfig(config: FlowGeneratorConfig, context: GeneratorContext): Promise<void> {
 	const stateTypeFields = config.models
 		.map((modelName) => {
-			const lowerPluralName = pluralize(modelName.toLowerCase());
+			const lowerPluralName = plural(modelName.toLowerCase());
 			return `  ${lowerPluralName}: Record<string, ${modelName}>;
   ${lowerPluralName}Loading: boolean;
   ${lowerPluralName}Error: string | null;`;
@@ -537,6 +537,6 @@ export function validateFlowConfig(config: Partial<FlowConfig>): string[] {
 export type { FlowContextValue, FlowDebugInfo, FlowErrorBoundaryRef } from './flow-context';
 `;
 
-	const filePath = path.join(context.outputDir, "flow-config.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(context.outputDir, "flow-config.ts");
+	await writeFile(filePath, template);
 }

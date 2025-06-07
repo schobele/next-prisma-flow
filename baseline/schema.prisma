@@ -1,0 +1,81 @@
+// TodoList - Simple Prisma Schema
+// Demonstrates core Next Prisma Flow Generator features with minimal complexity
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider = "zod-prisma-types"
+  output   = "./zod"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ============================================================================
+// MODELS - Simple todo management
+// ============================================================================
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  todos Todo[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  color     String   @default("#3b82f6")
+  createdAt DateTime @default(now())
+
+  // Relationships
+  todos Todo[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  todos Todo[]
+
+  @@map("tags")
+}
+
+model Todo {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  status      String    @default("PENDING")
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  tags Tag[]
+
+  @@map("todos")
+}

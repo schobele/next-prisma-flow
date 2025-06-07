@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { writeFile } from "../utils.js";
+import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
 import { formatGeneratedFileHeader } from "../utils.js";
 
@@ -253,6 +253,6 @@ export function use${modelName}FormState() {
 }
 `;
 
-	const filePath = path.join(modelDir, "form-provider.tsx");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "form-provider.tsx");
+	await writeFile(filePath, template);
 }
