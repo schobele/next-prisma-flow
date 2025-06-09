@@ -1,0 +1,528 @@
+import type { DMMF } from "@prisma/generator-helper";
+import type { RelationshipInfo } from "./relationship-analyzer.js";
+
+export interface AnalyzedField {
+	name: string;
+	type: string; // 'String', 'Int', 'DateTime', 'Boolean', 'Float', etc.
+	isRequired: boolean;
+	isOptional: boolean;
+	isList: boolean;
+	isId: boolean;
+	isUnique: boolean;
+	defaultValue?: any;
+
+	// Relationship info
+	relationName?: string;
+	relationFromFields?: string[];
+	relationToFields?: string[];
+	relationType?: "one-to-one" | "one-to-many" | "many-to-one" | "many-to-many";
+	isScalarRelation?: boolean; // True if this is a foreign key field (e.g., userId)
+	isForeignKey?: boolean; // True if this field references another model's ID
+
+	// Validation constraints
+	maxLength?: number;
+	minLength?: number;
+	documentation?: string;
+
+	// Prisma attributes for optimistic updates
+	hasDefaultValue: boolean;
+	defaultValueType: "function" | "literal" | "none";
+	defaultValueExpression?: string; // e.g., "uuid()", "now()", '"PENDING"'
+	isAutoIncrement?: boolean;
+	isUpdatedAt?: boolean;
+	isCreatedAt?: boolean;
+
+	// Field generation info
+	needsOptimisticValue: boolean;
+	optimisticValueGenerator?: string; // JS expression to generate value
+}
+
+export interface AnalyzedModel {
+	name: string;
+	fields: AnalyzedField[];
+	requiredFields: AnalyzedField[];
+	optionalFields: AnalyzedField[];
+	relationFields: AnalyzedField[];
+	scalarFields: AnalyzedField[];
+	foreignKeyFields: AnalyzedField[]; // Scalar foreign key fields (userId, categoryId, etc.)
+	nestedRelationFields: AnalyzedField[]; // Nested object relations (user, category, etc.)
+	idField?: AnalyzedField;
+	stringFields: AnalyzedField[];
+	dateFields: AnalyzedField[];
+	numberFields: AnalyzedField[];
+	booleanFields: AnalyzedField[];
+
+	// Relationship analysis
+	relationships: {
+		owns: RelationshipInfo[];
+		referencedBy: RelationshipInfo[];
+		relatedModels: string[];
+	};
+}
+
+export interface ValidationRule {
+	field: string;
+	type: "required" | "minLength" | "maxLength" | "email" | "url" | "pattern" | "custom";
+	value?: any;
+	message: string;
+}
+
+/**
+ * Analyze a Prisma DMMF model to extract field information and validation rules
+ */
+export function analyzeModel(
+	dmmfModel: DMMF.Model,
+	relationshipInfo?: {
+		owns: RelationshipInfo[];
+		referencedBy: RelationshipInfo[];
+		relatedModels: string[];
+	},
+): AnalyzedModel {
+	const fields: AnalyzedField[] = dmmfModel.fields.map((field) => {
+		// Parse Prisma attributes
+		const attributes = parsePrismaAttributes(field);
+
+		const analyzed: AnalyzedField = {
+			name: field.name,
+			type: field.type,
+			isRequired: field.isRequired,
+			isOptional: !field.isRequired,
+			isList: field.isList,
+			isId: field.isId,
+			isUnique: field.isUnique,
+			defaultValue: field.default,
+			documentation: field.documentation,
+
+			// Prisma attributes
+			hasDefaultValue: attributes.hasDefaultValue,
+			defaultValueType: attributes.defaultValueType,
+			defaultValueExpression: attributes.defaultValueExpression,
+			isAutoIncrement: attributes.isAutoIncrement,
+			isUpdatedAt: attributes.isUpdatedAt,
+			isCreatedAt: attributes.isCreatedAt,
+
+			// Initialize optimistic generation fields
+			needsOptimisticValue: false,
+			optimisticValueGenerator: undefined,
+		};
+
+		// Handle relationships
+		if (field.relationName) {
+			analyzed.relationName = field.relationName;
+			analyzed.relationFromFields = field.relationFromFields ? [...field.relationFromFields] : undefined;
+			analyzed.relationToFields = field.relationToFields ? [...field.relationToFields] : undefined;
+
+			// Determine relationship type
+			if (field.isList) {
+				analyzed.relationType = "one-to-many";
+			} else if (field.relationFromFields && field.relationFromFields.length > 0) {
+				analyzed.relationType = "many-to-one";
+			} else {
+				analyzed.relationType = "one-to-one";
+			}
+		}
+
+		// Detect foreign key fields (scalar fields that are part of a relation)
+		// Foreign key fields are scalar fields referenced in relationFromFields of other model fields
+		const isForeignKeyField = dmmfModel.fields.some((otherField) => otherField.relationFromFields?.includes(field.name));
+
+		analyzed.isForeignKey = isForeignKeyField;
+		analyzed.isScalarRelation = isForeignKeyField;
+
+		// Extract validation constraints from attributes
+		if (field.type === "String" && field.documentation) {
+			const lengthMatch = field.documentation.match(/@db\.VarChar\((\d+)\)/);
+			if (lengthMatch?.[1]) {
+				analyzed.maxLength = Number.parseInt(lengthMatch[1], 10);
+			}
+		}
+
+		// Determine if this field needs an optimistic value and generate it
+		// Only include fields that are auto-generated or have defaults, not user input fields
+		const needsOptimisticValue =
+			analyzed.isId || analyzed.isCreatedAt || analyzed.isUpdatedAt || analyzed.hasDefaultValue;
+
+		if (needsOptimisticValue) {
+			analyzed.needsOptimisticValue = true;
+			analyzed.optimisticValueGenerator = generateOptimisticValue(analyzed);
+		}
+
+		return analyzed;
+	});
+
+	// Categorize fields
+	const autoGeneratedFields = ["id", "createdAt", "updatedAt"];
+	const requiredFields = fields.filter(
+		(f) => f.isRequired && !f.relationName && !autoGeneratedFields.includes(f.name) && !f.defaultValue,
+	);
+	const optionalFields = fields.filter((f) => f.isOptional);
+	const relationFields = fields.filter((f) => f.relationName);
+	const scalarFields = fields.filter((f) => !f.relationName);
+	const foreignKeyFields = fields.filter((f) => f.isForeignKey);
+	const nestedRelationFields = fields.filter((f) => f.relationName && !f.isForeignKey);
+	const idField = fields.find((f) => f.isId);
+	const stringFields = fields.filter((f) => f.type === "String" && !f.relationName);
+	const dateFields = fields.filter((f) => f.type === "DateTime");
+	const numberFields = fields.filter((f) => ["Int", "Float", "Decimal"].includes(f.type));
+	const booleanFields = fields.filter((f) => f.type === "Boolean");
+
+	return {
+		name: dmmfModel.name,
+		fields,
+		requiredFields,
+		optionalFields,
+		relationFields,
+		scalarFields,
+		foreignKeyFields,
+		nestedRelationFields,
+		idField,
+		stringFields,
+		dateFields,
+		numberFields,
+		booleanFields,
+
+		// Include relationship analysis
+		relationships: relationshipInfo || {
+			owns: [],
+			referencedBy: [],
+			relatedModels: [],
+		},
+	};
+}
+
+/**
+ * Generate validation rules based on analyzed model
+ */
+export function generateValidationRules(model: AnalyzedModel): ValidationRule[] {
+	const rules: ValidationRule[] = [];
+
+	// Required field validation
+	for (const field of model.requiredFields) {
+		if (field.type === "String") {
+			rules.push({
+				field: field.name,
+				type: "required",
+				message: `${field.name} is required`,
+			});
+		}
+	}
+
+	// String length validation
+	for (const field of model.stringFields) {
+		if (field.maxLength) {
+			rules.push({
+				field: field.name,
+				type: "maxLength",
+				value: field.maxLength,
+				message: `${field.name} must be less than ${field.maxLength} characters`,
+			});
+		}
+	}
+
+	// Email validation for fields named 'email'
+	const emailField = model.stringFields.find((f) => f.name.toLowerCase() === "email");
+	if (emailField) {
+		rules.push({
+			field: emailField.name,
+			type: "email",
+			message: "Please enter a valid email address",
+		});
+	}
+
+	// URL validation for fields named 'url' or 'website'
+	const urlField = model.stringFields.find(
+		(f) => f.name.toLowerCase().includes("url") || f.name.toLowerCase().includes("website"),
+	);
+	if (urlField) {
+		rules.push({
+			field: urlField.name,
+			type: "url",
+			message: "Please enter a valid URL",
+		});
+	}
+
+	return rules;
+}
+
+/**
+ * Generate TypeScript validation function code
+ */
+export function generateValidationFunction(rules: ValidationRule[], modelName: string): string {
+	const validationChecks = rules
+		.map((rule) => {
+			switch (rule.type) {
+				case "required":
+					return `if (typeof formData.${rule.field} === 'string' ? !formData.${rule.field}?.trim() : !formData.${rule.field}) {
+					newErrors.${rule.field} = "${rule.message}";
+				}`;
+
+				case "maxLength":
+					return `if (formData.${rule.field} && typeof formData.${rule.field} === 'string' && formData.${rule.field}.length > ${rule.value}) {
+					newErrors.${rule.field} = "${rule.message}";
+				}`;
+
+				case "minLength":
+					return `if (formData.${rule.field} && typeof formData.${rule.field} === 'string' && formData.${rule.field}.length < ${rule.value}) {
+					newErrors.${rule.field} = "${rule.message}";
+				}`;
+
+				case "email":
+					return `if (formData.${rule.field} && typeof formData.${rule.field} === 'string' && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.${rule.field})) {
+					newErrors.${rule.field} = "${rule.message}";
+				}`;
+
+				case "url":
+					return `if (formData.${rule.field} && typeof formData.${rule.field} === 'string' && !/^https?:\\/\\/.+/.test(formData.${rule.field})) {
+					newErrors.${rule.field} = "${rule.message}";
+				}`;
+
+				default:
+					return "";
+			}
+		})
+		.filter(Boolean);
+
+	return validationChecks.join("\n\t\t\t");
+}
+
+/**
+ * Generate field-specific validation switch cases
+ */
+export function generateFieldValidationCases(rules: ValidationRule[]): string {
+	const fieldRules = new Map<string, ValidationRule[]>();
+
+	// Group rules by field
+	for (const rule of rules) {
+		if (!fieldRules.has(rule.field)) {
+			fieldRules.set(rule.field, []);
+		}
+		fieldRules.get(rule.field)?.push(rule);
+	}
+
+	const cases = Array.from(fieldRules.entries()).map(([fieldName, fieldRules]) => {
+		const validationChecks = fieldRules
+			.map((rule) => {
+				switch (rule.type) {
+					case "required":
+						return `if (typeof formData.${fieldName} === 'string' ? !formData.${fieldName}?.trim() : !formData.${fieldName}) {
+							newErrors.${fieldName} = "${rule.message}";
+						}`;
+					case "maxLength":
+						return `if (formData.${fieldName} && typeof formData.${fieldName} === 'string' && formData.${fieldName}.length > ${rule.value}) {
+							newErrors.${fieldName} = "${rule.message}";
+						}`;
+					case "email":
+						return `if (formData.${fieldName} && typeof formData.${fieldName} === 'string' && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.${fieldName})) {
+							newErrors.${fieldName} = "${rule.message}";
+						}`;
+					default:
+						return "";
+				}
+			})
+			.filter(Boolean)
+			.join("\n\t\t\t\t\t");
+
+		return `case "${fieldName}":
+					${validationChecks}
+					break;`;
+	});
+
+	return cases.join("\n\t\t\t\t");
+}
+
+/**
+ * Generate required fields check for isValid computation
+ */
+export function generateRequiredFieldsCheck(requiredFields: AnalyzedField[]): string {
+	const checks = requiredFields
+		.filter((f) => f.type === "String")
+		.map((f) => `(typeof formData.${f.name} === 'string' ? !!formData.${f.name}.trim() : !!formData.${f.name})`)
+		.concat(
+			requiredFields
+				.filter((f) => f.type !== "String")
+				.map((f) => `formData.${f.name} !== undefined && formData.${f.name} !== null`),
+		);
+
+	if (checks.length === 0) {
+		return "true";
+	}
+
+	return checks.join(" && ");
+}
+
+/**
+ * Parse Prisma field attributes to extract default values and special attributes
+ */
+function parsePrismaAttributes(field: DMMF.Field): {
+	hasDefaultValue: boolean;
+	defaultValueType: "function" | "literal" | "none";
+	defaultValueExpression?: string;
+	isAutoIncrement: boolean;
+	isUpdatedAt: boolean;
+	isCreatedAt: boolean;
+} {
+	const hasDefaultValue = field.hasDefaultValue;
+	let defaultValueType: "function" | "literal" | "none" = "none";
+	let defaultValueExpression: string | undefined;
+	let isAutoIncrement = false;
+	let isUpdatedAt = false;
+	let isCreatedAt = false;
+
+	// Check for @updatedAt attribute
+	if (field.isUpdatedAt) {
+		isUpdatedAt = true;
+	}
+
+	// Check for common field names that indicate created/updated timestamps
+	if (field.name.toLowerCase().includes("createdat") || field.name.toLowerCase().includes("created_at")) {
+		isCreatedAt = true;
+	}
+
+	// Parse default value if present
+	if (hasDefaultValue && field.default) {
+		if (typeof field.default === "object" && field.default !== null) {
+			// Handle function-based defaults like @default(uuid()), @default(now())
+			if ("name" in field.default) {
+				defaultValueType = "function";
+				defaultValueExpression = field.default.name as string;
+
+				// Special handling for autoincrement
+				if (field.default.name === "autoincrement") {
+					isAutoIncrement = true;
+				}
+			} else if ("args" in field.default) {
+				// Handle functions with arguments
+				defaultValueType = "function";
+				defaultValueExpression = JSON.stringify(field.default);
+			}
+		} else {
+			// Handle literal defaults like @default("PENDING"), @default(true)
+			defaultValueType = "literal";
+			if (typeof field.default === "string") {
+				defaultValueExpression = `"${field.default}"`;
+			} else {
+				defaultValueExpression = String(field.default);
+			}
+		}
+	}
+
+	return {
+		hasDefaultValue,
+		defaultValueType,
+		defaultValueExpression,
+		isAutoIncrement,
+		isUpdatedAt,
+		isCreatedAt,
+	};
+}
+
+/**
+ * Generate optimistic value for a field based on its attributes
+ */
+function generateOptimisticValue(field: AnalyzedField): string {
+	// Handle ID fields
+	if (field.isId) {
+		if (field.isAutoIncrement) {
+			return "tempId"; // Will be replaced with proper ID generation
+		}
+		if (field.hasDefaultValue && field.defaultValueExpression) {
+			if (field.defaultValueExpression === "uuid()" || field.defaultValueExpression === "cuid()") {
+				return "tempId";
+			}
+		}
+		return "tempId";
+	}
+
+	// Handle timestamp fields
+	if (field.isUpdatedAt || field.isCreatedAt) {
+		return "new Date()";
+	}
+
+	// Handle fields with default values
+	if (field.hasDefaultValue) {
+		if (field.defaultValueType === "function") {
+			switch (field.defaultValueExpression) {
+				case "now()":
+					return "new Date()";
+				case "uuid()":
+				case "cuid()":
+					return "crypto.randomUUID()";
+				case "autoincrement()":
+					return "tempId";
+				default:
+					// For unknown functions, return a reasonable default
+					if (field.type === "DateTime") return "new Date()";
+					if (field.type === "String") return '""';
+					return "undefined";
+			}
+		} else if (field.defaultValueType === "literal") {
+			return field.defaultValueExpression || "undefined";
+		}
+	}
+
+	// For optional fields without defaults, use null
+	if (field.isOptional) {
+		return "null";
+	}
+
+	// For required fields without defaults, provide type-based defaults
+	return getTypeDefaultValue(field.type);
+}
+
+/**
+ * Get default value for a type when no explicit default is provided
+ */
+function getTypeDefaultValue(type: string): string {
+	switch (type) {
+		case "String":
+			return '""';
+		case "Int":
+		case "Float":
+		case "Decimal":
+			return "0";
+		case "Boolean":
+			return "false";
+		case "DateTime":
+			return "new Date()";
+		case "Json":
+			return "null";
+		default:
+			return "null";
+	}
+}
+
+/**
+ * Generate optimistic field assignments for create operations
+ */
+export function generateOptimisticCreateFields(model: AnalyzedModel): string {
+	const fieldAssignments: string[] = [];
+
+	for (const field of model.fields) {
+		// Skip relation fields (they'll be handled separately)
+		if (field.relationName && !field.isForeignKey) {
+			continue;
+		}
+
+		if (field.needsOptimisticValue) {
+			fieldAssignments.push(`\t\t${field.name}: ${field.optimisticValueGenerator},`);
+		}
+	}
+
+	return fieldAssignments.join("\n");
+}
+
+/**
+ * Generate optimistic field assignments for update operations
+ */
+export function generateOptimisticUpdateFields(model: AnalyzedModel): string {
+	const fieldAssignments: string[] = [];
+
+	for (const field of model.fields) {
+		// Only include fields that are auto-updated (like updatedAt)
+		if (field.isUpdatedAt) {
+			fieldAssignments.push(`\t\t${field.name}: new Date(),`);
+		}
+	}
+
+	return fieldAssignments.join("\n");
+}

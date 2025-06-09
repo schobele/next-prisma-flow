@@ -1,10 +1,11 @@
-import { join, resolve, relative, dirname, basename, extname } from "node:path";
-import * as pluralize from "pluralize";
-import { camelCase as toCamelCase, pascalCase, kebabCase, snakeCase } from "change-case";
-import * as validator from "validator";
 import type { DMMF } from "@prisma/generator-helper";
+import { kebabCase, pascalCase, snakeCase, camelCase as toCamelCase } from "change-case";
+import { dirname, join, relative, resolve } from "node:path";
+import * as pluralize from "pluralize";
+import * as validator from "validator";
 import { getPrismaImportForNesting } from "./config.js";
-import type { FlowGeneratorConfig, GeneratorContext } from "./types.js";
+import type { FlowGeneratorConfig, GeneratorContext, ModelInfo } from "./types.js";
+import { analyzeModel, generateValidationRules } from "./model-analyzer.js";
 
 export function createGeneratorContext(
 	config: FlowGeneratorConfig,
@@ -129,7 +130,7 @@ export function createSelectObjectWithRelations(
 	visited.add(modelInfo.name);
 
 	for (const fieldName of modelInfo.selectFields) {
-		const field = modelInfo.model.fields.find((f) => f.name === fieldName);
+		const field = modelInfo.model.fields.find((f: DMMF.Field) => f.name === fieldName);
 
 		if (!field) {
 			// Field not found in model, treat as simple select
@@ -185,7 +186,7 @@ function filterFieldsForCircularReference(
 	parentModelName: string,
 ): string[] {
 	return fields.filter((fieldName) => {
-		const field = relatedModelConfig.model.fields.find((f) => f.name === fieldName);
+		const field = relatedModelConfig.model.fields.find((f: DMMF.Field) => f.name === fieldName);
 		if (!field || field.kind !== "object") {
 			return true; // Keep non-relationship fields
 		}
@@ -216,7 +217,7 @@ function createSelectObjectWithCircularPrevention(
 	const selectEntries: string[] = [];
 
 	for (const fieldName of fields) {
-		const field = modelInfo.model.fields.find((f) => f.name === fieldName);
+		const field = modelInfo.model.fields.find((f: DMMF.Field) => f.name === fieldName);
 
 		if (!field) {
 			selectEntries.push(`${fieldName}: true`);
@@ -257,6 +258,10 @@ function getModelConfigFromContext(modelName: string, context: GeneratorContext)
 	const lowerModelName = modelName.toLowerCase();
 	const modelConfig = context.config[lowerModelName] || {};
 
+	// Analyze the model structure
+	const analyzedModel = analyzeModel(model);
+	const validationRules = generateValidationRules(analyzedModel);
+
 	// Create a minimal ModelInfo object for select field access
 	return {
 		name: modelName,
@@ -267,6 +272,8 @@ function getModelConfigFromContext(modelName: string, context: GeneratorContext)
 		model,
 		selectFields:
 			modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
+		analyzed: analyzedModel,
+		validationRules,
 	};
 }
 
@@ -521,23 +528,30 @@ export function removeExtension(filePath: string): string {
  * Write content to a file using Bun's native file I/O
  */
 export async function writeFile(filePath: string, content: string): Promise<void> {
-	await Bun.write(filePath, content);
+	const { writeFile: fsWriteFile } = await import("node:fs/promises");
+	await ensureDirectory(dirname(filePath));
+	await fsWriteFile(filePath, content, "utf-8");
 }
 
 /**
  * Read file content using Bun's native file I/O
  */
 export async function readFile(filePath: string): Promise<string> {
-	const file = Bun.file(filePath);
-	return await file.text();
+	const { readFile: fsReadFile } = await import("node:fs/promises");
+	return await fsReadFile(filePath, "utf-8");
 }
 
 /**
  * Check if a file exists using Bun's native file I/O
  */
 export async function fileExists(filePath: string): Promise<boolean> {
-	const file = Bun.file(filePath);
-	return await file.exists();
+	const { access } = await import("node:fs/promises");
+	try {
+		await access(filePath);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -568,8 +582,8 @@ export async function copyFile(source: string, destination: string): Promise<voi
  * Delete a file using Bun's native file I/O
  */
 export async function deleteFile(filePath: string): Promise<void> {
-	const file = Bun.file(filePath);
-	await file.delete();
+	const { unlink } = await import("node:fs/promises");
+	await unlink(filePath);
 }
 
 /**
@@ -716,13 +730,5 @@ export function wrapText(text: string, maxLength = 80): string {
 	return lines.join("\n");
 }
 
-// Re-export the interface and types that templates might need
-export interface ModelInfo {
-	name: string;
-	lowerName: string;
-	pluralName: string;
-	lowerPluralName: string;
-	config: any;
-	model: DMMF.Model;
-	selectFields: string[];
-}
+// Import the ModelInfo interface from types
+export type { ModelInfo } from "./types.js";

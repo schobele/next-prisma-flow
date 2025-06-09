@@ -49,6 +49,7 @@ export class FileSystemError extends FlowGeneratorError {
 }
 
 export function handleGeneratorError(error: unknown): never {
+	console.error("🔴 Error:", error);
 	if (error instanceof FlowGeneratorError) {
 		throw error;
 	}

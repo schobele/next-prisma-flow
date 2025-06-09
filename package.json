@@ -13,6 +13,13 @@
 		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
 		"dev": "bun run index.ts",
 		"test": "bun test",
+		"test:structure": "bun test tests/structural/",
+		"test:content": "bun test tests/content/",
+		"test:types": "bun test tests/types/",
+		"test:functional": "bun test tests/functional/",
+		"test:watch": "bun test --watch",
+		"baseline:compare": "bun run tests/tools/baseline-compare.ts",
+		"validation": "bun run tests/scripts/run-validation.ts",
 		"prepublishOnly": "bun run build",
 		"check": "biome check .",
 		"check:fix": "biome check . --write --unsafe",
@@ -50,23 +57,33 @@
 		"zod-prisma-types": "^3.2.4"
 	},
 	"devDependencies": {
-		"@prisma/client": "^5.0.0",
-		"@prisma/generator-helper": "^5.0.0",
-		"@types/bun": "latest",
-		"@types/node": "^20.0.0",
+		"@prisma/client": "^6.9.0",
+		"@prisma/generator-helper": "^6.9.0",
+		"@types/bun": "^1.2.15",
+		"@types/node": "^22.15.30",
+		"@types/react": "^19.1.6",
 		"@types/pluralize": "^0.0.33",
 		"@types/validator": "^13.15.1",
+		"@typescript-eslint/parser": "^8.33.1",
+		"@babel/parser": "^7.27.5",
+		"@babel/traverse": "^7.27.4",
+		"@types/babel__traverse": "^7.20.4",
+		"@babel/types": "^7.27.6",
+		"chalk": "^5.4.1",
+		"diff": "^8.0.2",
+		"fast-glob": "^3.3.3",
 		"husky": "^9.1.7",
-		"jotai": "^2.6.0",
-		"jotai-devtools": "^0.10.0",
+		"jotai": "^2.12.5",
+		"jotai-devtools": "^0.12.0",
 		"jotai-immer": "^0.4.1",
 		"lint-staged": "^16.1.0",
-		"zod": "^3.25.46",
-		"zod-prisma-types": "^3.2.4"
+		"ora": "^8.2.0",
+		"react": "^19.1.0",
+		"zod": "^3.25.56"
 	},
 	"peerDependencies": {
-		"typescript": "^5",
-		"prisma": "^5.0.0"
+		"typescript": "^5.8.3",
+		"prisma": "^6.9.0"
 	},
 	"lint-staged": {
 		"!(examples/**/*)*": ["bun run check:fix"]

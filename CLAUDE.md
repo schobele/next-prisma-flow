@@ -21,74 +21,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is **next-prisma-flow** v0.2.1, a Prisma generator that scaffolds full-stack typed code for Next.js applications with a modern, intuitive developer experience. It generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration from Prisma schemas.
+This is **next-prisma-flow**, a Prisma generator that scaffolds a full-stack typesafe state management system for Next.js applications with a modern, intuitive developer experience. It generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration from the given Prisma schema.
 
-Process for working on the generator:
-1. First update the baseline to design and implement new features
-1. Update the generator and implement the new features
-2. Run the test suite to ensure compatibility
-3. Document any breaking changes or improvements
-4. Update version compatibility notes
+Workflow
 
-## Baseline
+1. Update the baseline with the new feature spec.
+2. Implement the feature in the generator.
+3. Run the test‑suite (bun test) to ensure baseline parity.
+4. Document breaking changes or improvements.
+5. Bump version compatibility notes.
 
-The baseline is the golden standard for the generator. It is the reference implementation of the generator. It is used to test the generator and to ensure that the generator is working correctly. Always ensure the generator is working correctly against the baseline by running the test suite.
-
-@baseline/README.md
-
-
-### 🚀 What's New in v0.2.1
-
-- **FlowProvider** - Global state management with SSR support, error boundaries, and dev tools
-- **Model-specific namespace exports** - Import everything you need with `import { todos, categories } from './generated/flow'`
-- **Unified smart hooks** - One hook with all CRUD operations: `todos.hooks.useTodos()`
-- **Specialized form hooks** - Dedicated create and update form hooks with proper type safety
-- **Enhanced developer experience** - Intuitive API that works out of the box
-- **Improved documentation** - Better examples and cleaner API patterns
-
-### Core Architecture
-
-- **Generator Entry Point**: `index.ts` - Main Prisma generator that reads schema and config
-- **Code Generation**: `src/templates/` - Template files for generated code (actions, atoms, hooks, routes, types)
-- **Configuration**: `src/config.ts` - Parses generator config from Prisma schema
-- **Example Implementation**: `examples/todolist/` - Complete working example with Todo app
-
-### Generated Code Structure
-
-For each model, the generator creates:
-- `actions.ts` - Server actions with business logic
-- `atoms.ts` - Jotai atoms for state management with optimistic updates
-- `hooks.ts` - Enhanced React hooks with unified CRUD operations and form integration
-- `routes.ts` - Next.js API route handlers
-- `types.ts` - TypeScript type definitions
-- `namespace.ts` - Model-specific organized exports
-
-**Enhanced Main Export Structure:**
-```typescript
-// Modern API - model-specific namespace imports
-import { todos, categories } from './generated/flow'
-
-const todos = {
-  hooks: {
-    useTodos,      // Unified hook with all CRUD operations
-    useTodo,       // Individual item hook with form integration
-    useCreateTodoForm,  // Specialized create form hook
-    useUpdateTodoForm,  // Specialized update form hook
-    // ... other utility hooks
-  },
-  actions: {
-    create, update, delete, getAll, getById,
-    createMany, deleteMany,
-    // ... smart relationship actions
-  },
-  atoms: {
-    todosAtom, todosLoadingAtom, todosErrorAtom,
-    // ... all atoms for custom derived state
-  },
-  types: { Todo, TodoCreateInput, TodoUpdateInput, ... },
-  schemas: { create: TodoCreateInputSchema, update: TodoUpdateInputSchema }
-}
-```
 
 ## Development Commands
 
@@ -99,18 +41,25 @@ bun run build
 # Run generator directly for testing
 bun run dev
 
-# Test the generator
+# Test the generator and evaluate the generated code against the baseline
 bun test
 
 # Lint and format code
 bun run check
 bun run check:fix
 
+# Type check the generator
+bun run tsc
+
+# Type check the example project generated code
+cd examples/blog
+bun run tsc
+
 # Test with example project
-cd examples/todolist
-bun install
-bun run generate  # or npx prisma generate
-bun run dev       # Start Next.js dev server
+cd examples/blog
+bunx prisma generate
+bun run tsc:generated
+bun run dev
 ```
 
 ### Example Project Commands
@@ -120,9 +69,12 @@ The todolist example uses these additional commands:
 ```bash
 # Database operations
 bun run db:generate  # Generate Prisma client
-bun run db:push      # Push schema to database
-bun run db:studio    # Open Prisma Studio
-bun run db:seed      # Seed database with sample data
+
+# Type check the example project generated code
+bun run tsc:generated
+
+# Format and lint the example project
+bun run check:fix
 
 # Development
 bun run dev          # Next.js with Turbopack
@@ -137,40 +89,98 @@ The generator uses a flat configuration format in `prisma/schema.prisma`:
 ```prisma
 generator flow {
   provider = "next-prisma-flow"
-  output   = "./generated/flow"
-  models   = ["User", "Todo", "Category"]
+  output   = "../flow"
+  models   = ["Author", "Post", "Category"]
   
-  # Model-specific config (lowercase model name + property)
-  userSelect     = ["id", "name", "email"]
-  userOptimistic = "merge"
+  authorSelect     = ["id", "name", "email", "avatar"]
+  authorOptimistic = "overwrite"
+  authorPagination = "false"
   
-  todoSelect     = ["id", "title", "status", "userId"]
-  todoOptimistic = "overwrite"
-  todoPagination = "true"
+  postSelect     = ["id", "title", "description", "status", "publishedAt", "createdAt", "updatedAt", "author", "category", "comments"]
+  postOptimistic = "overwrite"
+  postPagination = "true"
 }
 ```
 
 ### Key Configuration Options
 
 - **select**: Array of fields to expose in API responses (security whitelist)
-- **optimistic**: Strategy for optimistic updates ("merge", "overwrite", "manual")
+- **optimistic**: Strategy for optimistic updates ("merge", "overwrite")
 - **pagination**: Enable pagination utilities ("true"/"false")
-- **zodPrismaImport**: Path to zod-prisma-types generated schemas (auto-resolved from schema location)
-- **prismaImport**: Path to Prisma client instance (auto-resolved from schema location)
+- **prismaClientPath**: Path to Prisma client instance (auto-resolved from schema location)
 
-### Path Resolution System
+All configuration options are optional.
 
-The generator automatically resolves relative paths in `prismaImport` and `zodPrismaImport` based on:
-- Schema file location (from `options.schemaPath`)
-- Generated file nesting level (model files are 1 level deep)
-- Absolute imports (starting with @/ or not starting with ./) are preserved as-is
+## Generated Code Layout
 
-Example path resolution:
+For each Prisma model Post we materialise:
+
+flow/
+ └─ post/
+     ├─ atoms.ts      ← synchronous entity & patch atoms
+     ├─ fx.ts         ← write‑only async atoms (server actions + optimistic)
+     ├─ derived.ts    ← selectors & loadable views
+     ├─ hooks.ts      ← React hooks (CRUD + forms)
+     ├─ store.ts      ← createScopedStore() helper (opt‑in)
+     ├─ actions.ts    ← plain server actions wrapper for all prisma queries (full feature parity)
+     ├─ schemas.ts    ← zod‑prisma validation schemas
+     ├─ types.ts      ← re‑exported Prisma & helper types
+     └─ index.ts      ← public barrel (see §3)
+
+Why this structure?
+- Clear separation of concerns – data (atoms) vs. side‑effects (fx) vs. view (derived).
+- Fine‑grained reactivity – UI rerenders only when relevant atoms change.
+- Server‑friendly – per‑request createStore() enables RSC or parallel test isolation.
+
+## **Public Export Surface:**
+```typescript
+// generated/flow/post/index.ts
+import * as State   from "./atoms"        // friendly alias
+import * as atoms   from "./atoms"        // expert access
+import { createPostStore } from "./store"
+import * as Hooks   from "./hooks"
+import * as Actions from "./actions"
+import * as Types   from "./types"
+import * as Schemas from "./schemas"
+
+export const posts = {
+  /** Low‑level synchronous Jotai atoms (advanced) */
+  atoms,
+  /** Friendly alias – use in docs & samples */
+  state: State,
+  /** Per‑request scoped store (SSR / tests) */
+  createStore: createPostStore,
+  /** Client‑side convenience hooks */
+  hooks: Hooks,
+  /** Typed server actions */
+  actions: Actions,
+  /** zod schemas & TypeScript types */
+  schemas: Schemas,
+  types: Types,
+} as const
+
+// Common re‑exports
+export const { usePosts, usePost, usePostForm } = Hooks
+export type { Post, PostCreateInput, PostWhereUniqueInput }
 ```
-Schema: prisma/schema.prisma
-Config: prismaImport = "../src/client"
-Generated: generated/flow/user/actions.ts -> import from "../../src/client"
-```
+
+Developers interact almost exclusively with hooks, actions, or state; raw atoms remain accessible for advanced composition.
+
+## State Management Architecture
+
+| Layer            | File         | Responsibility                                                                                        |
+| ---------------- | ------------ | ----------------------------------------------------------------------------------------------------- |
+| **Raw atoms**    | `atoms.ts`   | Pure, synchronous source‑of‑truth (`entitiesAtom`, `pendingPatchesAtom`).                             |
+| **Side‑effects** | `fx.ts`      | Write‑only async atoms (create/update/delete) that handle optimistic updates and call server actions. |
+| **Derived view** | `derived.ts` | Read‑only selectors (`listAtom`, `loadingAtom`) & `loadable()` wrappers – no manual flags.            |
+| **React hooks**  | `hooks.ts`   | Glue layer transforming atom data into ergonomic hooks (`usePosts`, `usePost`).                       |
+
+Benefits:
+
+* **Predictable** – data graph mirrors DB table; operations isolated.
+* **Optimistic** – UI updates instantly; reconciliation handled centrally.
+* **Testable** – store can be swapped with `createScopedStore()`.
+
 
 ## Template System
 
@@ -178,177 +188,144 @@ Templates in `src/templates/` use string interpolation for code generation:
 - Each template exports a function that takes model data and returns generated code
 - Templates handle imports, type definitions, and business logic patterns
 - Generated code follows Next.js App Router conventions
+- Themplates do not contain any hardcoded model names or fields etc. Everything is dynamic and constructed from the schema using the DMMF (https://github.com/prisma/prisma/blob/main/packages/dmmf/src/dmmf.ts).
 
-## State Management Architecture
 
-The generated code uses Jotai for state management with:
-- **Base atoms**: Hold entity maps (Record<id, Entity>)
-- **Derived atoms**: Computed views (lists, loading states)
-- **Action atoms**: Write-only atoms for mutations
-- **Optimistic updates**: Immediate UI updates with server sync
+## Baseline
 
-## Usage Examples
+The baseline is the golden standard for the generator. It is the reference implementation of the generator. It is used to test the generator and to ensure that the generator is working correctly. Always ensure the generator is working correctly against the baseline by running the test suite.
 
-### 🎯 Modern API (v0.2.x)
+@baseline/README.md
 
-```typescript
-// app/page.tsx
-import { todos, categories } from './generated/flow'
+## 6 · Usage Examples
 
-export default function TodoApp() {
-  // One hook, everything you need
-  const { 
-    data: todoList, 
-    createTodo, 
-    updateTodo, 
-    deleteTodo,
-    loading, 
-    error 
-  } = todos.hooks.useTodos()
-  
-  const { data: categoryList } = categories.hooks.useCategories()
-  
-  // Specialized form hooks with auto-validation
-  const createForm = todos.hooks.useCreateTodoForm()
-  const updateForm = todos.hooks.useUpdateTodoForm(id, todoData)
-  
-  return (
-    <div>
-      <form onSubmit={createForm.submit}>
-        <input {...createForm.field('title')} placeholder="Todo title" />
-        <button type="submit" disabled={!form.isValid || form.loading}>
-          Add Todo
-        </button>
-      </form>
-      
-      {todoList.map(todo => (
-        <TodoItem key={todo.id} todo={todo} />
-      ))}
-    </div>
-  )
-}
-```
+### 6.1 List & Create (App Router)
 
-### Individual Item Management
+```tsx
+// app/(dashboard)/posts/page.tsx
+import { posts, categories } from "./generated/flow"
 
-```typescript
-// components/TodoItem.tsx
-import { todos } from './generated/flow'
+export default function PostsPage() {
+  const {
+    data: posts,
+    createPost,
+    updatePost,
+    deletePost,
+    loading,
+    error,
+  } = posts.hooks.usePosts()
 
-function TodoItem({ id }: { id: string }) {
-  // Individual item with form integration
-  const { data: todo, form, update, delete: deleteTodo } = todos.hooks.useTodo(id)
-  
-  if (!todo) return <div>Loading...</div>
-  
-  return (
-    <div>
-      <form onSubmit={updateForm.submit}>
-        <input {...updateForm.field('title')} />
-        <button type="submit">Update</button>
-      </form>
-      <button onClick={() => deleteTodo()}>Delete</button>
-    </div>
-  )
-}
-```
+  const { data: categories } = categories.hooks.useCategories()
 
-### Advanced Custom State
+  // react‑hook‑form + zod, auto‑generated by the generator
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = posts.hooks.usePostForm()
 
-```typescript
-// hooks/useMyTodos.ts
-import { atom } from 'jotai'
-import { todos } from './generated/flow'
-
-// Direct atom access for custom derived state
-const { todosAtom } = todos.atoms
-
-export const myTodosAtom = atom((get) => {
-  const allTodos = get(todosAtom)
-  return Object.values(allTodos).filter(t => t.userId === currentUserId)
-})
-
-export const urgentTodosAtom = atom((get) => {
-  const myTodos = get(myTodosAtom)
-  return myTodos.filter(t => t.priority === 'HIGH' && t.status !== 'COMPLETED')
-})
-```
-
-### Programmatic Actions
-
-```typescript
-// utils/todoHelpers.ts
-import { todos } from './generated/flow'
-
-// Direct action access for programmatic use
-export async function bulkMarkComplete(todoIds: string[]) {
-  await Promise.all(
-    todoIds.map(id => 
-      todos.actions.update(id, { status: 'COMPLETED' })
-    )
-  )
-}
-
-export async function createTodoFromTemplate(template: TodoTemplate) {
-  return await todos.actions.create({
-    title: template.title,
-    description: template.description,
-    priority: template.priority,
-    userId: getCurrentUserId()
+  const onSubmit = handleSubmit(async (values) => {
+    await createPost(values)
   })
+
+  if (loading) return <p>Loading…</p>
+  if (error)   return <p>{error.message}</p>
+
+  return (
+    <section>
+      <form onSubmit={onSubmit} className="space-y-2">
+        <input {...register("title")} placeholder="Title" />
+        <textarea {...register("description")} placeholder="Description" />
+        <button type="submit">Add</button>
+        {errors.title && <p>{errors.title.message}</p>}
+      </form>
+
+      <ul className="mt-4 space-y-1">
+        {posts.map((p) => (
+          <PostItem key={p.id} id={p.id} />
+        ))}
+      </ul>
+    </section>
+  )
 }
+```
+
+### 6.2 Individual Item
+
+```tsx
+// components/PostItem.tsx
+import { posts, PostWhereUniqueInput } from "@/flow"
+
+export default function PostItem({ id }: PostWhereUniqueInput) {
+  const {
+    data,
+    updatePost,
+    deletePost,
+    loading,
+    error,
+  } = posts.hooks.usePost({ id })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = posts.hooks.usePostForm(data)
+
+  if (loading) return <li>Loading…</li>
+  if (error)   return <li>{error.message}</li>
+  if (!data)   return null
+
+  const onSubmit = handleSubmit(async (values) => {
+    await updatePost(id, values)
+  })
+
+  return (
+    <li className="space-y-1">
+      <form onSubmit={onSubmit}>
+        <input {...register("title")} defaultValue={data.title} />
+        <button type="submit">Save</button>
+      </form>
+      <button onClick={() => deletePost(id)}>Delete</button>
+    </li>
+  )
+}
+```
+
+### 6.3 Custom Derived State
+
+```ts
+// hooks/useMyPosts.ts
+import { atom } from "jotai"
+import { posts } from "./generated/flow"
+import { atomFamily } from 'jotai/utils'
+
+export const myPostsAtom = atom((get) => {
+  const allPosts = get(posts.state.entitiesAtom)
+  return Object.values(allPosts).filter((p) => p.authorId === currentUserId)
+})
+
+export const publishPostAtom = atomFamily((postId: string) =>
+  atom(null, async (get, set) => {
+    set(posts.state.pendingPatchesAtom, (p) => ({ ...p, [postId]: { type: 'update' } }))
+
+    try {
+      const updated = await posts.actions.update(postId, { status: 'PUBLISHED' })
+      set(posts.state.entitiesAtom, (m) => ({ ...m, [postId]: updated }))
+    } finally {
+      set(posts.state.pendingPatchesAtom, (p) => {
+        const { [postId]: _, ...rest } = p
+        return rest
+      })
+    }
+  })
+)
 ```
 
 ## Important Development Notes
 
-- Always run `bun run build` after template changes to update the example
-- The generator copies itself to `examples/todolist/generator.js` for local testing
-- Use the todolist example to validate changes before publishing
-- Generated code should follow the existing patterns for consistency
-- Security: Always configure `select` arrays to exclude sensitive fields
-- Clean, modern API focused on v0.2.x patterns
-
-## FlowProvider Benefits
-
-The new **FlowProvider** adds significant value:
-
-### 🚀 **SSR/Hydration Benefits**
-- **Hydration Safety**: Prevent hydration mismatches by managing initial state properly
-- **Server-Side Data**: Pre-populate atoms with server-rendered data
-- **SSG Support**: Enable static generation with initial data
-
-### 🔧 **Developer Experience**
-- **Zero Setup**: Automatic Jotai store configuration 
-- **Global Configuration**: App-wide settings (error handling, loading states)
-- **DevTools Integration**: Automatic React DevTools setup
-- **Hot Reload**: Better state persistence during development
-
-### 🎯 **State Management**
-- **Store Isolation**: Clean store instances for testing/SSR
-- **Global Error Boundary**: Centralized error handling for all Flow operations
-- **Loading Orchestration**: Global loading states and coordination
-- **Cache Management**: Automatic cache invalidation and refresh strategies
-
-### Usage Example
-
-```typescript
-// app/layout.tsx
-import { FlowProvider } from './generated/flow'
-
-export default function RootLayout({ children }) {
-  return (
-    <FlowProvider
-      config={{
-        devTools: true,
-        errorBoundary: true,
-        autoRefresh: false,
-      }}
-      onError={(error, context, modelName) => {
-        console.error(`[Flow Error] ${context}:`, error);
-      }}
-    >
-      {children}
-    </FlowProvider>
-  )
-}
-```
+- Always run `bun run build` after template changes to build the generator and update the example project
+- The generator copies itself to `examples/blog/generator.js` for local testing
+- Use the blog example to validate changes before committing
+- Generated code should align with the baseline. Validate against the baseline by running `bun run baseline:compare`
+- Security: Always configure `select` arrays as configured in the generator config (or default to all fields)
+- Clean, modern API for convenient and intuitive use

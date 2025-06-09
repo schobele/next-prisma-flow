@@ -25,6 +25,17 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 		models,
 	};
 
+	// Only set optional paths if they are actually provided
+	if (config.prismaClientPath) {
+		parsedConfig.prismaClientPath = config.prismaClientPath as string;
+	}
+	if (config.serverPath) {
+		parsedConfig.serverPath = config.serverPath as string;
+	}
+	if (config.cacheUtilsPath) {
+		parsedConfig.cacheUtilsPath = config.cacheUtilsPath as string;
+	}
+
 	// Parse model-specific configurations using flattened keys
 	for (const modelName of models) {
 		const lowerModelName = modelName.toLowerCase();

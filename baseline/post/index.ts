@@ -1,0 +1,25 @@
+import * as Actions from "./actions";
+import * as baseAtoms from "./atoms";
+import * as derived from "./derived";
+import * as fx from "./fx";
+import * as Hooks from "./hooks";
+import * as Schemas from "./schemas";
+import * as Types from "./types";
+
+export type { CreateInput, ModelType as Post, UpdateInput, WhereUniqueInput } from "./types";
+
+const Atoms = {
+	...baseAtoms,
+	...derived,
+	...fx,
+};
+
+export const posts = {
+	atoms: Atoms,
+	hooks: Hooks,
+	actions: Actions,
+	schemas: Schemas,
+	types: Types,
+} as const;
+
+export const { usePosts, usePost } = Hooks;

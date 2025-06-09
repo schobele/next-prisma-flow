@@ -1,8 +1,12 @@
 import type { DMMF } from "@prisma/generator-helper";
+import type { AnalyzedModel, ValidationRule } from "./model-analyzer.js";
 
 export interface FlowGeneratorConfig {
 	output: string;
 	prismaImport?: string;
+	prismaClientPath?: string;
+	serverPath?: string;
+	cacheUtilsPath?: string;
 	models: string[];
 	[modelName: string]: any;
 }
@@ -30,6 +34,8 @@ export interface ModelInfo {
 	config: ModelConfig;
 	model: DMMF.Model;
 	selectFields: string[];
+	analyzed: AnalyzedModel;
+	validationRules: ValidationRule[];
 }
 
 export interface TemplateData {

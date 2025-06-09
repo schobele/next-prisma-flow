@@ -26,5 +26,6 @@
 		"noUnusedParameters": false,
 		"noPropertyAccessFromIndexSignature": false
 	},
-	"exclude": ["examples/**/*"]
+	"include": ["src/**/*", "tests/**/*", "baseline/**/*"],
+	"exclude": ["examples/**/*", "node_modules/**/*", "dist/**/*"]
 }

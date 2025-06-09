@@ -1,30 +1,21 @@
 #!/usr/bin/env node
 
-import { writeFile, ensureDirectory } from "./src/utils.js";
-import { join } from "node:path";
 import { type GeneratorOptions, generatorHandler } from "@prisma/generator-helper";
+import { join } from "node:path";
+import { ensureDirectory, writeFile } from "./src/utils.js";
 
 import { parseGeneratorConfig, validateConfig } from "./src/config.js";
-import {
-	FileSystemError,
-	FlowGeneratorError,
-	ModelNotFoundError,
-	TemplateGenerationError,
-	handleGeneratorError,
-} from "./src/errors.js";
+import { FileSystemError, FlowGeneratorError, ModelNotFoundError, TemplateGenerationError } from "./src/errors.js";
+import { analyzeModel, generateValidationRules } from "./src/model-analyzer.js";
+import { analyzeSchemaRelationships } from "./src/relationship-analyzer.js";
 import { generateServerActions } from "./src/templates/actions.js";
 import { generateJotaiAtoms } from "./src/templates/atoms.js";
-import { generateEnhancedBarrelExports } from "./src/templates/enhanced-barrel.js";
-import { generateEnhancedReactHooks } from "./src/templates/enhanced-hooks.js";
-import { generateFlowProvider } from "./src/templates/flow-provider.js";
-import { generateFormProviders } from "./src/templates/form-providers.js";
-import { generateNamespaceExports } from "./src/templates/namespace.js";
-import { generateApiRoutes } from "./src/templates/routes.js";
-import { generateSmartFormHook } from "./src/templates/smart-form-hook.js";
+import { generateBarrelExports } from "./src/templates/barrel.js";
+import { generateReactHooks } from "./src/templates/hooks.js";
+import { generatePrismaTemplate } from "./src/templates/prisma.js";
 import { generateTypes } from "./src/templates/types.js";
 import type { GeneratorContext } from "./src/types.js";
 import { capitalize, createGeneratorContext, plural } from "./src/utils.js";
-import { ZodGenerationError } from "./src/zod-generator.js";
 import { generateZodSchemas } from "./src/zod-generator.js";
 
 async function generateSharedPrismaClient(context: GeneratorContext): Promise<void> {
@@ -47,14 +38,14 @@ generatorHandler({
 		return {
 			version: "1.0.0",
 			defaultOutput: "./generated/flow",
-			prettyName: "Next Prisma Flow Generator",
+			prettyName: "Prisma Next Flow Generator",
 			requiresGenerators: ["prisma-client-js"],
 		};
 	},
 
 	async onGenerate(options: GeneratorOptions) {
 		try {
-			console.log("🚀 Starting Next Prisma Flow Generator...");
+			console.log("🚀 Starting Prisma Next Flow Generator...");
 
 			// Parse and validate configuration
 			const config = parseGeneratorConfig(options);
@@ -73,8 +64,10 @@ generatorHandler({
 
 			// Generate Zod schemas first using zod-prisma-types
 			try {
+				console.log("🚀 Starting Zod schema generation...");
 				await generateZodSchemas(options, context.outputDir, config.models);
 			} catch (error) {
+				console.error("❌ Zod generation failed in main generator:", error);
 				throw new TemplateGenerationError("zod schemas", "all models", error);
 			}
 
@@ -86,6 +79,10 @@ generatorHandler({
 					throw new TemplateGenerationError("shared prisma client", "all models", error);
 				}
 			}
+
+			// Analyze schema relationships first
+			console.log("🔍 Analyzing schema relationships...");
+			const schemaRelationships = analyzeSchemaRelationships(options.dmmf);
 
 			// Generate code for each model
 			for (const modelName of config.models) {
@@ -101,6 +98,20 @@ generatorHandler({
 				const pluralName = capitalize(plural(modelName));
 				const lowerPluralName = plural(lowerModelName);
 
+				// Get relationship information for this model
+				const modelRelationships = schemaRelationships.get(modelName);
+				const relationshipInfo = modelRelationships
+					? {
+							owns: modelRelationships.ownsRelations,
+							referencedBy: modelRelationships.referencedBy,
+							relatedModels: Array.from(modelRelationships.relatedModels),
+						}
+					: undefined;
+
+				// Analyze the model structure for dynamic code generation
+				const analyzedModel = analyzeModel(model, relationshipInfo);
+				const validationRules = generateValidationRules(analyzedModel);
+
 				const modelInfo = {
 					name: modelName,
 					lowerName: lowerModelName,
@@ -110,6 +121,8 @@ generatorHandler({
 					model,
 					selectFields:
 						modelConfig.select || model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name),
+					analyzed: analyzedModel,
+					validationRules,
 				};
 
 				// Create model-specific directory
@@ -123,29 +136,17 @@ generatorHandler({
 				// Generate all template files for this model
 				try {
 					await Promise.all([
-						generateApiRoutes(modelInfo, context, modelDir).catch((error) => {
-							throw new TemplateGenerationError("routes", modelName, error);
-						}),
 						generateServerActions(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("actions", modelName, error);
 						}),
 						generateJotaiAtoms(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("atoms", modelName, error);
 						}),
-						generateEnhancedReactHooks(modelInfo, context, modelDir).catch((error) => {
+						generateReactHooks(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("hooks", modelName, error);
-						}),
-						generateFormProviders(modelInfo, context, modelDir).catch((error) => {
-							throw new TemplateGenerationError("form-providers", modelName, error);
-						}),
-						generateSmartFormHook(modelInfo, context, modelDir).catch((error) => {
-							throw new TemplateGenerationError("smart-form", modelName, error);
 						}),
 						generateTypes(modelInfo, context, modelDir).catch((error) => {
 							throw new TemplateGenerationError("types", modelName, error);
-						}),
-						generateNamespaceExports(modelInfo, context, modelDir).catch((error) => {
-							throw new TemplateGenerationError("namespace", modelName, error);
 						}),
 					]);
 				} catch (error) {
@@ -156,16 +157,17 @@ generatorHandler({
 				}
 			}
 
-			// Generate Flow Provider
+			// Generate utility files
 			try {
-				await generateFlowProvider(config, context);
+				const prismaContent = generatePrismaTemplate(context);
+				await writeFile(join(context.outputDir, "prisma.ts"), prismaContent);
 			} catch (error) {
-				throw new TemplateGenerationError("flow provider", "all models", error);
+				throw new TemplateGenerationError("utility files", "all models", error);
 			}
 
 			// Generate barrel exports
 			try {
-				await generateEnhancedBarrelExports(config, context);
+				await generateBarrelExports(config, context);
 			} catch (error) {
 				throw new TemplateGenerationError("barrel exports", "all models", error);
 			}
