@@ -9,8 +9,6 @@
 		"db:generate": "prisma generate",
 		"generate": "prisma generate",
 		"postinstall": "prisma generate",
-		"check": "biome check .",
-		"check:fix": "biome check . --write",
 		"tsc": "bunx tsc --noEmit",
 		"tsc:generated": "bunx tsc --noEmit --project tsconfig.generated.json"
 	},

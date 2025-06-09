@@ -73,9 +73,6 @@ bun run db:generate  # Generate Prisma client
 # Type check the example project generated code
 bun run tsc:generated
 
-# Format and lint the example project
-bun run check:fix
-
 # Development
 bun run dev          # Next.js with Turbopack
 bun run build        # Production build
@@ -113,55 +110,63 @@ All configuration options are optional.
 
 ## Generated Code Layout
 
-For each Prisma model Post we materialise:
+For each Prisma model Post we materialise e.g. for the model Post:
 
 flow/
+ ├─ index.ts            ← barrel file for all models
+ ├─ prisma.ts           ← re‑exported Prisma client
+ ├─ zod/
+ |   └─ index.ts        ← index for all zod schemas for a model
+ ├─ shared/             ← shared code for all models
+ |   ├─ actions/
+ |   │   ├─ factory.ts  ← factory to create actions for a model
+ |   │   └─ unwrap.ts   ← unwraps the result of an action
+ |   └─ hooks/
+ |       ├─ relation-helper.ts   ← helper to create relation helpers for a model
+ |       └─ use-form-factory.ts  ← factory to create useForm hooks for a model
  └─ post/
-     ├─ atoms.ts      ← synchronous entity & patch atoms
-     ├─ fx.ts         ← write‑only async atoms (server actions + optimistic)
-     ├─ derived.ts    ← selectors & loadable views
-     ├─ hooks.ts      ← React hooks (CRUD + forms)
-     ├─ store.ts      ← createScopedStore() helper (opt‑in)
      ├─ actions.ts    ← plain server actions wrapper for all prisma queries (full feature parity)
+     ├─ atoms.ts      ← synchronous entity & patch atoms
+     ├─ config.ts     ← configuration for the model
+     ├─ derived.ts    ← selectors & loadable views
+     ├─ fx.ts         ← write‑only async atoms (server actions + optimistic)
+     ├─ hooks.ts      ← React hooks (CRUD + forms)
+     ├─ index.ts      ← public barrel (see §3)
      ├─ schemas.ts    ← zod‑prisma validation schemas
-     ├─ types.ts      ← re‑exported Prisma & helper types
-     └─ index.ts      ← public barrel (see §3)
+     └─ types.ts      ← re‑exported Prisma & helper types
 
 Why this structure?
 - Clear separation of concerns – data (atoms) vs. side‑effects (fx) vs. view (derived).
 - Fine‑grained reactivity – UI rerenders only when relevant atoms change.
-- Server‑friendly – per‑request createStore() enables RSC or parallel test isolation.
 
 ## **Public Export Surface:**
 ```typescript
 // generated/flow/post/index.ts
-import * as State   from "./atoms"        // friendly alias
-import * as atoms   from "./atoms"        // expert access
-import { createPostStore } from "./store"
-import * as Hooks   from "./hooks"
-import * as Actions from "./actions"
-import * as Types   from "./types"
-import * as Schemas from "./schemas"
+import * as Actions from "./actions";
+import * as baseAtoms from "./atoms";
+import * as derived from "./derived";
+import * as fx from "./fx";
+import * as Hooks from "./hooks";
+import * as Schemas from "./schemas";
+import * as Types from "./types";
+
+export type { CreateInput, ModelType as Post, UpdateInput, WhereUniqueInput } from "./types";
+
+const Atoms = {
+	...baseAtoms,
+	...derived,
+	...fx,
+};
 
 export const posts = {
-  /** Low‑level synchronous Jotai atoms (advanced) */
-  atoms,
-  /** Friendly alias – use in docs & samples */
-  state: State,
-  /** Per‑request scoped store (SSR / tests) */
-  createStore: createPostStore,
-  /** Client‑side convenience hooks */
-  hooks: Hooks,
-  /** Typed server actions */
-  actions: Actions,
-  /** zod schemas & TypeScript types */
-  schemas: Schemas,
-  types: Types,
-} as const
+	atoms: Atoms,
+	hooks: Hooks,
+	actions: Actions,
+	schemas: Schemas,
+	types: Types,
+} as const;
 
-// Common re‑exports
-export const { usePosts, usePost, usePostForm } = Hooks
-export type { Post, PostCreateInput, PostWhereUniqueInput }
+export const { usePosts, usePost, usePostForm } = Hooks;
 ```
 
 Developers interact almost exclusively with hooks, actions, or state; raw atoms remain accessible for advanced composition.
@@ -179,8 +184,6 @@ Benefits:
 
 * **Predictable** – data graph mirrors DB table; operations isolated.
 * **Optimistic** – UI updates instantly; reconciliation handled centrally.
-* **Testable** – store can be swapped with `createScopedStore()`.
-
 
 ## Template System
 
@@ -188,7 +191,7 @@ Templates in `src/templates/` use string interpolation for code generation:
 - Each template exports a function that takes model data and returns generated code
 - Templates handle imports, type definitions, and business logic patterns
 - Generated code follows Next.js App Router conventions
-- Themplates do not contain any hardcoded model names or fields etc. Everything is dynamic and constructed from the schema using the DMMF (https://github.com/prisma/prisma/blob/main/packages/dmmf/src/dmmf.ts).
+- Themplates do not contain any hardcoded model names or fields etc. Everything must be dynamic and constructed from the schema using the DMMF (https://github.com/prisma/prisma/blob/main/packages/dmmf/src/dmmf.ts).
 
 
 ## Baseline
@@ -203,26 +206,30 @@ The baseline is the golden standard for the generator. It is the reference imple
 
 ```tsx
 // app/(dashboard)/posts/page.tsx
-import { posts, categories } from "./generated/flow"
+import { posts, categories } from "@/flow"
 
 export default function PostsPage() {
   const {
-    data: posts,
+    /* data */
+    data: postsList,
+    count,
+    hasAny,
+
+    /* meta */
+    loading,
+    error,
+
+    /* actions */
     createPost,
     updatePost,
     deletePost,
-    loading,
-    error,
+
+    /* relations */
+    relations,
   } = posts.hooks.usePosts()
 
-  const { data: categories } = categories.hooks.useCategories()
-
-  // react‑hook‑form + zod, auto‑generated by the generator
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = posts.hooks.usePostForm()
+  const { data: categoryList } = categories.hooks.useCategories()
+  const { register, handleSubmit, formState: { errors } } = posts.hooks.usePostForm()
 
   const onSubmit = handleSubmit(async (values) => {
     await createPost(values)
@@ -233,6 +240,8 @@ export default function PostsPage() {
 
   return (
     <section>
+      <h1 className="text-xl font-semibold">Posts ({count})</h1>
+
       <form onSubmit={onSubmit} className="space-y-2">
         <input {...register("title")} placeholder="Title" />
         <textarea {...register("description")} placeholder="Description" />
@@ -240,8 +249,10 @@ export default function PostsPage() {
         {errors.title && <p>{errors.title.message}</p>}
       </form>
 
+      {!hasAny && <p className="mt-4 italic">No posts yet</p>}
+
       <ul className="mt-4 space-y-1">
-        {posts.map((p) => (
+        {postsList.map((p) => (
           <PostItem key={p.id} id={p.id} />
         ))}
       </ul>
@@ -254,38 +265,62 @@ export default function PostsPage() {
 
 ```tsx
 // components/PostItem.tsx
-import { posts, PostWhereUniqueInput } from "@/flow"
+import { posts } from "@/flow"
 
-export default function PostItem({ id }: PostWhereUniqueInput) {
+export default function PostItem({ id }: { id: string }) {
   const {
-    data,
-    updatePost,
-    deletePost,
+    data: post,
     loading,
     error,
-  } = posts.hooks.usePost({ id })
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = posts.hooks.usePostForm(data)
+    /* entity actions */
+    updatePost,
+    deletePost,
+
+    /* relation helpers */
+    relations: { category },  // ▶ access connect / disconnect helpers
+  } = posts.hooks.usePost(id)
+
+  const { register, handleSubmit } = posts.hooks.usePostForm(post)
 
   if (loading) return <li>Loading…</li>
   if (error)   return <li>{error.message}</li>
-  if (!data)   return null
+  if (!post)   return null
 
   const onSubmit = handleSubmit(async (values) => {
-    await updatePost(id, values)
+    await updatePost(values)         // id is pre‑bound inside hook
   })
 
+  const setDraft = () => updatePost({ status: "DRAFT" })
+  const publish  = () => updatePost({ status: "PUBLISHED" })
+
   return (
-    <li className="space-y-1">
-      <form onSubmit={onSubmit}>
-        <input {...register("title")} defaultValue={data.title} />
+    <li className="space-y-2 border p-2 rounded-md">
+      <form onSubmit={onSubmit} className="space-y-1">
+        <input {...register("title")} defaultValue={post.title} />
         <button type="submit">Save</button>
       </form>
-      <button onClick={() => deletePost(id)}>Delete</button>
+
+      <div className="flex gap-2 text-sm">
+        <button onClick={setDraft}>Draft</button>
+        <button onClick={publish}>Publish</button>
+        <button onClick={() => deletePost()}>Delete</button>
+      </div>
+
+      <div className="text-xs text-muted-foreground">
+        Category: {post.categoryId ?? "–"}
+        {/* quick relation connect example */}
+        <button
+          onClick={() =>
+            category.connect({ id: "tech" /* ← choose from list */ })
+          }
+        >
+          set Tech
+        </button>
+        {!!post.categoryId && (
+          <button onClick={() => category.disconnect()}>remove</button>
+        )}
+      </div>
     </li>
   )
 }
@@ -296,24 +331,27 @@ export default function PostItem({ id }: PostWhereUniqueInput) {
 ```ts
 // hooks/useMyPosts.ts
 import { atom } from "jotai"
-import { posts } from "./generated/flow"
-import { atomFamily } from 'jotai/utils'
+import { atomFamily } from "jotai/utils"
+import { posts } from "@/flow"
 
+/** Posts authored by the current user */
 export const myPostsAtom = atom((get) => {
-  const allPosts = get(posts.state.entitiesAtom)
-  return Object.values(allPosts).filter((p) => p.authorId === currentUserId)
+  const all = get(posts.state.entitiesAtom)
+  return Object.values(all).filter((p) => p.authorId === currentUserId)
 })
 
+/** "Publish" action with optimistic update */
 export const publishPostAtom = atomFamily((postId: string) =>
   atom(null, async (get, set) => {
-    set(posts.state.pendingPatchesAtom, (p) => ({ ...p, [postId]: { type: 'update' } }))
+    // mark pending
+    set(posts.state.pendingPatchesAtom, (p) => ({ ...p, [postId]: { type: "update" } }))
 
     try {
-      const updated = await posts.actions.update(postId, { status: 'PUBLISHED' })
+      const updated = await posts.actions.update({ id: postId }, { status: "PUBLISHED" })
       set(posts.state.entitiesAtom, (m) => ({ ...m, [postId]: updated }))
     } finally {
       set(posts.state.pendingPatchesAtom, (p) => {
-        const { [postId]: _, ...rest } = p
+        const { [postId]: _ignored, ...rest } = p
         return rest
       })
     }

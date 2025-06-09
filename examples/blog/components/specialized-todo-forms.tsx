@@ -94,9 +94,7 @@ export function CreateTodoForm({ onClose, onSuccess }: CreateTodoFormProps) {
 									))}
 								</SelectContent>
 							</Select>
-							{form.field("categoryId").error && (
-								<p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>
-							)}
+							{form.field("categoryId").error && <p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>}
 						</div>
 
 						{/* Priority Field */}
@@ -239,9 +237,7 @@ export function UpdateTodoForm({ todoId, initialData, onClose, onSuccess }: Upda
 									))}
 								</SelectContent>
 							</Select>
-							{form.field("categoryId").error && (
-								<p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>
-							)}
+							{form.field("categoryId").error && <p className="text-sm text-red-500 mt-1">{form.field("categoryId").error}</p>}
 						</div>
 
 						{/* Priority Field */}

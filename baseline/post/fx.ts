@@ -97,7 +97,7 @@ export const deleteAtom = atom(null, async (get, set, id: string) => {
 	});
 
 	try {
-		unwrap(await actions.remove({ id })); // uses new `remove`
+		unwrap(await actions.remove({ id }));
 	} catch (err: any) {
 		set(errorAtom, err);
 		// rollback

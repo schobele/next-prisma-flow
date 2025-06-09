@@ -27,7 +27,7 @@ export function EnhancedTodoForm({ onClose, initialData }: EnhancedTodoFormProps
 	}, [initialData]);
 
 	// Determine mode
-	const isUpdateMode = !!(initialData && initialData.id);
+	const isUpdateMode = !!initialData?.id;
 
 	// Always call both hooks (required by Rules of Hooks) but only use one
 	const createForm = todo.hooks.useCreateTodoForm(!isUpdateMode ? filteredInitialData : undefined);

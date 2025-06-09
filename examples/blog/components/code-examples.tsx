@@ -220,9 +220,7 @@ export function CodeExamplesSection() {
 					<Code className="h-5 w-5" />
 					Code Examples & Usage Patterns
 				</CardTitle>
-				<p className="text-sm text-emerald-700">
-					Copy-paste ready examples showing how to use the specialized form hooks
-				</p>
+				<p className="text-sm text-emerald-700">Copy-paste ready examples showing how to use the specialized form hooks</p>
 			</CardHeader>
 			<CardContent>
 				<Tabs value={selectedExample} onValueChange={setSelectedExample} className="w-full">

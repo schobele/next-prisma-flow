@@ -3,7 +3,7 @@
 	"vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["node_modules", "dist", "build", "public", "*.md", "*.lock", ".next", "generator.js", "examples"]
+		"ignore": ["node_modules", "dist", "build", "public", "*.md", "*.lock", ".next", "generator.js", "components/"]
 	},
 	"formatter": {
 		"enabled": true,

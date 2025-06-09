@@ -127,7 +127,7 @@ function TodoFormFields() {
 
 // Form Actions Component
 function TodoFormActions({ onClose }: { onClose: () => void }) {
-	const { handleSubmit: formSubmit, loading, formState } = todo.hooks.useForm('create'); // or 'update' based on mode
+	const { handleSubmit: formSubmit, loading, formState } = todo.hooks.useForm("create"); // or 'update' based on mode
 	const isValid = true; // placeholder
 	const canSubmit = true; // placeholder
 	const isCreateMode = true; // placeholder
@@ -161,7 +161,10 @@ function TodoFormActions({ onClose }: { onClose: () => void }) {
 
 // Main Form Component
 function EnhancedTodoFormContent({ onClose }: { onClose: () => void }) {
-	const isCreateMode = !initialData?.id; const isUpdateMode = !!initialData?.id; const isDirty = true; const data = initialData;
+	const isCreateMode = !initialData?.id;
+	const isUpdateMode = !!initialData?.id;
+	const isDirty = true;
+	const data = initialData;
 
 	return (
 		<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

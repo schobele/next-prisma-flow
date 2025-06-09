@@ -17,8 +17,10 @@ import {
 } from "./derived";
 
 import { makeRelationHelpers } from "../shared/hooks/relation-helper";
+import { makeUseFormHook } from "../shared/hooks/use-form-factory";
 import { createAtom, deleteAtom, loadEntityAtom, loadsListAtom, updateAtom, upsertAtom } from "./fx";
-import type { ModelType, Relationships, UpdateInput } from "./types";
+import { schemas } from "./schemas";
+import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types";
 
 /**
  * Hook for managing the complete posts collection with comprehensive state management.
@@ -161,6 +163,11 @@ export function usePost(id: string) {
 		relations,
 	};
 }
+
+export const usePostForm = makeUseFormHook<ModelType, CreateInput, UpdateInput>({
+	create: schemas.createInput,
+	update: schemas.updateInput,
+});
 
 export const useSelectedId = () => useAtomValue(selectedIdAtom);
 export const useSelected = () => useAtomValue(selectedAtom);

@@ -118,7 +118,7 @@ export function getRequiredWhereUniqueImports(modelRels: ModelRelationships): st
 	const imports = new Set<string>();
 
 	// Add imports for all related models
-	for (const relatedModel of modelRels.relatedModels) {
+	for (const relatedModel of Array.from(modelRels.relatedModels)) {
 		imports.add(`${relatedModel}WhereUniqueInput`);
 	}
 
@@ -222,7 +222,7 @@ export function generateRelationshipImports(
 	}
 
 	// Add relationship-specific imports
-	for (const relatedModel of modelRels.relatedModels) {
+	for (const relatedModel of Array.from(modelRels.relatedModels)) {
 		imports.add(`${relatedModel}WhereUniqueInput`);
 	}
 

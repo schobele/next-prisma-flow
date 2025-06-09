@@ -11,7 +11,7 @@ datasource db {
 }
 
 generator flow {
-  provider = "next-prisma-flow"
+  provider = "./generator.js"
   output   = "../flow"
   models   = ["Author", "Category", "Post", "Comment"]
 

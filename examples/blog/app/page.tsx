@@ -1,484 +1,489 @@
 "use client";
 
-import { EnhancedTodoForm } from "@/components/enhanced-todo-form";
-import { SpecializedFormsDemo } from "@/components/specialized-todo-forms";
-import { CodeExamplesSection } from "@/components/code-examples";
-import { HookComparisonSection } from "@/components/hook-comparison";
-import { CategoryFilter } from "@/components/category-filter";
-import { TodoItem } from "@/components/todo-item";
-import { TodoStats } from "@/components/todo-stats";
-import { FlowProviderDemo } from "@/components/flow-provider-demo";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { todo, category, type Todo } from "@/generated/flow";
-import { Plus, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { authors, categories, posts, type Post } from "@/flow";
+import type { Prisma } from "@prisma/client";
+import { Calendar, Eye, Plus, Search, Tag, User } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-type TodoStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED";
-
-export default function TodoListPage() {
+export default function BlogPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
 	const [selectedStatus, setSelectedStatus] = useState<string>("__all__");
-	const [showAddForm, setShowAddForm] = useState(false);
-	const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+	const [showCreateForm, setShowCreateForm] = useState(false);
+	const [editingPost, setEditingPost] = useState<Post | null>(null);
 
-	// Enhanced unified hooks - everything you need in one place
-	const { data: todoData, loading: todosLoading, updateTodo, deleteTodo } = todo.hooks.useTodos();
+	// Flow hooks - unified API for data fetching and mutations
+	const {
+		data: postsData,
+		loading: postsLoading,
+		createPost,
+		updatePost,
+		deletePost,
+		fetchAll: fetchPosts,
+		hasAny: hasAnyPosts,
+	} = posts.hooks.usePosts();
 
-	const { data: categoryData } = category.hooks.useCategories();
+	const { data: categoriesData, fetchAll: fetchCategories } = categories.hooks.useCategories();
+	const { data: authorsData, fetchAll: fetchAuthors } = authors.hooks.useAuthors();
 
-	// Filter and search todos
-	const filteredTodos = useMemo(() => {
-		if (!todoData) return [];
+	useEffect(() => {
+		fetchPosts({}, {});
+		fetchCategories({}, {});
+		fetchAuthors({}, {});
+	}, [fetchPosts, fetchCategories, fetchAuthors]);
 
-		return todoData.filter((todo) => {
+	// Filter and search posts
+	const filteredPosts = useMemo(() => {
+		if (!postsData) return [];
+
+		return postsData.filter((post) => {
 			// Search filter
 			if (
 				searchQuery &&
-				!todo.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-				!todo.description?.toLowerCase().includes(searchQuery.toLowerCase())
+				!post.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+				!post.description?.toLowerCase().includes(searchQuery.toLowerCase())
 			) {
 				return false;
 			}
 
 			// Category filter
-			if (selectedCategory !== "__all__" && todo.categoryId !== selectedCategory) {
+			if (selectedCategory !== "__all__" && post.category?.id !== selectedCategory) {
 				return false;
 			}
 
 			// Status filter
-			if (selectedStatus !== "__all__" && todo.status !== selectedStatus) {
+			if (selectedStatus !== "__all__" && post.status !== selectedStatus) {
 				return false;
 			}
 
 			return true;
 		});
-	}, [todoData, searchQuery, selectedCategory, selectedStatus]);
-
-	// Group todos by status
-	const todosByStatus = useMemo(() => {
-		const grouped: Record<TodoStatus, Todo[]> = {
-			PENDING: [],
-			IN_PROGRESS: [],
-			COMPLETED: [],
-		};
-
-		for (const todo of filteredTodos) {
-			if (grouped[todo.status as TodoStatus]) {
-				grouped[todo.status as TodoStatus].push(todo);
-			}
-		}
-
-		return grouped;
-	}, [filteredTodos]);
-
-	// Handlers - simplified with the enhanced unified API
-	const handleUpdateTodo = async (id: string, updates: any) => {
-		await updateTodo(id, updates);
-	};
-
-	const handleDeleteTodo = async (id: string) => {
-		await deleteTodo(id);
-	};
-
-	const handleToggleComplete = async (todo: Todo) => {
-		const newStatus: TodoStatus = todo.status === "COMPLETED" ? "PENDING" : "COMPLETED";
-		await updateTodo(todo.id, { status: newStatus });
-	};
-
-	const handleEditTodo = (todo: Todo) => {
-		setEditingTodo(todo);
-		setShowAddForm(false); // Ensure add form is closed
-	};
-
-	const handleCloseEditForm = () => {
-		setEditingTodo(null);
-	};
+	}, [postsData, searchQuery, selectedCategory, selectedStatus]);
 
 	// Calculate statistics
 	const stats = {
-		total: todoData?.length || 0,
-		completed: todoData?.filter((t) => t.status === "COMPLETED").length || 0,
-		pending: todoData?.filter((t) => t.status === "PENDING").length || 0,
-		inProgress: todoData?.filter((t) => t.status === "IN_PROGRESS").length || 0,
-		overdue:
-			todoData?.filter((t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "COMPLETED").length || 0,
+		total: postsData?.length || 0,
+		published: postsData?.filter((p) => p.status === "PUBLISHED").length || 0,
+		draft: postsData?.filter((p) => p.status === "DRAFT").length || 0,
+		categories: categoriesData?.length || 0,
+	};
+
+	const handleCreatePost = async (data: any) => {
+		await createPost({
+			title: data.title,
+			description: data.description,
+			status: data.status || "DRAFT",
+			author: {
+				connect: {
+					id: data.authorId,
+				},
+			},
+			category: {
+				connect: {
+					id: data.categoryId,
+				},
+			},
+		});
+		setShowCreateForm(false);
+	};
+
+	const handleUpdatePost = async (id: string, updates: Prisma.PostUpdateInput) => {
+		await updatePost({
+			id,
+			data: updates,
+		});
+		setEditingPost(null);
+	};
+
+	const handleDeletePost = async (id: string) => {
+		await deletePost(id);
+	};
+
+	const formatDate = (date: string | Date) => {
+		return new Date(date).toLocaleDateString();
+	};
+
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case "PUBLISHED":
+				return "bg-green-100 text-green-800";
+			case "DRAFT":
+				return "bg-yellow-100 text-yellow-800";
+			default:
+				return "bg-gray-100 text-gray-800";
+		}
 	};
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+		<div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
 			<div className="container mx-auto px-4 py-8">
 				{/* Header */}
 				<div className="mb-8">
-					<div className="flex items-center justify-between mb-4">
+					<div className="flex items-center justify-between mb-6">
 						<div>
-							<h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">TodoList v0.2.1</h1>
-							<p className="text-gray-600 dark:text-gray-300">
-								Enhanced API with FlowProvider, specialized form hooks & type safety
-							</p>
+							<h1 className="text-4xl font-bold text-gray-900 mb-2">Blog Dashboard</h1>
+							<p className="text-gray-600">Powered by Next Prisma Flow Generator - Type-safe, optimistic updates</p>
 						</div>
-						<div className="flex gap-2">
-							<Button onClick={() => setShowAddForm(true)} className="bg-green-600 hover:bg-green-700 text-white">
-								<Plus className="h-4 w-4 mr-2" />
-								Create Todo
-							</Button>
-							<Button
-								onClick={() => {
-									const firstTodo = todoData?.[0];
-									if (firstTodo) {
-										setEditingTodo(firstTodo);
-									}
-								}}
-								disabled={!todoData?.length}
-								variant="outline"
-								className="border-blue-300 text-blue-700 hover:bg-blue-50"
-							>
-								Edit First Todo
-							</Button>
-						</div>
+						<Button onClick={() => setShowCreateForm(true)} className="bg-blue-600 hover:bg-blue-700">
+							<Plus className="h-4 w-4 mr-2" />
+							New Post
+						</Button>
 					</div>
 
 					{/* Statistics */}
-					<TodoStats stats={stats} />
+					<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+						<Card>
+							<CardContent className="p-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm text-gray-600">Total Posts</p>
+										<p className="text-2xl font-bold">{stats.total}</p>
+									</div>
+									<Eye className="h-8 w-8 text-blue-500" />
+								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardContent className="p-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm text-gray-600">Published</p>
+										<p className="text-2xl font-bold text-green-600">{stats.published}</p>
+									</div>
+									<Calendar className="h-8 w-8 text-green-500" />
+								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardContent className="p-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm text-gray-600">Drafts</p>
+										<p className="text-2xl font-bold text-yellow-600">{stats.draft}</p>
+									</div>
+									<User className="h-8 w-8 text-yellow-500" />
+								</div>
+							</CardContent>
+						</Card>
+						<Card>
+							<CardContent className="p-4">
+								<div className="flex items-center justify-between">
+									<div>
+										<p className="text-sm text-gray-600">Categories</p>
+										<p className="text-2xl font-bold text-purple-600">{stats.categories}</p>
+									</div>
+									<Tag className="h-8 w-8 text-purple-500" />
+								</div>
+							</CardContent>
+						</Card>
+					</div>
 
-					{/* FlowProvider Demo */}
-					<FlowProviderDemo />
+					{/* Filters */}
+					<Card>
+						<CardContent className="p-4">
+							<div className="flex flex-wrap gap-4 items-center">
+								{/* Search */}
+								<div className="relative flex-1 min-w-64">
+									<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+									<Input
+										placeholder="Search posts..."
+										value={searchQuery}
+										onChange={(e) => setSearchQuery(e.target.value)}
+										className="pl-10"
+									/>
+								</div>
 
-					{/* Documentation and Examples Accordion */}
-					<Card className="mt-6 border-2 border-blue-200 bg-blue-50/50">
-						<CardHeader>
-							<CardTitle className="text-lg flex items-center gap-2">
-								📚 Next Prisma Flow v0.2.1 Documentation
-							</CardTitle>
-							<p className="text-sm text-gray-600">Explore specialized form hooks, code examples, and usage patterns</p>
-						</CardHeader>
-						<CardContent className="p-0">
-							<Accordion type="single" collapsible className="w-full">
-								{/* Quick Start Guide */}
-								<AccordionItem value="quick-start" className="border-b-0">
-									<AccordionTrigger className="px-6 py-4 hover:bg-blue-50/50">
-										<div className="flex items-center gap-2">
-											🚀 <span className="font-semibold">Quick Start: Specialized Form Hooks</span>
-										</div>
-									</AccordionTrigger>
-									<AccordionContent className="px-6 pb-4">
-										<div className="space-y-4">
-											<p className="text-sm text-gray-600">
-												Experience the new type-safe form hooks with dedicated create and update patterns:
-											</p>
-											<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-												<div className="bg-white p-4 rounded border border-green-200">
-													<code className="text-green-600 font-semibold text-sm">useCreateTodoForm()</code>
-													<ul className="text-xs mt-2 space-y-1 text-gray-600">
-														<li>✅ Strict validation with TodoCreateInputSchema</li>
-														<li>✅ Required fields enforced</li>
-														<li>✅ Auto-reset after successful creation</li>
-														<li>✅ Perfect type inference</li>
-													</ul>
-												</div>
-												<div className="bg-white p-4 rounded border border-blue-200">
-													<code className="text-blue-600 font-semibold text-sm">useUpdateTodoForm(id, data)</code>
-													<ul className="text-xs mt-2 space-y-1 text-gray-600">
-														<li>✅ Partial updates with TodoUpdateInputSchema</li>
-														<li>✅ All fields optional</li>
-														<li>✅ ID management included</li>
-														<li>✅ Smart data filtering</li>
-													</ul>
-												</div>
-											</div>
-											<div className="mt-4">
-												<SpecializedFormsDemo />
-											</div>
-										</div>
-									</AccordionContent>
-								</AccordionItem>
+								{/* Category Filter */}
+								<Select value={selectedCategory} onValueChange={setSelectedCategory}>
+									<SelectTrigger className="w-48">
+										<SelectValue placeholder="Category" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="__all__">All Categories</SelectItem>
+										{categoriesData?.map((cat) => (
+											<SelectItem key={cat.id} value={cat.id}>
+												{cat.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 
-								{/* Code Examples */}
-								<AccordionItem value="code-examples" className="border-b-0">
-									<AccordionTrigger className="px-6 py-4 hover:bg-blue-50/50">
-										<div className="flex items-center gap-2">
-											💻 <span className="font-semibold">Code Examples & Usage Patterns</span>
-										</div>
-									</AccordionTrigger>
-									<AccordionContent className="px-6 pb-4">
-										<CodeExamplesSection />
-									</AccordionContent>
-								</AccordionItem>
+								{/* Status Filter */}
+								<Select value={selectedStatus} onValueChange={setSelectedStatus}>
+									<SelectTrigger className="w-40">
+										<SelectValue placeholder="Status" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="__all__">All Status</SelectItem>
+										<SelectItem value="PUBLISHED">Published</SelectItem>
+										<SelectItem value="DRAFT">Draft</SelectItem>
+									</SelectContent>
+								</Select>
 
-								{/* Architecture Guide */}
-								<AccordionItem value="architecture" className="border-b-0">
-									<AccordionTrigger className="px-6 py-4 hover:bg-blue-50/50">
-										<div className="flex items-center gap-2">
-											🏗️ <span className="font-semibold">Architecture: Specialized vs Universal Hooks</span>
-										</div>
-									</AccordionTrigger>
-									<AccordionContent className="px-6 pb-4">
-										<HookComparisonSection />
-									</AccordionContent>
-								</AccordionItem>
-
-								{/* API Reference */}
-								<AccordionItem value="api-reference" className="border-b-0">
-									<AccordionTrigger className="px-6 py-4 hover:bg-blue-50/50">
-										<div className="flex items-center gap-2">
-											⚡ <span className="font-semibold">API Reference & Generated Hooks</span>
-										</div>
-									</AccordionTrigger>
-									<AccordionContent className="px-6 pb-4">
-										<div className="space-y-6">
-											{/* Namespace Exports */}
-											<div>
-												<h4 className="font-semibold text-sm mb-3 text-gray-700">Namespace Exports</h4>
-												<div className="bg-gray-50 p-4 rounded-lg">
-													<pre className="text-xs text-gray-700">
-														{`import { todo } from '@/generated/flow';
-
-// Unified hooks for todo management
-const todos = todo.hooks.useTodos();
-const todoItem = todo.hooks.useTodo(id);
-
-// Specialized form hooks
-const createForm = todo.hooks.useCreateTodoForm();
-const updateForm = todo.hooks.useUpdateTodoForm(id, data);
-
-// Server actions
-await todo.actions.createTodo(data);
-await todo.actions.updateTodo(id, updates);
-
-// Types and schemas
-const schema = todo.types.TodoCreateInputSchema;
-type TodoType = todo.types.Todo;`}
-													</pre>
-												</div>
-											</div>
-
-											{/* Hook Signatures */}
-											<div>
-												<h4 className="font-semibold text-sm mb-3 text-gray-700">Hook Signatures</h4>
-												<div className="space-y-3">
-													<div className="bg-green-50 p-3 rounded border border-green-200">
-														<div className="text-xs font-mono text-green-700 mb-1">
-															useCreateTodoForm(initialData?: Partial&lt;TodoCreateInput&gt;)
-														</div>
-														<div className="text-xs text-gray-600">
-															{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading }"}
-														</div>
-													</div>
-													<div className="bg-blue-50 p-3 rounded border border-blue-200">
-														<div className="text-xs font-mono text-blue-700 mb-1">
-															useUpdateTodoForm(id: string, initialData?: Partial&lt;TodoUpdateInput&gt;)
-														</div>
-														<div className="text-xs text-gray-600">
-															{"Returns: { data, isValid, isDirty, errors, field, submit, reset, loading, id }"}
-														</div>
-													</div>
-												</div>
-											</div>
-
-											{/* Field Helper */}
-											<div>
-												<h4 className="font-semibold text-sm mb-3 text-gray-700">Field Helper Pattern</h4>
-												<div className="bg-purple-50 p-4 rounded-lg">
-													<pre className="text-xs text-purple-700">
-														{`const form = useCreateTodoForm();
-
-// Auto-wired field helper
-const titleField = form.field('title');
-// Returns: { name, value, onChange, onBlur, error, required }
-
-// Use with any input component
-<input {...titleField} />
-<TextField {...titleField} />
-<MyCustomInput {...titleField} />`}
-													</pre>
-												</div>
-											</div>
-										</div>
-									</AccordionContent>
-								</AccordionItem>
-							</Accordion>
+								{/* Clear Filters */}
+								{(searchQuery || selectedCategory !== "__all__" || selectedStatus !== "__all__") && (
+									<Button
+										variant="outline"
+										onClick={() => {
+											setSearchQuery("");
+											setSelectedCategory("__all__");
+											setSelectedStatus("__all__");
+										}}
+									>
+										Clear
+									</Button>
+								)}
+							</div>
 						</CardContent>
 					</Card>
 				</div>
 
-				{/* Filters */}
-				<Card className="mb-6">
-					<CardHeader>
-						<CardTitle className="text-lg">Filters</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="flex flex-wrap gap-4 items-center">
-							{/* Search */}
-							<div className="relative flex-1 min-w-64">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-								<Input
-									placeholder="Search todos..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
+				{/* Posts List */}
+				<div className="space-y-4">
+					{postsLoading && !hasAnyPosts ? (
+						<div className="space-y-4">
+							{[1, 2, 3].map((i) => (
+								<Card key={i} className="h-32">
+									<CardContent className="p-6">
+										<div className="animate-pulse space-y-3">
+											<div className="h-4 bg-gray-200 rounded w-3/4" />
+											<div className="h-3 bg-gray-200 rounded w-1/2" />
+											<div className="h-3 bg-gray-200 rounded w-1/4" />
+										</div>
+									</CardContent>
+								</Card>
+							))}
+						</div>
+					) : filteredPosts && filteredPosts.length > 0 ? (
+						filteredPosts.map((post) => {
+							const category = post.category;
+							const author = post.author;
 
-							{/* Category Filter */}
-							<CategoryFilter
-								categories={categoryData || []}
-								selectedCategory={selectedCategory}
-								onCategoryChange={setSelectedCategory}
-							/>
+							return (
+								<Card key={post.id} className="hover:shadow-lg transition-shadow">
+									<CardHeader className="pb-3">
+										<div className="flex items-start justify-between">
+											<div className="flex-1">
+												<CardTitle className="text-xl mb-2">{post.title}</CardTitle>
+												<p className="text-gray-600 text-sm mb-3">{post.description}</p>
+												<div className="flex items-center gap-4 text-sm text-gray-500">
+													<div className="flex items-center gap-1">
+														<User className="h-4 w-4" />
+														{author?.name || "Unknown Author"}
+													</div>
+													<div className="flex items-center gap-1">
+														<Calendar className="h-4 w-4" />
+														{formatDate(post.createdAt)}
+													</div>
+													{category && (
+														<div className="flex items-center gap-1">
+															<Tag className="h-4 w-4" />
+															<span
+																className="px-2 py-1 rounded text-xs"
+																style={{ backgroundColor: `${category.color}20`, color: category.color }}
+															>
+																{category.name}
+															</span>
+														</div>
+													)}
+												</div>
+											</div>
+											<div className="flex items-start gap-2">
+												<Badge className={getStatusColor(post.status)}>{post.status}</Badge>
+											</div>
+										</div>
+									</CardHeader>
+									<CardContent className="pt-0">
+										<div className="flex items-center justify-between">
+											<div className="text-sm text-gray-500">
+												{post.publishedAt ? (
+													<span>Published {formatDate(post.publishedAt)}</span>
+												) : (
+													<span>Updated {formatDate(post.updatedAt)}</span>
+												)}
+											</div>
+											<div className="flex gap-2">
+												<Button variant="outline" size="sm" onClick={() => setEditingPost(post)}>
+													Edit
+												</Button>
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() =>
+														handleUpdatePost(post.id, {
+															status: post.status === "PUBLISHED" ? "DRAFT" : "PUBLISHED",
+															publishedAt: post.status === "DRAFT" ? new Date() : null,
+														})
+													}
+												>
+													{post.status === "PUBLISHED" ? "Unpublish" : "Publish"}
+												</Button>
+												<Button variant="destructive" size="sm" onClick={() => handleDeletePost(post.id)}>
+													Delete
+												</Button>
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							);
+						})
+					) : (
+						<Card className="py-12">
+							<CardContent className="text-center">
+								<p className="text-gray-500 mb-4">No posts found</p>
+								<Button onClick={() => setShowCreateForm(true)}>
+									<Plus className="h-4 w-4 mr-2" />
+									Create Your First Post
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+				</div>
 
-							{/* Status Filter */}
-							<Select value={selectedStatus} onValueChange={setSelectedStatus}>
-								<SelectTrigger className="w-40">
-									<SelectValue placeholder="Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="__all__">All Status</SelectItem>
-									<SelectItem value="PENDING">Pending</SelectItem>
-									<SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-									<SelectItem value="COMPLETED">Completed</SelectItem>
-								</SelectContent>
-							</Select>
-
-							{/* Clear Filters */}
-							{(searchQuery || selectedCategory !== "__all__" || selectedStatus !== "__all__") && (
-								<Button
-									variant="outline"
-									onClick={() => {
-										setSearchQuery("");
-										setSelectedCategory("__all__");
-										setSelectedStatus("__all__");
+				{/* Simple Create Form Modal */}
+				{showCreateForm && (
+					<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+						<Card className="w-full max-w-md">
+							<CardHeader>
+								<CardTitle>Create New Post</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-4">
+								<form
+									onSubmit={(e) => {
+										e.preventDefault();
+										const formData = new FormData(e.currentTarget);
+										handleCreatePost({
+											title: formData.get("title"),
+											description: formData.get("description"),
+											status: formData.get("status"),
+											authorId: formData.get("authorId"),
+											categoryId: formData.get("categoryId"),
+										});
 									}}
 								>
-									Clear Filters
-								</Button>
-							)}
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Todo Lists */}
-				<Tabs defaultValue="all" className="w-full">
-					<TabsList className="grid w-full grid-cols-4">
-						<TabsTrigger value="all">All Todos</TabsTrigger>
-						<TabsTrigger value="pending">Pending</TabsTrigger>
-						<TabsTrigger value="progress">In Progress</TabsTrigger>
-						<TabsTrigger value="completed">Completed</TabsTrigger>
-					</TabsList>
-
-					<TabsContent value="all" className="mt-6">
-						<div className="space-y-4">
-							{todosLoading ? (
-								<div className="space-y-3">
-									{[1, 2, 3].map((i) => (
-										<div key={i} className="h-20 bg-gray-200 animate-pulse rounded-lg" />
-									))}
-								</div>
-							) : filteredTodos && filteredTodos.length > 0 ? (
-								filteredTodos
-									.filter((todo) => Boolean(todo))
-									.map((todo) => (
-										<TodoItem
-											key={todo.id}
-											todo={todo}
-											onToggleComplete={() => handleToggleComplete(todo)}
-											onUpdate={(updates) => handleUpdateTodo(todo.id, updates)}
-											onDelete={() => handleDeleteTodo(todo.id)}
-											onEdit={() => handleEditTodo(todo)}
-										/>
-									))
-							) : (
-								<Card className="py-12 border-2 border-dashed border-gray-300">
-									<CardContent className="text-center">
-										<p className="text-gray-500 dark:text-gray-400 mb-4">
-											No todos found. Try the new specialized form hooks!
-										</p>
-										<div className="flex gap-2 justify-center">
-											<Button onClick={() => setShowAddForm(true)} className="bg-green-600 hover:bg-green-700">
-												<Plus className="h-4 w-4 mr-2" />
-												useCreateTodoForm()
+									<div className="space-y-4">
+										<Input name="title" placeholder="Post title" required />
+										<Input name="description" placeholder="Description" />
+										<Select name="authorId" required>
+											<SelectTrigger>
+												<SelectValue placeholder="Select author" />
+											</SelectTrigger>
+											<SelectContent>
+												{authorsData?.map((author) => (
+													<SelectItem key={author.id} value={author.id}>
+														{author.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Select name="categoryId">
+											<SelectTrigger>
+												<SelectValue placeholder="Select category" />
+											</SelectTrigger>
+											<SelectContent>
+												{categoriesData?.map((category) => (
+													<SelectItem key={category.id} value={category.id}>
+														{category.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Select name="status" defaultValue="DRAFT">
+											<SelectTrigger>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="DRAFT">Draft</SelectItem>
+												<SelectItem value="PUBLISHED">Published</SelectItem>
+											</SelectContent>
+										</Select>
+										<div className="flex gap-2">
+											<Button type="submit" className="flex-1">
+												Create Post
+											</Button>
+											<Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+												Cancel
 											</Button>
 										</div>
-										<p className="text-xs text-gray-400 mt-2">Type-safe • Auto-validation • Auto-save</p>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					</TabsContent>
+									</div>
+								</form>
+							</CardContent>
+						</Card>
+					</div>
+				)}
 
-					<TabsContent value="pending" className="mt-6">
-						<div className="space-y-4">
-							{todosByStatus.PENDING?.map((todo) => (
-								<TodoItem
-									key={todo.id}
-									todo={todo}
-									onToggleComplete={() => handleToggleComplete(todo)}
-									onUpdate={(updates) => handleUpdateTodo(todo.id, updates)}
-									onDelete={() => handleDeleteTodo(todo.id)}
-									onEdit={() => handleEditTodo(todo)}
-								/>
-							)) || (
-								<Card className="py-8">
-									<CardContent className="text-center">
-										<p className="text-gray-500">No pending todos</p>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					</TabsContent>
-
-					<TabsContent value="progress" className="mt-6">
-						<div className="space-y-4">
-							{todosByStatus.IN_PROGRESS?.map((todo) => (
-								<TodoItem
-									key={todo.id}
-									todo={todo}
-									onToggleComplete={() => handleToggleComplete(todo)}
-									onUpdate={(updates) => handleUpdateTodo(todo.id, updates)}
-									onDelete={() => handleDeleteTodo(todo.id)}
-									onEdit={() => handleEditTodo(todo)}
-								/>
-							)) || (
-								<Card className="py-8">
-									<CardContent className="text-center">
-										<p className="text-gray-500">No todos in progress</p>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					</TabsContent>
-
-					<TabsContent value="completed" className="mt-6">
-						<div className="space-y-4">
-							{todosByStatus.COMPLETED?.map((todo) => (
-								<TodoItem
-									key={todo.id}
-									todo={todo}
-									onToggleComplete={() => handleToggleComplete(todo)}
-									onUpdate={(updates) => handleUpdateTodo(todo.id, updates)}
-									onDelete={() => handleDeleteTodo(todo.id)}
-									onEdit={() => handleEditTodo(todo)}
-								/>
-							)) || (
-								<Card className="py-8">
-									<CardContent className="text-center">
-										<p className="text-gray-500">No completed todos</p>
-									</CardContent>
-								</Card>
-							)}
-						</div>
-					</TabsContent>
-				</Tabs>
-
-				{/* Enhanced Smart Form Modal - Create */}
-				{showAddForm && <EnhancedTodoForm onClose={() => setShowAddForm(false)} />}
-
-				{/* Enhanced Smart Form Modal - Edit */}
-				{editingTodo && <EnhancedTodoForm initialData={editingTodo} onClose={handleCloseEditForm} />}
+				{/* Simple Edit Form Modal */}
+				{editingPost && (
+					<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+						<Card className="w-full max-w-md">
+							<CardHeader>
+								<CardTitle>Edit Post</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<form
+									onSubmit={(e) => {
+										e.preventDefault();
+										const formData = new FormData(e.currentTarget);
+										handleUpdatePost(editingPost.id, {
+											title: formData.get("title") as string,
+											description: formData.get("description") as string,
+											status: formData.get("status") as string,
+											category: {
+												connect: {
+													id: formData.get("categoryId") as string,
+												},
+											},
+											author: {
+												connect: {
+													id: formData.get("authorId") as string,
+												},
+											},
+										});
+									}}
+								>
+									<div className="space-y-4">
+										<Input name="title" defaultValue={editingPost.title} placeholder="Post title" required />
+										<Input name="description" defaultValue={editingPost.description || ""} placeholder="Description" />
+										<Select name="categoryId" defaultValue={editingPost.category?.id || ""}>
+											<SelectTrigger>
+												<SelectValue placeholder="Select category" />
+											</SelectTrigger>
+											<SelectContent>
+												{categoriesData?.map((category) => (
+													<SelectItem key={category.id} value={category.id}>
+														{category.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+										<Select name="status" defaultValue={editingPost.status}>
+											<SelectTrigger>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="DRAFT">Draft</SelectItem>
+												<SelectItem value="PUBLISHED">Published</SelectItem>
+											</SelectContent>
+										</Select>
+										<div className="flex gap-2">
+											<Button type="submit" className="flex-1">
+												Update Post
+											</Button>
+											<Button type="button" variant="outline" onClick={() => setEditingPost(null)}>
+												Cancel
+											</Button>
+										</div>
+									</div>
+								</form>
+							</CardContent>
+						</Card>
+					</div>
+				)}
 			</div>
 		</div>
 	);

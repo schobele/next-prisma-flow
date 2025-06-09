@@ -118,7 +118,7 @@ async function main() {
 	console.log(`📝 Created ${posts.length} posts`);
 
 	// Create sample comments for published posts
-	const publishedPosts = posts.filter(post => post.status === "PUBLISHED");
+	const publishedPosts = posts.filter((post) => post.status === "PUBLISHED");
 	const comments = await Promise.all([
 		prisma.comment.create({
 			data: {

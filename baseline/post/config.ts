@@ -1,4 +1,4 @@
-import { prisma } from "../shared/prisma";
+import { prisma } from "../prisma";
 import type { SelectInput } from "./types";
 
 export const model = "post" as const;

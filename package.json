@@ -10,13 +10,9 @@
 	},
 	"files": ["dist/", "README.md", "package.json"],
 	"scripts": {
-		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
+		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/blog/generator.js",
 		"dev": "bun run index.ts",
 		"test": "bun test",
-		"test:structure": "bun test tests/structural/",
-		"test:content": "bun test tests/content/",
-		"test:types": "bun test tests/types/",
-		"test:functional": "bun test tests/functional/",
 		"test:watch": "bun test --watch",
 		"baseline:compare": "bun run tests/tools/baseline-compare.ts",
 		"validation": "bun run tests/scripts/run-validation.ts",
@@ -25,7 +21,9 @@
 		"check:fix": "biome check . --write --unsafe",
 		"tsc": "bunx tsc --noEmit",
 		"prepare": "husky",
-		"prisma:generate": "prisma generate --schema=baseline/schema.prisma"
+		"prisma:generate": "prisma generate --schema=baseline/schema.prisma",
+		"test:baseline": "bun run scripts/test-baseline.ts all",
+		"test:baseline:script": "bun test tests/baseline-comparison.test.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -51,8 +49,10 @@
 		"node": ">=18.0.0"
 	},
 	"dependencies": {
+		"@hookform/resolvers": "^5.1.1",
 		"change-case": "^5.4.4",
 		"pluralize": "^8.0.0",
+		"react-hook-form": "^7.57.0",
 		"validator": "^13.15.15",
 		"zod-prisma-types": "^3.2.4"
 	},
