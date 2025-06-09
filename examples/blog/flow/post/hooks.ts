@@ -85,8 +85,7 @@ export function usePost(id: string) {
 
 	const update = (data: UpdateInput) => updatePost({ id, data });
 	const remove = () => deletePost(id);
-	const upsert = (payload: { create: CreateInput; update: UpdateInput }) =>
-		upsertPost({ id }, payload);
+	const upsert = (payload: { create: CreateInput; update: UpdateInput }) => upsertPost({ id }, payload);
 
 	const relations = makeRelationHelpers<Relationships>(id, updatePost);
 

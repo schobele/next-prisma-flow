@@ -17,5 +17,5 @@ export const select: SelectInput = {
 	updatedAt: true,
 	author: true,
 	category: true,
-	comments: true
+	comments: true,
 };

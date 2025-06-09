@@ -13,20 +13,10 @@ import type { ModelType as Post } from "./post/types";
 import type { ModelType as Comment } from "./comment/types";
 
 // Export all models
-export {
-	authors,
-	categories,
-	posts,
-	comments,
-};
+export { authors, categories, posts, comments };
 
 // Export all types
-export {
-	type Author,
-	type Category,
-	type Post,
-	type Comment,
-};
+export type { Author, Category, Post, Comment };
 
 // Export shared utilities
 export { prisma } from "./prisma";

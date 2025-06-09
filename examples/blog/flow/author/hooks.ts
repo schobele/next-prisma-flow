@@ -85,8 +85,7 @@ export function useAuthor(id: string) {
 
 	const update = (data: UpdateInput) => updateAuthor({ id, data });
 	const remove = () => deleteAuthor(id);
-	const upsert = (payload: { create: CreateInput; update: UpdateInput }) =>
-		upsertAuthor({ id }, payload);
+	const upsert = (payload: { create: CreateInput; update: UpdateInput }) => upsertAuthor({ id }, payload);
 
 	const relations = makeRelationHelpers<Relationships>(id, updateAuthor);
 

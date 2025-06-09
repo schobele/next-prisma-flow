@@ -25,24 +25,24 @@ export type ModelType = Prisma.PostGetPayload<{
 		updatedAt: true;
 		author: {
 			select: {
-		id: true;
-		email: true;
-		name: true;
-		avatar: true;
-		createdAt: true;
-		updatedAt: true;
-	};
+				id: true;
+				email: true;
+				name: true;
+				avatar: true;
+				createdAt: true;
+				updatedAt: true;
+			};
 		};
 		category: {
 			select: {
-		id: true;
-		name: true;
-		color: true;
-		createdAt: true;
-	};
+				id: true;
+				name: true;
+				color: true;
+				createdAt: true;
+			};
 		};
 		comments: true;
-	}
+	};
 }>;
 
 export type Options = {

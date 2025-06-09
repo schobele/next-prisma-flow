@@ -20,7 +20,7 @@ export type ModelType = Prisma.CommentGetPayload<{
 		content: true;
 		createdAt: true;
 		updatedAt: true;
-	}
+	};
 }>;
 
 export type Options = {

@@ -11,5 +11,5 @@ export const select: SelectInput = {
 	id: true,
 	content: true,
 	createdAt: true,
-	updatedAt: true
+	updatedAt: true,
 };

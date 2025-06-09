@@ -85,8 +85,7 @@ export function useComment(id: string) {
 
 	const update = (data: UpdateInput) => updateComment({ id, data });
 	const remove = () => deleteComment(id);
-	const upsert = (payload: { create: CreateInput; update: UpdateInput }) =>
-		upsertComment({ id }, payload);
+	const upsert = (payload: { create: CreateInput; update: UpdateInput }) => upsertComment({ id }, payload);
 
 	const relations = makeRelationHelpers<Relationships>(id, updateComment);
 

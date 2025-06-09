@@ -22,7 +22,7 @@ export type ModelType = Prisma.AuthorGetPayload<{
 		avatar: true;
 		createdAt: true;
 		updatedAt: true;
-	}
+	};
 }>;
 
 export type Options = {

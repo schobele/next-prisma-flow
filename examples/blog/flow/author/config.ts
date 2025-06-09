@@ -13,5 +13,5 @@ export const select: SelectInput = {
 	name: true,
 	avatar: true,
 	createdAt: true,
-	updatedAt: true
+	updatedAt: true,
 };

@@ -20,7 +20,7 @@ export type ModelType = Prisma.CategoryGetPayload<{
 		name: true;
 		color: true;
 		createdAt: true;
-	}
+	};
 }>;
 
 export type Options = {

@@ -85,8 +85,7 @@ export function useCategory(id: string) {
 
 	const update = (data: UpdateInput) => updateCategory({ id, data });
 	const remove = () => deleteCategory(id);
-	const upsert = (payload: { create: CreateInput; update: UpdateInput }) =>
-		upsertCategory({ id }, payload);
+	const upsert = (payload: { create: CreateInput; update: UpdateInput }) => upsertCategory({ id }, payload);
 
 	const relations = makeRelationHelpers<Relationships>(id, updateCategory);
 
