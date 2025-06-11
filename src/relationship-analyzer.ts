@@ -91,12 +91,12 @@ export function analyzeSchemaRelationships(dmmf: DMMF.Document): Map<string, Mod
 
 			// Add reverse relationship info to the related model
 			const relatedModelRels = modelRelationships.get(relatedModel);
-			if (relatedModelRels && !isOwning) {
-				// This model is referenced by the related model
-				const reverseRelationType: RelationshipInfo["type"] = isList ? "many-to-one" : "one-to-one";
+			if (relatedModelRels && isOwning && backReferenceField) {
+				// This is the owning side - add reverse relationship to the related model
+				const reverseRelationType: RelationshipInfo["type"] = backReferenceField.isList ? "one-to-many" : "one-to-one";
 
 				relatedModelRels.referencedBy.push({
-					fieldName: backReferenceField?.name || model.name.toLowerCase(),
+					fieldName: backReferenceField.name,
 					relatedModel: model.name,
 					type: reverseRelationType,
 					isRequired: false, // Back references are typically optional

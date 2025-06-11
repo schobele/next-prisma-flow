@@ -1,6 +1,6 @@
 // hooks.ts
 import { useAtomValue, useSetAtom } from "jotai";
-import { entityAtomFamily, errorAtom } from "./atoms";
+import { entityAtomFamily, errorAtom, pendingPatchesAtom } from "./atoms";
 import {
 	countAtom,
 	countByFieldAtomFamily,
@@ -18,6 +18,7 @@ import {
 
 import { makeRelationHelpers } from "../shared/hooks/relation-helper";
 import { makeUseFormHook } from "../shared/hooks/use-form-factory";
+import { useAutoload } from "../shared/hooks/useAutoload";
 import { createAtom, deleteAtom, loadEntityAtom, loadsListAtom, updateAtom, upsertAtom } from "./fx";
 import { schemas } from "./schemas";
 import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types";
@@ -28,6 +29,9 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * Provides access to the full posts list along with loading states, error handling,
  * and all necessary CRUD operations. This hook manages the global state for posts
  * and automatically handles loading indicators and error states.
+ *
+ * @param {Object} opts - Configuration options
+ * @param {boolean} [opts.autoLoad=true] - Whether to automatically load data when component mounts
  *
  * @returns {Object} Complete posts management interface
  * @returns {Array} data - Array of posts (empty array when loading or on error)
@@ -59,7 +63,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * }
  * ```
  */
-export function usePosts() {
+export function usePosts(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const loadable = useAtomValue(listLoadable);
 	const busy = useAtomValue(loadingAtom);
 	const count = useAtomValue(countAtom);
@@ -72,6 +76,11 @@ export function usePosts() {
 	const upsertPost = useSetAtom(upsertAtom);
 	const fetchAll = useSetAtom(loadsListAtom);
 	const fetchById = useSetAtom(loadEntityAtom);
+
+	useAutoload(
+		() => opts.autoLoad !== false && !busy && !hasAny,
+		() => fetchAll({}, {}),
+	);
 
 	return {
 		/* data */
@@ -101,6 +110,8 @@ export function usePosts() {
  * Actions are pre-bound with the post ID for convenience.
  *
  * @param {string} id - The unique identifier of the post to manage
+ * @param {Object} opts - Configuration options
+ * @param {boolean} [opts.autoLoad=true] - Whether to automatically load data when component mounts
  *
  * @returns {Object} Single post management interface
  * @returns {Object|null} data - The post data object, null if not found or loading
@@ -134,17 +145,23 @@ export function usePosts() {
  * }
  * ```
  */
-export function usePost(id: string) {
+export function usePost(id: string, opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const post = useAtomValue(entityAtomFamily(id));
 	const loadable = useAtomValue(entityLoadableFamily(id));
 	const busyItem = useAtomValue(entityBusyFamily(id));
 	const lastError = useAtomValue(errorAtom);
+	const pendingPatches = useAtomValue(pendingPatchesAtom);
 
 	const updatePost = useSetAtom(updateAtom);
 	const deletePost = useSetAtom(deleteAtom);
 	const fetch = useSetAtom(loadEntityAtom);
 
 	const relations = makeRelationHelpers<Relationships>(id, updatePost);
+
+	useAutoload(
+		() => opts.autoLoad !== false && !busyItem && !post && !pendingPatches[id],
+		() => fetch({ id }),
+	);
 
 	return {
 		/* data */
@@ -174,7 +191,6 @@ export const useSelected = () => useAtomValue(selectedAtom);
 export const useSetSelectedId = () => useSetAtom(selectedIdAtom);
 
 export function useListByFieldValue<K extends keyof ModelType>(field: K, value: ModelType[K]) {
-	// tree-safe: memoize the family instance per (field,value)
 	const fam = listByFieldAtomFamily(field);
 	return useAtomValue(fam(value));
 }

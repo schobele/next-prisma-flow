@@ -24,6 +24,7 @@ export type ModelType = Prisma.PostGetPayload<{
 				id: true;
 				email: true;
 				name: true;
+				avatar: true;
 				createdAt: true;
 				updatedAt: true;
 			};

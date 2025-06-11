@@ -101,6 +101,10 @@ async function main() {
 		process.exit(2);
 	}
 
+	if (!(await formatCode())) {
+		process.exit(2);
+	}
+
 	// Discover available files
 	console.log("🔍 Discovering files to compare...");
 	const { models, fileTypes, comparisons } = await discoverModelsAndFiles(

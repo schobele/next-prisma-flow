@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { authors, categories, posts, type Post } from "@/flow";
 import type { Prisma } from "@prisma/client";
 import { Calendar, Eye, Plus, Search, Tag, User } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function BlogPage() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -24,18 +24,11 @@ export default function BlogPage() {
 		createPost,
 		updatePost,
 		deletePost,
-		fetchAll: fetchPosts,
 		hasAny: hasAnyPosts,
 	} = posts.hooks.usePosts();
 
-	const { data: categoriesData, fetchAll: fetchCategories } = categories.hooks.useCategories();
-	const { data: authorsData, fetchAll: fetchAuthors } = authors.hooks.useAuthors();
-
-	useEffect(() => {
-		fetchPosts({}, {});
-		fetchCategories({}, {});
-		fetchAuthors({}, {});
-	}, [fetchPosts, fetchCategories, fetchAuthors]);
+	const { data: categoriesData } = categories.hooks.useCategories();
+	const { data: authorsData } = authors.hooks.useAuthors();
 
 	// Filter and search posts
 	const filteredPosts = useMemo(() => {
@@ -93,10 +86,12 @@ export default function BlogPage() {
 	};
 
 	const handleUpdatePost = async (id: string, updates: Prisma.PostUpdateInput) => {
-		await updatePost({
+		const postUpdate = await updatePost({
 			id,
 			data: updates,
 		});
+
+		console.log("postUpdate", postUpdate);
 		setEditingPost(null);
 	};
 

@@ -27,9 +27,6 @@ export const schemas = {
 	updateInput: ${modelName}UpdateInputSchema,
 	findFirstArgs: ${modelName}FindFirstArgsSchema,
 	findManyArgs: ${modelName}FindManyArgsSchema,
-	// Adding create and update for form factory compatibility
-	create: ${modelName}CreateInputSchema,
-	update: ${modelName}UpdateInputSchema,
 };
 `;
 

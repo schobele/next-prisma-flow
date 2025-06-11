@@ -2078,10 +2078,10 @@ function analyzeSchemaRelationships(dmmf) {
       }
       currentModelRels.relatedModels.add(relatedModel);
       const relatedModelRels = modelRelationships.get(relatedModel);
-      if (relatedModelRels && !isOwning) {
-        const reverseRelationType = isList ? "many-to-one" : "one-to-one";
+      if (relatedModelRels && isOwning && backReferenceField) {
+        const reverseRelationType = backReferenceField.isList ? "one-to-many" : "one-to-one";
         relatedModelRels.referencedBy.push({
-          fieldName: backReferenceField?.name || model.name.toLowerCase(),
+          fieldName: backReferenceField.name,
           relatedModel: model.name,
           type: reverseRelationType,
           isRequired: false,
@@ -2159,7 +2159,7 @@ export const entityAtomFamily = atomFamily((id: string) =>
 import { join as join4 } from "node:path";
 async function generateModelConfig(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, selectFields } = modelInfo;
-  const selectObject = createSelectObject(selectFields);
+  const selectObject = createSelectObject(modelInfo, context);
   const template = `${formatGeneratedFileHeader()}import { prisma } from "../prisma";
 import type { SelectInput } from "./types";
 
@@ -2170,21 +2170,88 @@ export const select: SelectInput = ${selectObject};
   const filePath = join4(modelDir, "config.ts");
   await writeFile(filePath, template);
 }
-function createSelectObject(selectFields) {
+function createSelectObject(modelInfo, context) {
+  const { selectFields, analyzed } = modelInfo;
   if (!selectFields || selectFields.length === 0) {
     return "true";
   }
-  const selectEntries = selectFields.map((field) => {
-    if (field.includes(".")) {
-      const [relationName, ...fieldPath] = field.split(".");
-      return `	${relationName}: true`;
+  return buildSelectObject(modelInfo, context, new Set).trimmedResult;
+}
+function buildSelectObject(modelInfo, context, visited) {
+  const { selectFields, analyzed, name: currentModelName } = modelInfo;
+  if (!selectFields || selectFields.length === 0) {
+    return { trimmedResult: "true", fullResult: "true" };
+  }
+  const newVisited = new Set([...visited, currentModelName]);
+  const selectEntries = [];
+  for (const field of selectFields) {
+    const relationField = [...analyzed.relationships?.owns || [], ...analyzed.relationships?.referencedBy || []].find((rel) => rel.fieldName === field);
+    if (relationField) {
+      const relatedModelName = relationField.relatedModel;
+      if (visited.has(relatedModelName)) {
+        continue;
+      }
+      const relatedModelConfig = getModelConfig(relatedModelName, context);
+      const relatedSelectFields = getSelectFieldsForModel(relatedModelName, relatedModelConfig, context);
+      if (relatedSelectFields.length === 0) {
+        selectEntries.push(`	${field}: true`);
+      } else {
+        const relatedModel = context.dmmf.datamodel.models.find((m) => m.name === relatedModelName);
+        if (relatedModel) {
+          const schemaRelationships = analyzeSchemaRelationships(context.dmmf);
+          const relatedModelRelationships = schemaRelationships.get(relatedModelName);
+          const relatedRelationshipInfo = relatedModelRelationships ? {
+            owns: relatedModelRelationships.ownsRelations,
+            referencedBy: relatedModelRelationships.referencedBy,
+            relatedModels: Array.from(relatedModelRelationships.relatedModels)
+          } : undefined;
+          const relatedAnalyzed = analyzeModel(relatedModel, relatedRelationshipInfo);
+          const relatedModelInfo = {
+            name: relatedModelName,
+            lowerName: relatedModelName.toLowerCase(),
+            pluralName: "",
+            lowerPluralName: "",
+            config: relatedModelConfig,
+            model: relatedModel,
+            selectFields: relatedSelectFields,
+            analyzed: relatedAnalyzed,
+            validationRules: []
+          };
+          const nestedSelect = buildSelectObject(relatedModelInfo, context, newVisited);
+          if (nestedSelect.trimmedResult === "true") {
+            selectEntries.push(`	${field}: true`);
+          } else {
+            selectEntries.push(`	${field}: {
+		select: ${nestedSelect.trimmedResult},
+	}`);
+          }
+        } else {
+          selectEntries.push(`	${field}: true`);
+        }
+      }
+    } else {
+      selectEntries.push(`	${field}: true`);
     }
-    return `	${field}: true`;
-  });
-  return `{
+  }
+  const result = selectEntries.length > 0 ? `{
 ${selectEntries.join(`,
-`)}
-}`;
+`)},
+}` : "{}";
+  return { trimmedResult: result, fullResult: result };
+}
+function getModelConfig(modelName, context) {
+  const lowerModelName = modelName.toLowerCase();
+  return context.config[lowerModelName] || {};
+}
+function getSelectFieldsForModel(modelName, modelConfig, context) {
+  if (modelConfig.select && Array.isArray(modelConfig.select)) {
+    return modelConfig.select;
+  }
+  const model = context.dmmf.datamodel.models.find((m) => m.name === modelName);
+  if (model) {
+    return model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name);
+  }
+  return [];
 }
 
 // src/templates/derived.ts
@@ -2399,7 +2466,7 @@ import { join as join7 } from "node:path";
 async function generateReactHooks(modelInfo, context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { useAtomValue, useSetAtom } from "jotai";
-import { entityAtomFamily, errorAtom } from "./atoms";
+import { entityAtomFamily, errorAtom, pendingPatchesAtom } from "./atoms";
 import {
 	countAtom,
 	countByFieldAtomFamily,
@@ -2417,6 +2484,7 @@ import {
 
 import { makeRelationHelpers } from "../shared/hooks/relation-helper";
 import { makeUseFormHook } from "../shared/hooks/use-form-factory";
+import { useAutoload } from "../shared/hooks/useAutoload";
 import { createAtom, deleteAtom, loadEntityAtom, loadsListAtom, updateAtom, upsertAtom } from "./fx";
 import { schemas } from "./schemas";
 import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types";
@@ -2427,8 +2495,41 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * Provides access to the full ${lowerPluralName} list along with loading states, error handling,
  * and all necessary CRUD operations. This hook manages the global state for ${lowerPluralName}
  * and automatically handles loading indicators and error states.
+ *
+ * @param {Object} opts - Configuration options
+ * @param {boolean} [opts.autoLoad=true] - Whether to automatically load data when component mounts
+ *
+ * @returns {Object} Complete ${lowerPluralName} management interface
+ * @returns {Array} data - Array of ${lowerPluralName} (empty array when loading or on error)
+ * @returns {number} count - Total number of ${lowerPluralName} available
+ * @returns {boolean} hasAny - Quick check if any ${lowerPluralName} exist
+ * @returns {boolean} loading - True when fetching data or performing operations
+ * @returns {Error|null} error - Last error that occurred, null if no errors
+ * @returns {Function} create${modelName} - Creates a new ${lowerName}
+ * @returns {Function} update${modelName} - Updates an existing ${lowerName}
+ * @returns {Function} upsert${modelName} - Upserts a ${lowerName}
+ * @returns {Function} delete${modelName} - Deletes a ${lowerName} by ID
+ * @returns {Function} fetchAll - Refreshes the entire ${lowerPluralName} list
+ *
+ * @example
+ * \`\`\`tsx
+ * function ${pluralName}List() {
+ *   const { data, loading, error, create${modelName}, update${modelName}, delete${modelName} } = use${pluralName}();
+ *
+ *   if (loading) return <div>Loading ${lowerPluralName}...</div>;
+ *   if (error) return <div>Error: {error.message}</div>;
+ *
+ *   return (
+ *     <div>
+ *       {data.map(${lowerName} => (
+ *         <${modelName}Item key={${lowerName}.id} ${lowerName}={${lowerName}} onUpdate={update${modelName}} onDelete={delete${modelName}} />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * \`\`\`
  */
-export function use${pluralName}() {
+export function use${pluralName}(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const loadable = useAtomValue(listLoadable);
 	const busy = useAtomValue(loadingAtom);
 	const count = useAtomValue(countAtom);
@@ -2441,6 +2542,11 @@ export function use${pluralName}() {
 	const upsert${modelName} = useSetAtom(upsertAtom);
 	const fetchAll = useSetAtom(loadsListAtom);
 	const fetchById = useSetAtom(loadEntityAtom);
+
+	useAutoload(
+		() => opts.autoLoad !== false && !busy && !hasAny,
+		() => fetchAll({}, {}),
+	);
 
 	return {
 		/* data */
@@ -2467,46 +2573,110 @@ export function use${pluralName}() {
  *
  * Provides granular control over individual ${lowerPluralName}, including fetching, updating, and deleting.
  * The hook automatically manages loading states and errors specific to this ${lowerName} instance.
+ * Actions are pre-bound with the ${lowerName} ID for convenience.
+ *
+ * @param {string} id - The unique identifier of the ${lowerName} to manage
+ * @param {Object} opts - Configuration options
+ * @param {boolean} [opts.autoLoad=true] - Whether to automatically load data when component mounts
+ *
+ * @returns {Object} Single ${lowerName} management interface
+ * @returns {Object|null} data - The ${lowerName} data object, null if not found or loading
+ * @returns {boolean} loading - True when fetching or performing operations on this ${lowerName}
+ * @returns {Error|null} error - Last error related to operations on this ${lowerName}
+ * @returns {Function} update${modelName} - Updates this specific ${lowerName} with provided data
+ * @returns {Function} delete${modelName} - Deletes this specific ${lowerName}
+ * @returns {Function} fetch - Fetches/refreshes this specific ${lowerName} from the server
+ * @returns {Object} relations - relationship helpers
+ *
+ * @example
+ * \`\`\`tsx
+ * function ${modelName}Detail({ ${lowerName}Id }: { ${lowerName}Id: string }) {
+ *   const { data, loading, error, update${modelName}, delete${modelName} } = use${modelName}(${lowerName}Id);
+ *
+ *   if (loading) return <div>Loading ${lowerName}...</div>;
+ *   if (error) return <div>Error loading ${lowerName}: {error.message}</div>;
+ *   if (!data) return <div>${modelName} not found</div>;
+ *
+ *   const handleSave = (formData) => {
+ *     update${modelName}(formData); // ID is automatically included
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       <h1>{data.title}</h1>
+ *       <p>{data.content}</p>
+ *       <button onClick={() => delete${modelName}()}>Delete</button>
+ *     </div>
+ *   );
+ * }
+ * \`\`\`
  */
-export function use${modelName}(id: string) {
-	const entity = useAtomValue(entityAtomFamily(id));
+export function use${modelName}(id: string, opts: { autoLoad?: boolean } = { autoLoad: true }) {
+	const ${lowerName} = useAtomValue(entityAtomFamily(id));
 	const loadable = useAtomValue(entityLoadableFamily(id));
-	const isBusy = useAtomValue(entityBusyFamily(id));
+	const busyItem = useAtomValue(entityBusyFamily(id));
 	const lastError = useAtomValue(errorAtom);
+	const pendingPatches = useAtomValue(pendingPatchesAtom);
 
 	const update${modelName} = useSetAtom(updateAtom);
 	const delete${modelName} = useSetAtom(deleteAtom);
-	const upsert${modelName} = useSetAtom(upsertAtom);
-	const fetchById = useSetAtom(loadEntityAtom);
-
-	const update = (data: UpdateInput) => update${modelName}({ id, data });
-	const remove = () => delete${modelName}(id);
-	const upsert = (payload: { create: CreateInput; update: UpdateInput }) =>
-		upsert${modelName}({ id }, payload);
+	const fetch = useSetAtom(loadEntityAtom);
 
 	const relations = makeRelationHelpers<Relationships>(id, update${modelName});
 
+	useAutoload(
+		() =>
+			opts.autoLoad !== false &&
+			!busyItem &&
+			!${lowerName} &&
+			!pendingPatches[id],
+		() => fetch({ id }),
+	);
+
 	return {
 		/* data */
-		data: entity || null,
-		loading: isBusy || loadable.state === "loading",
-		error: loadable.state === "hasError" ? loadable.error : lastError,
+		data: ${lowerName},
 
-		/* entity actions */
-		update${modelName}: update,
-		delete${modelName}: remove,
-		upsert${modelName}: upsert,
-		fetchById: () => fetchById({ id }),
+		/* meta */
+		loading: busyItem || loadable.state === "loading",
+		error: lastError,
 
-		/* relation helpers */
+		/* actions */
+		update${modelName}: (data: UpdateInput) => update${modelName}({ id, data }),
+		delete${modelName}: () => delete${modelName}(id),
+		fetch: () => fetch({ id }),
+
+		/* relations */
 		relations,
 	};
 }
 
 export const use${modelName}Form = makeUseFormHook<ModelType, CreateInput, UpdateInput>({
-	create: schemas.create,
-	update: schemas.update,
+	create: schemas.createInput,
+	update: schemas.updateInput,
 });
+
+export const useSelectedId = () => useAtomValue(selectedIdAtom);
+export const useSelected = () => useAtomValue(selectedAtom);
+export const useSetSelectedId = () => useSetAtom(selectedIdAtom);
+
+export function useListByFieldValue<K extends keyof ModelType>(field: K, value: ModelType[K]) {
+	const fam = listByFieldAtomFamily(field);
+	return useAtomValue(fam(value));
+}
+
+export function usePagedList(page: number, pageSize = 10) {
+	return useAtomValue(pagedAtom({ page, pageSize }));
+}
+
+export function useSearch(query: string) {
+	return useAtomValue(searchAtom(query));
+}
+
+export function useCountByFieldValue<K extends keyof ModelType>(field: K, value: ModelType[K]) {
+	const fam = countByFieldAtomFamily(field);
+	return useAtomValue(fam(value));
+}
 `;
   const filePath = join7(modelDir, "hooks.ts");
   await writeFile(filePath, template);
@@ -2629,9 +2799,6 @@ export const schemas = {
 	updateInput: ${modelName}UpdateInputSchema,
 	findFirstArgs: ${modelName}FindFirstArgsSchema,
 	findManyArgs: ${modelName}FindManyArgsSchema,
-	// Adding create and update for form factory compatibility
-	create: ${modelName}CreateInputSchema,
-	update: ${modelName}UpdateInputSchema,
 };
 `;
   const filePath = join10(modelDir, "schemas.ts");
@@ -2952,6 +3119,39 @@ export function makeUseFormHook<Model, CreateInput, UpdateInput>(schemas: FormSc
 }
 `;
   await writeFile(join11(hooksDir, "use-form-factory.ts"), useFormFactoryContent);
+  const useAutoloadContent = `import { useEffect, useRef, startTransition } from "react";
+import type { StartTransitionOptions } from "react";
+
+/**
+ * Fire \`action()\` exactly once per component when \`shouldLoad()\` is true.
+ * 
+ * This hook provides automatic data loading with the following guarantees:
+ * - Only fires once per component instance lifecycle
+ * - Respects concurrent mode with startTransition for smoother UX
+ * - Prevents loading loops and duplicate requests
+ * 
+ * @param shouldLoad - Function that returns true when loading should occur
+ * @param action - Action to execute (can be sync/async)
+ * @param options - Optional startTransition options for concurrent mode
+ */
+export function useAutoload(
+	shouldLoad: () => boolean,
+	action: () => void | Promise<unknown>,
+	options?: StartTransitionOptions,
+) {
+	const fired = useRef(false);
+
+	useEffect(() => {
+		if (!fired.current && shouldLoad()) {
+			fired.current = true;
+			// Keep UI responsive; polyfills to direct call in non-concurrent envs
+			startTransition(() => {
+				action();
+			}, options);
+		}
+	}, [shouldLoad, action, options]);
+}`;
+  await writeFile(join11(hooksDir, "useAutoload.ts"), useAutoloadContent);
 }
 
 // src/templates/types.ts
@@ -2995,9 +3195,9 @@ function createSelectType(modelInfo, context) {
   if (!selectFields || selectFields.length === 0) {
     return "true";
   }
-  return buildSelectObject(modelInfo, context, new Set).trimmedResult;
+  return buildSelectObject2(modelInfo, context, new Set).trimmedResult;
 }
-function buildSelectObject(modelInfo, context, visited) {
+function buildSelectObject2(modelInfo, context, visited) {
   const { selectFields, analyzed, name: currentModelName } = modelInfo;
   if (!selectFields || selectFields.length === 0) {
     return { trimmedResult: "true", fullResult: "true" };
@@ -3011,8 +3211,8 @@ function buildSelectObject(modelInfo, context, visited) {
       if (visited.has(relatedModelName)) {
         continue;
       }
-      const relatedModelConfig = getModelConfig(relatedModelName, context);
-      const relatedSelectFields = getSelectFieldsForModel(relatedModelName, relatedModelConfig, context);
+      const relatedModelConfig = getModelConfig2(relatedModelName, context);
+      const relatedSelectFields = getSelectFieldsForModel2(relatedModelName, relatedModelConfig, context);
       if (relatedSelectFields.length === 0) {
         selectEntries.push(`		${field}: true`);
       } else {
@@ -3037,7 +3237,7 @@ function buildSelectObject(modelInfo, context, visited) {
             analyzed: relatedAnalyzed,
             validationRules: []
           };
-          const nestedSelect = buildSelectObject(relatedModelInfo, context, newVisited);
+          const nestedSelect = buildSelectObject2(relatedModelInfo, context, newVisited);
           if (nestedSelect.trimmedResult === "true") {
             selectEntries.push(`		${field}: true`);
           } else {
@@ -3059,11 +3259,11 @@ ${selectEntries.join(`;
 	}` : "{}";
   return { trimmedResult: result, fullResult: result };
 }
-function getModelConfig(modelName, context) {
+function getModelConfig2(modelName, context) {
   const lowerModelName = modelName.toLowerCase();
   return context.config[lowerModelName] || {};
 }
-function getSelectFieldsForModel(modelName, modelConfig, context) {
+function getSelectFieldsForModel2(modelName, modelConfig, context) {
   if (modelConfig.select && Array.isArray(modelConfig.select)) {
     return modelConfig.select;
   }
@@ -3074,10 +3274,7 @@ function getSelectFieldsForModel(modelName, modelConfig, context) {
   return [];
 }
 function generateRelationshipsInterface(analyzed, modelName) {
-  const allRelationships = [
-    ...analyzed.relationships?.owns || [],
-    ...analyzed.relationships?.referencedBy || []
-  ];
+  const allRelationships = [...analyzed.relationships?.owns || [], ...analyzed.relationships?.referencedBy || []];
   if (!allRelationships.length) {
     return `export interface Relationships extends Record<string, { where: any; many: boolean }> {
 	// No relationships found for this model
