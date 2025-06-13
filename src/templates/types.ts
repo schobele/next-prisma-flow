@@ -1,8 +1,8 @@
 import { join } from "node:path";
-import type { GeneratorContext, ModelInfo } from "../types.js";
-import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 import { analyzeModel } from "../model-analyzer.js";
 import { analyzeSchemaRelationships } from "../relationship-analyzer.js";
+import type { GeneratorContext, ModelInfo } from "../types.js";
+import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
 export async function generateTypeDefinitions(
 	modelInfo: ModelInfo,
@@ -19,10 +19,14 @@ export async function generateTypeDefinitions(
 
 	const template = `${formatGeneratedFileHeader()}import type { Prisma } from "../prisma";
 
-export type CreateInput = Prisma.${modelName}CreateInput;
+export type CreateInput = Prisma.${modelName}UncheckedCreateInput;
 export type CreateManyInput = Prisma.${modelName}CreateManyInput;
-export type UpdateInput = Prisma.${modelName}UpdateInput;
-export type UpdateManyInput = Prisma.${modelName}UncheckedUpdateManyInput;
+export type UpdateInput = Prisma.${modelName}UncheckedUpdateInput;
+export type UpdateManyInput = {
+	where: Prisma.${modelName}WhereInput;
+	data: Prisma.${modelName}UncheckedUpdateManyInput;
+	limit?: number;
+};
 export type WhereInput = Prisma.${modelName}WhereInput;
 export type WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
 export type OrderByInput = Prisma.${modelName}OrderByWithRelationInput;

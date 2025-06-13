@@ -10,11 +10,11 @@ export async function generateSchemas(
 	const { name: modelName } = modelInfo;
 
 	const template = `${formatGeneratedFileHeader()}import {
-	${modelName}CreateInputSchema,
 	${modelName}CreateManyInputSchema,
 	${modelName}FindFirstArgsSchema,
 	${modelName}FindManyArgsSchema,
-	${modelName}UpdateInputSchema,
+	${modelName}UncheckedCreateInputSchema,
+	${modelName}UncheckedUpdateInputSchema,
 	${modelName}WhereInputSchema,
 	${modelName}WhereUniqueInputSchema,
 } from "../zod";
@@ -22,9 +22,9 @@ export async function generateSchemas(
 export const schemas = {
 	whereUnique: ${modelName}WhereUniqueInputSchema,
 	where: ${modelName}WhereInputSchema,
-	createInput: ${modelName}CreateInputSchema,
+	createInput: ${modelName}UncheckedCreateInputSchema,
 	createManyInput: ${modelName}CreateManyInputSchema,
-	updateInput: ${modelName}UpdateInputSchema,
+	updateInput: ${modelName}UncheckedUpdateInputSchema,
 	findFirstArgs: ${modelName}FindFirstArgsSchema,
 	findManyArgs: ${modelName}FindManyArgsSchema,
 };

@@ -27,7 +27,7 @@ import {
 } from "./derived";
 
 import { makeRelationHelpers } from "../shared/hooks/relation-helper";
-import { makeUseFormHook } from "../shared/hooks/use-form-factory";
+import { createFormActions, makeUseFormHook, type UseFormOptions } from "../shared/hooks/use-form-factory";
 import { useAutoload } from "../shared/hooks/useAutoload";
 import { createAtom, deleteAtom, loadEntityAtom, loadsListAtom, updateAtom, upsertAtom } from "./fx";
 import { schemas } from "./schemas";
@@ -195,10 +195,72 @@ export function use${modelName}(id: string, opts: { autoLoad?: boolean } = { aut
 	};
 }
 
-export const use${modelName}Form = makeUseFormHook<ModelType, CreateInput, UpdateInput>({
-	create: schemas.createInput,
-	update: schemas.updateInput,
-});
+/**
+ * Enhanced form hook with integrated CRUD operations and optimistic updates.
+ * 
+ * Automatically detects create vs update mode based on whether an instance is provided.
+ * Integrates directly with the ${lowerName} atoms for seamless state management.
+ *
+ * @param {ModelType} [instance] - ${modelName} instance for update mode, undefined for create mode
+ * @param {Object} [options] - Form options and callbacks
+ * @param {Function} [options.onSuccess] - Callback fired on successful submission
+ * @param {Function} [options.onError] - Callback fired on submission error
+ * @param {boolean} [options.resetOnSuccess=true] - Whether to reset form after successful creation
+ * @param {Object} [options.transform] - Data transformation functions
+ *
+ * @returns {Object} Enhanced form interface with submission handling
+ * @returns {Function} handleSubmit - Form submission handler
+ * @returns {boolean} isSubmitting - Whether form is currently submitting
+ * @returns {boolean} isCreating - Whether form is in create mode and submitting
+ * @returns {boolean} isUpdating - Whether form is in update mode and submitting
+ * @returns {string} mode - Current form mode: 'create' | 'update'
+ * @returns {any} submitError - Last submission error, if any
+ * @returns {*} ...formMethods - All react-hook-form methods and state
+ *
+ * @example
+ * \`\`\`tsx
+ * function ${modelName}Form({ ${lowerName}, onClose }) {
+ *   const form = use${modelName}Form(${lowerName}, {
+ *     onSuccess: () => onClose(),
+ *     onError: (error) => toast.error(error.message),
+ *     transform: {
+ *       toCreateInput: (data) => ({
+ *         ...data,
+ *         authorId: data.author?.id || data.authorId,
+ *         categoryId: data.category?.id || data.categoryId,
+ *       }),
+ *     },
+ *   });
+ *
+ *   return (
+ *     <form onSubmit={form.handleSubmit}>
+ *       <input {...form.register('title')} placeholder="Title" />
+ *       <textarea {...form.register('description')} placeholder="Description" />
+ *       <button type="submit" disabled={form.isSubmitting}>
+ *         {form.isSubmitting 
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *           : (form.mode === 'create' ? 'Create ${modelName}' : 'Update ${modelName}')
+ *         }
+ *       </button>
+ *     </form>
+ *   );
+ * }
+ * \`\`\`
+ */
+export function use${modelName}Form(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
+	const create${modelName}Action = useSetAtom(createAtom);
+	const update${modelName}Action = useSetAtom(updateAtom);
+	
+	const formActions = createFormActions(create${modelName}Action, update${modelName}Action);
+	
+	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
+		{
+			create: schemas.createInput,
+			update: schemas.updateInput,
+		},
+		formActions
+	)(instance, options);
+}
 
 export const useSelectedId = () => useAtomValue(selectedIdAtom);
 export const useSelected = () => useAtomValue(selectedAtom);

@@ -1,9 +1,9 @@
 import {
-	PostCreateInputSchema,
 	PostCreateManyInputSchema,
 	PostFindFirstArgsSchema,
 	PostFindManyArgsSchema,
-	PostUpdateInputSchema,
+	PostUncheckedCreateInputSchema,
+	PostUncheckedUpdateInputSchema,
 	PostWhereInputSchema,
 	PostWhereUniqueInputSchema,
 } from "../zod";
@@ -11,9 +11,9 @@ import {
 export const schemas = {
 	whereUnique: PostWhereUniqueInputSchema,
 	where: PostWhereInputSchema,
-	createInput: PostCreateInputSchema,
+	createInput: PostUncheckedCreateInputSchema,
 	createManyInput: PostCreateManyInputSchema,
-	updateInput: PostUpdateInputSchema,
+	updateInput: PostUncheckedUpdateInputSchema,
 	findFirstArgs: PostFindFirstArgsSchema,
 	findManyArgs: PostFindManyArgsSchema,
 };

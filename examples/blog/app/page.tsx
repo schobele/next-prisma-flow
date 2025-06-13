@@ -10,6 +10,210 @@ import type { Prisma } from "@prisma/client";
 import { Calendar, Eye, Plus, Search, Tag, User } from "lucide-react";
 import { useMemo, useState } from "react";
 
+// Enhanced Form Components using the new usePostForm hook
+function CreatePostForm({
+	onSuccess,
+	onCancel,
+	authors,
+	categories,
+}: {
+	onSuccess: () => void;
+	onCancel: () => void;
+	authors: any[];
+	categories: any[];
+}) {
+	const form = posts.hooks.usePostForm(undefined, {
+		onSuccess,
+		onError: (error) => {
+			console.error("Create post error:", error);
+		},
+		resetOnSuccess: true,
+	}) as any; // Type assertion to work around interface issues
+
+	return (
+		<form onSubmit={form.handleSubmit} className="space-y-4">
+			<div className="space-y-2">
+				<Input
+					{...form.register("title")}
+					placeholder="Post title"
+					className={form.formState.errors.title ? "border-red-500" : ""}
+				/>
+				{form.formState.errors.title && <p className="text-red-500 text-sm">{form.formState.errors.title.message}</p>}
+			</div>
+
+			<div className="space-y-2">
+				<Input {...form.register("description")} placeholder="Description" />
+				{form.formState.errors.description && (
+					<p className="text-red-500 text-sm">{form.formState.errors.description.message}</p>
+				)}
+			</div>
+
+			<div className="space-y-2">
+				<Select value={form.watch("authorId") || ""} onValueChange={(value) => form.setValue("authorId", value)}>
+					<SelectTrigger className={form.formState.errors.authorId ? "border-red-500" : ""}>
+						<SelectValue placeholder="Select author" />
+					</SelectTrigger>
+					<SelectContent>
+						{authors?.map((author) => (
+							<SelectItem key={author.id} value={author.id}>
+								{author.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+				{form.formState.errors.authorId && <p className="text-red-500 text-sm">{form.formState.errors.authorId.message}</p>}
+			</div>
+
+			<div className="space-y-2">
+				<Select
+					value={form.watch("categoryId") || ""}
+					onValueChange={(value) => form.setValue("categoryId", value || undefined)}
+				>
+					<SelectTrigger>
+						<SelectValue placeholder="Select category (optional)" />
+					</SelectTrigger>
+					<SelectContent>
+						{categories?.map((category) => (
+							<SelectItem key={category.id} value={category.id}>
+								{category.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="space-y-2">
+				<Select value={form.watch("status") || "DRAFT"} onValueChange={(value) => form.setValue("status", value)}>
+					<SelectTrigger>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="DRAFT">Draft</SelectItem>
+						<SelectItem value="PUBLISHED">Published</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="flex gap-2 pt-4">
+				<Button type="submit" className="flex-1" disabled={form.isSubmitting}>
+					{form.isCreating ? "Creating..." : "Create Post"}
+				</Button>
+				<Button type="button" variant="outline" onClick={onCancel}>
+					Cancel
+				</Button>
+			</div>
+
+			{form.submitError && (
+				<div className="p-3 bg-red-50 border border-red-200 rounded">
+					<p className="text-red-600 text-sm">Error: {form.submitError.message || "Failed to create post"}</p>
+				</div>
+			)}
+		</form>
+	);
+}
+
+// Edit Form Component
+function EditPostForm({
+	post,
+	onSuccess,
+	onCancel,
+	authors,
+	categories,
+}: {
+	post: Post;
+	onSuccess: () => void;
+	onCancel: () => void;
+	authors: any[];
+	categories: any[];
+}) {
+	const form = posts.hooks.usePostForm(post, {
+		onSuccess,
+		onError: (error) => {
+			console.error("Update post error:", error);
+		},
+	}) as any; // Type assertion to work around interface issues
+
+	return (
+		<form onSubmit={form.handleSubmit} className="space-y-4">
+			<div className="space-y-2">
+				<Input
+					{...form.register("title")}
+					placeholder="Post title"
+					className={form.formState.errors.title ? "border-red-500" : ""}
+				/>
+				{form.formState.errors.title && <p className="text-red-500 text-sm">{form.formState.errors.title.message}</p>}
+			</div>
+
+			<div className="space-y-2">
+				<Input {...form.register("description")} placeholder="Description" />
+				{form.formState.errors.description && (
+					<p className="text-red-500 text-sm">{form.formState.errors.description.message}</p>
+				)}
+			</div>
+
+			<div className="space-y-2">
+				<Select value={form.watch("authorId") || ""} onValueChange={(value) => form.setValue("authorId", value)}>
+					<SelectTrigger>
+						<SelectValue placeholder="Select author" />
+					</SelectTrigger>
+					<SelectContent>
+						{authors?.map((author) => (
+							<SelectItem key={author.id} value={author.id}>
+								{author.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="space-y-2">
+				<Select
+					value={form.watch("categoryId") || ""}
+					onValueChange={(value) => form.setValue("categoryId", value || undefined)}
+				>
+					<SelectTrigger>
+						<SelectValue placeholder="Select category (optional)" />
+					</SelectTrigger>
+					<SelectContent>
+						{categories?.map((category) => (
+							<SelectItem key={category.id} value={category.id}>
+								{category.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="space-y-2">
+				<Select value={form.watch("status") || "DRAFT"} onValueChange={(value) => form.setValue("status", value)}>
+					<SelectTrigger>
+						<SelectValue />
+					</SelectTrigger>
+					<SelectContent>
+						<SelectItem value="DRAFT">Draft</SelectItem>
+						<SelectItem value="PUBLISHED">Published</SelectItem>
+					</SelectContent>
+				</Select>
+			</div>
+
+			<div className="flex gap-2 pt-4">
+				<Button type="submit" className="flex-1" disabled={form.isSubmitting}>
+					{form.isUpdating ? "Updating..." : "Update Post"}
+				</Button>
+				<Button type="button" variant="outline" onClick={onCancel}>
+					Cancel
+				</Button>
+			</div>
+
+			{form.submitError && (
+				<div className="p-3 bg-red-50 border border-red-200 rounded">
+					<p className="text-red-600 text-sm">Error: {form.submitError.message || "Failed to update post"}</p>
+				</div>
+			)}
+		</form>
+	);
+}
+
 export default function BlogPage() {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
@@ -66,26 +270,20 @@ export default function BlogPage() {
 		categories: categoriesData?.length || 0,
 	};
 
-	const handleCreatePost = async (data: any) => {
+	const handleCreatePost = async (data: Prisma.PostUncheckedCreateInput) => {
 		await createPost({
 			title: data.title,
 			description: data.description,
 			status: data.status || "DRAFT",
-			author: {
-				connect: {
-					id: data.authorId,
-				},
-			},
-			category: {
-				connect: {
-					id: data.categoryId,
-				},
-			},
+			authorId: data.authorId,
+			...(data.categoryId && {
+				categoryId: data.categoryId,
+			}),
 		});
 		setShowCreateForm(false);
 	};
 
-	const handleUpdatePost = async (id: string, updates: Prisma.PostUpdateInput) => {
+	const handleUpdatePost = async (id: string, updates: Prisma.PostUncheckedUpdateInput) => {
 		const postUpdate = await updatePost({
 			id,
 			data: updates,
@@ -340,141 +538,40 @@ export default function BlogPage() {
 					)}
 				</div>
 
-				{/* Simple Create Form Modal */}
+				{/* Enhanced Create Form Modal */}
 				{showCreateForm && (
 					<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-						<Card className="w-full max-w-md">
+						<Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
 							<CardHeader>
 								<CardTitle>Create New Post</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<form
-									onSubmit={(e) => {
-										e.preventDefault();
-										const formData = new FormData(e.currentTarget);
-										handleCreatePost({
-											title: formData.get("title"),
-											description: formData.get("description"),
-											status: formData.get("status"),
-											authorId: formData.get("authorId"),
-											categoryId: formData.get("categoryId"),
-										});
-									}}
-								>
-									<div className="space-y-4">
-										<Input name="title" placeholder="Post title" required />
-										<Input name="description" placeholder="Description" />
-										<Select name="authorId" required>
-											<SelectTrigger>
-												<SelectValue placeholder="Select author" />
-											</SelectTrigger>
-											<SelectContent>
-												{authorsData?.map((author) => (
-													<SelectItem key={author.id} value={author.id}>
-														{author.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Select name="categoryId">
-											<SelectTrigger>
-												<SelectValue placeholder="Select category" />
-											</SelectTrigger>
-											<SelectContent>
-												{categoriesData?.map((category) => (
-													<SelectItem key={category.id} value={category.id}>
-														{category.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Select name="status" defaultValue="DRAFT">
-											<SelectTrigger>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="DRAFT">Draft</SelectItem>
-												<SelectItem value="PUBLISHED">Published</SelectItem>
-											</SelectContent>
-										</Select>
-										<div className="flex gap-2">
-											<Button type="submit" className="flex-1">
-												Create Post
-											</Button>
-											<Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
-												Cancel
-											</Button>
-										</div>
-									</div>
-								</form>
+								<CreatePostForm
+									onSuccess={() => setShowCreateForm(false)}
+									onCancel={() => setShowCreateForm(false)}
+									authors={authorsData || []}
+									categories={categoriesData || []}
+								/>
 							</CardContent>
 						</Card>
 					</div>
 				)}
 
-				{/* Simple Edit Form Modal */}
+				{/* Enhanced Edit Form Modal */}
 				{editingPost && (
 					<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-						<Card className="w-full max-w-md">
+						<Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
 							<CardHeader>
 								<CardTitle>Edit Post</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<form
-									onSubmit={(e) => {
-										e.preventDefault();
-										const formData = new FormData(e.currentTarget);
-										handleUpdatePost(editingPost.id, {
-											title: formData.get("title") as string,
-											description: formData.get("description") as string,
-											status: formData.get("status") as string,
-											category: {
-												connect: {
-													id: formData.get("categoryId") as string,
-												},
-											},
-											author: {
-												connect: {
-													id: formData.get("authorId") as string,
-												},
-											},
-										});
-									}}
-								>
-									<div className="space-y-4">
-										<Input name="title" defaultValue={editingPost.title} placeholder="Post title" required />
-										<Input name="description" defaultValue={editingPost.description || ""} placeholder="Description" />
-										<Select name="categoryId" defaultValue={editingPost.category?.id || ""}>
-											<SelectTrigger>
-												<SelectValue placeholder="Select category" />
-											</SelectTrigger>
-											<SelectContent>
-												{categoriesData?.map((category) => (
-													<SelectItem key={category.id} value={category.id}>
-														{category.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Select name="status" defaultValue={editingPost.status}>
-											<SelectTrigger>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="DRAFT">Draft</SelectItem>
-												<SelectItem value="PUBLISHED">Published</SelectItem>
-											</SelectContent>
-										</Select>
-										<div className="flex gap-2">
-											<Button type="submit" className="flex-1">
-												Update Post
-											</Button>
-											<Button type="button" variant="outline" onClick={() => setEditingPost(null)}>
-												Cancel
-											</Button>
-										</div>
-									</div>
-								</form>
+								<EditPostForm
+									post={editingPost}
+									onSuccess={() => setEditingPost(null)}
+									onCancel={() => setEditingPost(null)}
+									authors={authorsData || []}
+									categories={categoriesData || []}
+								/>
 							</CardContent>
 						</Card>
 					</div>

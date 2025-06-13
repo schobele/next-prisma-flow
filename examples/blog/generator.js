@@ -2483,7 +2483,7 @@ import {
 } from "./derived";
 
 import { makeRelationHelpers } from "../shared/hooks/relation-helper";
-import { makeUseFormHook } from "../shared/hooks/use-form-factory";
+import { createFormActions, makeUseFormHook, type UseFormOptions } from "../shared/hooks/use-form-factory";
 import { useAutoload } from "../shared/hooks/useAutoload";
 import { createAtom, deleteAtom, loadEntityAtom, loadsListAtom, updateAtom, upsertAtom } from "./fx";
 import { schemas } from "./schemas";
@@ -2651,10 +2651,72 @@ export function use${modelName}(id: string, opts: { autoLoad?: boolean } = { aut
 	};
 }
 
-export const use${modelName}Form = makeUseFormHook<ModelType, CreateInput, UpdateInput>({
-	create: schemas.createInput,
-	update: schemas.updateInput,
-});
+/**
+ * Enhanced form hook with integrated CRUD operations and optimistic updates.
+ * 
+ * Automatically detects create vs update mode based on whether an instance is provided.
+ * Integrates directly with the ${lowerName} atoms for seamless state management.
+ *
+ * @param {ModelType} [instance] - ${modelName} instance for update mode, undefined for create mode
+ * @param {Object} [options] - Form options and callbacks
+ * @param {Function} [options.onSuccess] - Callback fired on successful submission
+ * @param {Function} [options.onError] - Callback fired on submission error
+ * @param {boolean} [options.resetOnSuccess=true] - Whether to reset form after successful creation
+ * @param {Object} [options.transform] - Data transformation functions
+ *
+ * @returns {Object} Enhanced form interface with submission handling
+ * @returns {Function} handleSubmit - Form submission handler
+ * @returns {boolean} isSubmitting - Whether form is currently submitting
+ * @returns {boolean} isCreating - Whether form is in create mode and submitting
+ * @returns {boolean} isUpdating - Whether form is in update mode and submitting
+ * @returns {string} mode - Current form mode: 'create' | 'update'
+ * @returns {any} submitError - Last submission error, if any
+ * @returns {*} ...formMethods - All react-hook-form methods and state
+ *
+ * @example
+ * \`\`\`tsx
+ * function ${modelName}Form({ ${lowerName}, onClose }) {
+ *   const form = use${modelName}Form(${lowerName}, {
+ *     onSuccess: () => onClose(),
+ *     onError: (error) => toast.error(error.message),
+ *     transform: {
+ *       toCreateInput: (data) => ({
+ *         ...data,
+ *         authorId: data.author?.id || data.authorId,
+ *         categoryId: data.category?.id || data.categoryId,
+ *       }),
+ *     },
+ *   });
+ *
+ *   return (
+ *     <form onSubmit={form.handleSubmit}>
+ *       <input {...form.register('title')} placeholder="Title" />
+ *       <textarea {...form.register('description')} placeholder="Description" />
+ *       <button type="submit" disabled={form.isSubmitting}>
+ *         {form.isSubmitting 
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *           : (form.mode === 'create' ? 'Create ${modelName}' : 'Update ${modelName}')
+ *         }
+ *       </button>
+ *     </form>
+ *   );
+ * }
+ * \`\`\`
+ */
+export function use${modelName}Form(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
+	const create${modelName}Action = useSetAtom(createAtom);
+	const update${modelName}Action = useSetAtom(updateAtom);
+	
+	const formActions = createFormActions(create${modelName}Action, update${modelName}Action);
+	
+	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
+		{
+			create: schemas.createInput,
+			update: schemas.updateInput,
+		},
+		formActions
+	)(instance, options);
+}
 
 export const useSelectedId = () => useAtomValue(selectedIdAtom);
 export const useSelected = () => useAtomValue(selectedAtom);
@@ -2782,11 +2844,11 @@ import { join as join10 } from "node:path";
 async function generateSchemas(modelInfo, context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import {
-	${modelName}CreateInputSchema,
 	${modelName}CreateManyInputSchema,
 	${modelName}FindFirstArgsSchema,
 	${modelName}FindManyArgsSchema,
-	${modelName}UpdateInputSchema,
+	${modelName}UncheckedCreateInputSchema,
+	${modelName}UncheckedUpdateInputSchema,
 	${modelName}WhereInputSchema,
 	${modelName}WhereUniqueInputSchema,
 } from "../zod";
@@ -2794,9 +2856,9 @@ async function generateSchemas(modelInfo, context, modelDir) {
 export const schemas = {
 	whereUnique: ${modelName}WhereUniqueInputSchema,
 	where: ${modelName}WhereInputSchema,
-	createInput: ${modelName}CreateInputSchema,
+	createInput: ${modelName}UncheckedCreateInputSchema,
 	createManyInput: ${modelName}CreateManyInputSchema,
-	updateInput: ${modelName}UpdateInputSchema,
+	updateInput: ${modelName}UncheckedUpdateInputSchema,
 	findFirstArgs: ${modelName}FindFirstArgsSchema,
 	findManyArgs: ${modelName}FindManyArgsSchema,
 };
@@ -3073,7 +3135,7 @@ export function makeRelationHelpers<R extends Record<string, { where: any; many:
   await writeFile(join11(hooksDir, "relation-helper.ts"), relationHelperContent);
   const useFormFactoryContent = `// @ts-nocheck
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, type UseFormReturn } from "react-hook-form";
 import type { z } from "zod";
 
@@ -3086,38 +3148,189 @@ export interface FormSchemas<CreateInput, UpdateInput> {
 }
 
 /* -----------------------------------------------------------
-   Factory that returns a model-specific hook.
+   Form submission actions interface
    ----------------------------------------------------------- */
-export function makeUseFormHook<Model, CreateInput, UpdateInput>(schemas: FormSchemas<CreateInput, UpdateInput>) {
-	return function useModelForm(instance?: Model): UseFormReturn<CreateInput | UpdateInput> {
-		// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+export interface FormActions<Model, CreateInput, UpdateInput> {
+	create: (data: CreateInput) => Promise<void> | void;
+	update: (args: { id: string; data: UpdateInput }) => Promise<void> | void;
+}
+
+/* -----------------------------------------------------------
+   Form options and callbacks
+   ----------------------------------------------------------- */
+export interface UseFormOptions<Model> {
+	onSuccess?: (result: Model | null) => void;
+	onError?: (error: any) => void;
+	resetOnSuccess?: boolean;
+	mode?: "onChange" | "onBlur" | "onSubmit" | "onTouched" | "all";
+	transform?: {
+		toCreateInput?: (data: any) => any;
+		toUpdateInput?: (data: any) => any;
+		fromModelType?: (model: Model) => any;
+	};
+}
+
+/* -----------------------------------------------------------
+   Enhanced form return interface
+   ----------------------------------------------------------- */
+export interface UseModelFormReturn<CreateInput, UpdateInput> extends UseFormReturn<CreateInput | UpdateInput> {
+	handleSubmit: (e?: React.BaseSyntheticEvent) => Promise<void>;
+	isSubmitting: boolean;
+	isCreating: boolean;
+	isUpdating: boolean;
+	mode: "create" | "update";
+	submitError: any;
+}
+
+/* -----------------------------------------------------------
+   Default transformation function for common patterns
+   ----------------------------------------------------------- */
+function defaultModelTypeTransform(instance: any): any {
+	if (!instance) return {};
+
+	const { id, createdAt, updatedAt, ...rest } = instance;
+	const transformed: any = {};
+
+	// Transform each field
+	for (const [key, value] of Object.entries(rest)) {
+		if (value && typeof value === 'object' && 'id' in value) {
+			// This is a relation object, extract the ID
+			transformed[\`\${key}Id\`] = value.id;
+		} else if (!Array.isArray(value)) {
+			// Regular field (skip arrays like comments)
+			transformed[key] = value;
+		}
+	}
+
+	return transformed;
+}
+
+/* -----------------------------------------------------------
+   Factory that returns a model-specific hook with integrated actions.
+   ----------------------------------------------------------- */
+export function makeUseFormHook<Model, CreateInput, UpdateInput>(
+	schemas: FormSchemas<CreateInput, UpdateInput>,
+	actions: FormActions<Model, CreateInput, UpdateInput>
+) {
+	return function useModelForm(
+		instance?: Model,
+		options: UseFormOptions<Model> = {}
+	): UseModelFormReturn<CreateInput, UpdateInput> {
+		const {
+			onSuccess,
+			onError,
+			resetOnSuccess = true,
+			mode = "onChange",
+			transform = {},
+		} = options;
+
+		const [isSubmitting, setIsSubmitting] = useState(false);
+		const [submitError, setSubmitError] = useState<any>(null);
+
+		// Determine form mode and schema
+		const isUpdateMode = Boolean(instance);
 		const { schema, defaults } = useMemo(() => {
-			if (instance) {
-				const { id, createdAt, updatedAt, ...rest } = instance as any;
+			if (isUpdateMode && instance) {
+				// Transform ModelType to UpdateInput format
+				const transformedData = transform.fromModelType 
+					? transform.fromModelType(instance)
+					: defaultModelTypeTransform(instance);
+
 				return {
 					schema: schemas.update,
-					defaults: rest as Partial<UpdateInput>,
+					defaults: transformedData as Partial<UpdateInput>,
 				};
 			}
 			return { schema: schemas.create, defaults: {} };
-		}, [instance]);
+		}, [instance, isUpdateMode, schemas.create, schemas.update, transform.fromModelType]);
 
-		/* --- init form ------------------------------------------- */
+		/* --- Initialize form with proper schema and defaults ---- */
 		const form = useForm({
 			resolver: zodResolver(schema),
 			defaultValues: defaults,
-			mode: "onChange",
+			mode,
 		});
 
-		/* --- keep in sync on instance changes -------------------- */
+		/* --- Keep form in sync with instance changes ------------- */
 		useEffect(() => {
 			form.reset(defaults);
+			setSubmitError(null);
 		}, [defaults, form]);
 
-		return form;
+		/* --- Enhanced submit handler with integrated actions ----- */
+		const handleSubmit = useCallback(
+			async (e?: React.BaseSyntheticEvent) => {
+				if (e) {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+
+				return form.handleSubmit(async (data) => {
+					setIsSubmitting(true);
+					setSubmitError(null);
+
+					try {
+						if (isUpdateMode && instance) {
+							// Update mode
+							const transformedData = transform.toUpdateInput 
+								? transform.toUpdateInput(data) 
+								: data;
+							
+							await actions.update({
+								id: (instance as any).id,
+								data: transformedData as UpdateInput,
+							});
+						} else {
+							// Create mode
+							const transformedData = transform.toCreateInput 
+								? transform.toCreateInput(data) 
+								: data;
+							
+							await actions.create(transformedData as CreateInput);
+						}
+
+						// Handle success
+						onSuccess?.(isUpdateMode ? instance : null);
+						
+						if (resetOnSuccess && !isUpdateMode) {
+							form.reset();
+						}
+					} catch (error) {
+						console.error("Form submission error:", error);
+						setSubmitError(error);
+						onError?.(error);
+					} finally {
+						setIsSubmitting(false);
+					}
+				})(e);
+			},
+			[form, isUpdateMode, instance, actions, transform, onSuccess, onError, resetOnSuccess]
+		);
+
+		return {
+			...form,
+			handleSubmit,
+			isSubmitting,
+			isCreating: isSubmitting && !isUpdateMode,
+			isUpdating: isSubmitting && isUpdateMode,
+			mode: isUpdateMode ? "update" : "create",
+			submitError,
+		};
 	};
 }
-`;
+
+/* -----------------------------------------------------------
+   Utility for creating action integration
+   ----------------------------------------------------------- */
+export function createFormActions<Model, CreateInput, UpdateInput>(
+	createAtom: any,
+	updateAtom: any
+) {
+	return {
+		create: createAtom,
+		update: updateAtom,
+	} as FormActions<Model, CreateInput, UpdateInput>;
+}`;
   await writeFile(join11(hooksDir, "use-form-factory.ts"), useFormFactoryContent);
   const useAutoloadContent = `import { useEffect, useRef, startTransition } from "react";
 import type { StartTransitionOptions } from "react";
@@ -3162,10 +3375,14 @@ async function generateTypeDefinitions(modelInfo, context, modelDir) {
   const relationshipsInterface = generateRelationshipsInterface(analyzed, modelName);
   const template = `${formatGeneratedFileHeader()}import type { Prisma } from "../prisma";
 
-export type CreateInput = Prisma.${modelName}CreateInput;
+export type CreateInput = Prisma.${modelName}UncheckedCreateInput;
 export type CreateManyInput = Prisma.${modelName}CreateManyInput;
-export type UpdateInput = Prisma.${modelName}UpdateInput;
-export type UpdateManyInput = Prisma.${modelName}UncheckedUpdateManyInput;
+export type UpdateInput = Prisma.${modelName}UncheckedUpdateInput;
+export type UpdateManyInput = {
+	where: Prisma.${modelName}WhereInput;
+	data: Prisma.${modelName}UncheckedUpdateManyInput;
+	limit?: number;
+};
 export type WhereInput = Prisma.${modelName}WhereInput;
 export type WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
 export type OrderByInput = Prisma.${modelName}OrderByWithRelationInput;

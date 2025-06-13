@@ -1,9 +1,13 @@
 import type { Prisma } from "../prisma";
 
-export type CreateInput = Prisma.PostCreateInput;
+export type CreateInput = Prisma.PostUncheckedCreateInput;
 export type CreateManyInput = Prisma.PostCreateManyInput;
-export type UpdateInput = Prisma.PostUpdateInput;
-export type UpdateManyInput = Prisma.PostUncheckedUpdateManyInput;
+export type UpdateInput = Prisma.PostUncheckedUpdateInput;
+export type UpdateManyInput = {
+	where: Prisma.PostWhereInput;
+	data: Prisma.PostUncheckedUpdateManyInput;
+	limit?: number;
+};
 export type WhereInput = Prisma.PostWhereInput;
 export type WhereUniqueInput = Prisma.PostWhereUniqueInput;
 export type OrderByInput = Prisma.PostOrderByWithRelationInput;
