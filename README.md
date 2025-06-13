@@ -8,7 +8,7 @@
 
 A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
 
-## 🚀 What's New in v0.2.3
+## 🚀 What's New in v0.2.4
 
 - **Enhanced Form System** - Smart ModelType transformation with automatic ID extraction from nested objects
 - **Automatic Mode Detection** - Forms automatically detect create vs update based on instance presence
@@ -171,7 +171,7 @@ export { GET, POST, PATCH, DELETE } from '@/generated/flow/post/routes';
 
 ### 4. Use in your React components
 
-#### 🎯 Enhanced Form System (v0.2.3+)
+#### 🎯 Enhanced Form System (v0.2.4+)
 
 ```typescript
 'use client';
@@ -510,7 +510,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse>
 
 ## Advanced Usage
 
-### 🎯 Enhanced Form Transformations (v0.2.3+)
+### 🎯 Enhanced Form Transformations (v0.2.4+)
 
 #### Custom Data Transformations
 
