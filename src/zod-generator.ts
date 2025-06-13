@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
-import path from "node:path";
+// Using Bun.spawn instead of node:child_process
 import type { GeneratorOptions } from "@prisma/generator-helper";
+import { dirname, join } from "node:path";
 import { FlowGeneratorError } from "./errors.js";
+import { deleteFile, ensureDirectory, fileExists, readFile, writeFile } from "./utils.js";
 
 export class ZodGenerationError extends FlowGeneratorError {
 	constructor(message: string, cause?: unknown) {
@@ -22,11 +22,11 @@ export async function generateZodSchemas(
 ): Promise<void> {
 	console.log("📦 Generating integrated Zod schemas...");
 
-	const zodOutputDir = path.join(outputDir, "zod");
+	const zodOutputDir = join(outputDir, "zod");
 
 	// Ensure zod output directory exists
 	try {
-		await fs.mkdir(zodOutputDir, { recursive: true });
+		await ensureDirectory(zodOutputDir);
 	} catch (error) {
 		throw new ZodGenerationError(`Failed to create zod output directory: ${zodOutputDir}`, error);
 	}
@@ -35,19 +35,25 @@ export async function generateZodSchemas(
 	const tempSchemaPath = await createTempSchemaWithZodGenerator(options, zodOutputDir, models);
 
 	try {
+		console.log("🔧 Executing zod-prisma-types generator...");
+		console.log("Temp schema path:", tempSchemaPath);
+		console.log("Zod output dir:", zodOutputDir);
+
 		// Execute zod-prisma-types generator
 		await executeZodPrismaTypes(tempSchemaPath);
 
+		console.log("🔍 Validating generated schemas...");
 		// Verify that the expected schemas were generated
 		await validateGeneratedSchemas(zodOutputDir, models);
 
 		console.log("✅ Integrated Zod schemas generated successfully");
 	} catch (error) {
+		console.error("❌ Zod generation error:", error);
 		throw new ZodGenerationError("Failed to generate Zod schemas", error);
 	} finally {
 		// Clean up temporary schema file
 		try {
-			await fs.unlink(tempSchemaPath);
+			await deleteFile(tempSchemaPath);
 		} catch {
 			// Ignore cleanup errors
 		}
@@ -64,12 +70,18 @@ async function createTempSchemaWithZodGenerator(
 ): Promise<string> {
 	try {
 		// Create temporary schema for zod generation
+		console.log("📝 Creating temporary schema for zod generation...");
 
 		// Read the original schema content
-		const originalSchemaContent = await fs.readFile(options.schemaPath, "utf-8");
+		console.log(`🔍 Reading original schema... ${options.schemaPath}`);
+		const originalSchemaContent = await readFile(options.schemaPath);
+		console.log("📖 Original schema read successfully");
+		console.log("📄 Schema path:", options.schemaPath);
+		console.log(`📝 Schema content preview: ${originalSchemaContent.substring(0, 200)}...`);
 
 		// Remove any existing flow generator to avoid conflicts
 		const schemaWithoutFlowGenerator = originalSchemaContent.replace(/generator\s+flow\s*\{[\s\S]*?\}/g, "");
+		console.log("🧹 Removed flow generator from schema");
 
 		// Create a modified schema with only zod-prisma-types generator
 		const zodGeneratorConfig = `
@@ -81,14 +93,18 @@ generator zod {
 
 		// Add the zod generator to the schema
 		const modifiedSchema = `${schemaWithoutFlowGenerator}\n${zodGeneratorConfig}`;
+		console.log(`🔧 Modified schema preview: ${modifiedSchema.substring(0, 300)}...`);
 
 		// Create temporary schema file
-		const tempSchemaPath = path.join(path.dirname(options.schemaPath), ".temp-zod-schema.prisma");
-		await fs.writeFile(tempSchemaPath, modifiedSchema, "utf-8");
+		const tempSchemaPath = join(dirname(options.schemaPath), ".temp-zod-schema.prisma");
+		await writeFile(tempSchemaPath, modifiedSchema);
+		console.log("📁 Temporary schema written to:", tempSchemaPath);
+		console.log("📂 Temp schema dir:", dirname(options.schemaPath));
 
 		// Temporary schema created for zod generation
 		return tempSchemaPath;
 	} catch (error) {
+		console.error("❌ Failed to create temp schema:", error);
 		throw new ZodGenerationError("Failed to create temporary schema file", error);
 	}
 }
@@ -97,35 +113,86 @@ generator zod {
  * Executes the zod-prisma-types generator using Prisma CLI.
  */
 async function executeZodPrismaTypes(schemaPath: string): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const child = spawn("npx", ["prisma", "generate", "--schema", schemaPath], {
-			stdio: ["ignore", "pipe", "pipe"],
-			shell: true,
-		});
+	console.log(`🚀 Starting zod generation with schema: ${schemaPath}`);
+	console.log(`🔍 Runtime check - Bun available: ${typeof Bun !== "undefined"}`);
+	console.log(`🔍 Runtime check - Process version: ${process.version}`);
 
-		let stdout = "";
-		let stderr = "";
+	// Check if we're running in Bun or Node.js context
+	if (typeof Bun !== "undefined") {
+		// Use Bun.spawn
+		try {
+			const proc = Bun.spawn(["bunx", "prisma", "generate", "--schema", schemaPath], {
+				cwd: process.cwd(),
+				env: {
+					...process.env,
+					NODE_PATH: `${process.cwd()}/node_modules`,
+				},
+				stdout: "pipe",
+				stderr: "pipe",
+			});
 
-		child.stdout?.on("data", (data) => {
-			stdout += data.toString();
-		});
+			// Wait for process to complete
+			const exitCode = await proc.exited;
 
-		child.stderr?.on("data", (data) => {
-			stderr += data.toString();
-		});
+			// Read output
+			const stdout = await new Response(proc.stdout).text();
+			const stderr = await new Response(proc.stderr).text();
 
-		child.on("close", (code) => {
-			if (code === 0) {
-				resolve();
-			} else {
-				reject(new Error(`Zod generation failed with code ${code}:\nSTDOUT: ${stdout}\nSTDERR: ${stderr}`));
+			console.log(`🔧 Zod generation process completed with code: ${exitCode}`);
+			console.log(`📤 STDOUT: ${stdout}`);
+			console.log(`📥 STDERR: ${stderr}`);
+
+			if (exitCode !== 0) {
+				throw new Error(`Zod generation failed with code ${exitCode}:\nSTDOUT: ${stdout}\nSTDERR: ${stderr}`);
 			}
-		});
+		} catch (error) {
+			throw new Error(
+				`Failed to execute zod generation process: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	} else {
+		// Use Node.js spawn
+		const { spawn } = await import("node:child_process");
 
-		child.on("error", (error) => {
-			reject(new Error(`Failed to spawn zod generation process: ${error.message}`));
+		return new Promise((resolve, reject) => {
+			const child = spawn("bunx", ["prisma", "generate", "--schema", schemaPath], {
+				stdio: ["ignore", "pipe", "pipe"],
+				shell: true,
+				cwd: process.cwd(),
+				env: {
+					...process.env,
+					NODE_PATH: `${process.cwd()}/node_modules`,
+				},
+			});
+
+			let stdout = "";
+			let stderr = "";
+
+			child.stdout?.on("data", (data) => {
+				stdout += data.toString();
+			});
+
+			child.stderr?.on("data", (data) => {
+				stderr += data.toString();
+			});
+
+			child.on("close", (code) => {
+				console.log(`🔧 Zod generation process completed with code: ${code}`);
+				console.log(`📤 STDOUT: ${stdout}`);
+				console.log(`📥 STDERR: ${stderr}`);
+
+				if (code === 0) {
+					resolve();
+				} else {
+					reject(new Error(`Zod generation failed with code ${code}:\nSTDOUT: ${stdout}\nSTDERR: ${stderr}`));
+				}
+			});
+
+			child.on("error", (error) => {
+				reject(new Error(`Failed to spawn zod generation process: ${error.message}`));
+			});
 		});
-	});
+	}
 }
 
 /**
@@ -134,18 +201,15 @@ async function executeZodPrismaTypes(schemaPath: string): Promise<void> {
 async function validateGeneratedSchemas(zodOutputDir: string, models: string[]): Promise<void> {
 	try {
 		// Check if the main index file was created
-		const indexPath = path.join(zodOutputDir, "index.ts");
-		const indexExists = await fs
-			.access(indexPath)
-			.then(() => true)
-			.catch(() => false);
+		const indexPath = join(zodOutputDir, "index.ts");
+		const indexExists = await fileExists(indexPath);
 
 		if (!indexExists) {
 			throw new Error("Zod index file was not generated");
 		}
 
 		// Read the generated index file to verify schemas for our models
-		const indexContent = await fs.readFile(indexPath, "utf-8");
+		const indexContent = await readFile(indexPath);
 
 		// Check that schemas for our specified models were generated
 		const missingSchemas: string[] = [];

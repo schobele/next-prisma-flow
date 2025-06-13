@@ -1,0 +1,68 @@
+import type { Prisma } from "../prisma";
+
+export type CreateInput = Prisma.PostUncheckedCreateInput;
+export type CreateManyInput = Prisma.PostCreateManyInput;
+export type UpdateInput = Prisma.PostUncheckedUpdateInput;
+export type UpdateManyInput = {
+	where: Prisma.PostWhereInput;
+	data: Prisma.PostUncheckedUpdateManyInput;
+	limit?: number;
+};
+export type WhereInput = Prisma.PostWhereInput;
+export type WhereUniqueInput = Prisma.PostWhereUniqueInput;
+export type OrderByInput = Prisma.PostOrderByWithRelationInput;
+export type SelectInput = Prisma.PostSelect;
+export type IncludeInput = Prisma.PostInclude;
+
+export type ModelType = Prisma.PostGetPayload<{
+	select: {
+		id: true;
+		title: true;
+		description: true;
+		status: true;
+		publishedAt: true;
+		createdAt: true;
+		updatedAt: true;
+		author: {
+			select: {
+				id: true;
+				email: true;
+				name: true;
+				avatar: true;
+				createdAt: true;
+				updatedAt: true;
+			};
+		};
+		category: {
+			select: {
+				id: true;
+				name: true;
+				color: true;
+				createdAt: true;
+			};
+		};
+		comments: {
+			select: {
+				id: true;
+				content: true;
+				createdAt: true;
+				updatedAt: true;
+			};
+		};
+	};
+}>;
+
+export type Options = {
+	orderBy?: OrderByInput;
+};
+
+export type CreateManyOptions = {
+	include?: IncludeInput;
+	select?: SelectInput;
+};
+
+export interface Relationships extends Record<string, { where: any; many: boolean }> {
+	author: { where: Prisma.AuthorWhereUniqueInput; many: false };
+	category: { where: Prisma.CategoryWhereUniqueInput; many: false };
+	comments: { where: Prisma.CommentWhereUniqueInput[]; many: true };
+}

@@ -1,174 +1,212 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { join } from "node:path";
+import { analyzeModel } from "../model-analyzer.js";
+import { analyzeSchemaRelationships } from "../relationship-analyzer.js";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import {
-	createSelectObjectWithRelations,
-	formatGeneratedFileHeader,
-	getPrismaImportPath,
-	getZodImportPath,
-} from "../utils.js";
+import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
-export async function generateTypes(modelInfo: ModelInfo, context: GeneratorContext, modelDir: string): Promise<void> {
-	const { name: modelName, lowerName, selectFields } = modelInfo;
-	const selectObject = createSelectObjectWithRelations(modelInfo, context);
+export async function generateTypeDefinitions(
+	modelInfo: ModelInfo,
+	context: GeneratorContext,
+	modelDir: string,
+): Promise<void> {
+	const { name: modelName, analyzed } = modelInfo;
 
-	// Get the correct relative path from the model subdirectory to local zod directory
-	const zodImportPath = getZodImportPath(1);
+	// Create select type based on configured fields
+	const selectType = createSelectType(modelInfo, context);
 
-	// Get the prisma import path for this nesting level
-	const prismaImportPath = getPrismaImportPath(context, 1);
+	// Generate relationships interface
+	const relationshipsInterface = generateRelationshipsInterface(analyzed, modelName);
 
-	// Determine if we're using the default @prisma/client or a custom prisma client
-	const isDefaultPrismaClient = prismaImportPath === "@prisma/client";
+	const template = `${formatGeneratedFileHeader()}import type { Prisma } from "../prisma";
 
-	// Generate appropriate imports based on the prisma source
-	const prismaImports = isDefaultPrismaClient
-		? `import type { Prisma } from '@prisma/client';
-import { prisma } from '../prisma-client';`
-		: `import { prisma, type Prisma } from '${prismaImportPath}';`;
+export type CreateInput = Prisma.${modelName}UncheckedCreateInput;
+export type CreateManyInput = Prisma.${modelName}CreateManyInput;
+export type UpdateInput = Prisma.${modelName}UncheckedUpdateInput;
+export type UpdateManyInput = {
+	where: Prisma.${modelName}WhereInput;
+	data: Prisma.${modelName}UncheckedUpdateManyInput;
+	limit?: number;
+};
+export type WhereInput = Prisma.${modelName}WhereInput;
+export type WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
+export type OrderByInput = Prisma.${modelName}OrderByWithRelationInput;
+export type SelectInput = Prisma.${modelName}Select;
+export type IncludeInput = Prisma.${modelName}Include;
 
-	const template = `${formatGeneratedFileHeader()}${prismaImports}
-import { z } from 'zod';
-
-// Re-export Zod schemas from zod-prisma-types
-export {
-  ${modelName}Schema as ${lowerName}Schema,
-  ${modelName}UncheckedCreateInputSchema as ${modelName}CreateInputSchema,
-  ${modelName}UncheckedUpdateInputSchema as ${modelName}UpdateInputSchema,
-  ${modelName}CreateManyInputSchema,
-} from '${zodImportPath}';
-
-// Import schemas for type inference
-import {
-  ${modelName}UncheckedCreateInputSchema,
-  ${modelName}UncheckedUpdateInputSchema,
-  ${modelName}CreateManyInputSchema,
-} from '${zodImportPath}';
-
-// Infer types from Zod schemas
-export type ${modelName}CreateInput = z.infer<typeof ${modelName}UncheckedCreateInputSchema>;
-export type ${modelName}UpdateInput = z.infer<typeof ${modelName}UncheckedUpdateInputSchema>;
-export type ${modelName}CreateManyInput = z.infer<typeof ${modelName}CreateManyInputSchema>;
-
-// Define the select object for this model
-export const ${lowerName}Select = ${selectObject} satisfies Prisma.${modelName}Select;
-
-// Generate the exact type based on our select
-export type ${modelName} = Prisma.${modelName}GetPayload<{
-  select: typeof ${lowerName}Select;
+export type ModelType = Prisma.${modelName}GetPayload<{
+	select: ${selectType}
 }>;
 
-// Utility types for working with this model
-export type ${modelName}Id = ${modelName}['id'];
+export type Options = {
+	orderBy?: OrderByInput;
+};
 
-export type ${modelName}Input = ${modelName}CreateInput;
-export type ${modelName}WhereInput = Prisma.${modelName}WhereInput;
-export type ${modelName}WhereUniqueInput = Prisma.${modelName}WhereUniqueInput;
-export type ${modelName}OrderByInput = Prisma.${modelName}OrderByWithRelationInput;
+export type CreateManyOptions = {
+	include?: IncludeInput;
+	select?: SelectInput;
+};
 
-// For array operations
-export type ${modelName}Array = ${modelName}[];
-export type ${modelName}CreateInputArray = ${modelName}Input[];
-export type ${modelName}CreateManyInputArray = ${modelName}CreateManyInput[];
-
-// For partial updates (useful for forms)
-export type Partial${modelName}Input = Partial<${modelName}Input>;
-
-// For search and filtering
-export interface ${modelName}SearchParams {
-  query?: string;
-  page?: number;
-  limit?: number;
-  orderBy?: keyof ${modelName};
-  orderDirection?: 'asc' | 'desc';
-}
-
-export interface ${modelName}FilterParams extends ${modelName}SearchParams {
-  where?: ${modelName}WhereInput;
-}
-
-// Response types for API operations
-export interface ${modelName}ApiResponse {
-  data: ${modelName};
-  success: boolean;
-  message?: string;
-}
-
-export interface ${modelName}ListApiResponse {
-  data: ${modelName}[];
-  success: boolean;
-  message?: string;
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-export interface ${modelName}MutationResponse {
-  data?: ${modelName};
-  success: boolean;
-  message?: string;
-  errors?: Record<string, string[]>;
-}
-
-export interface ${modelName}BatchResponse {
-  count: number;
-  success: boolean;
-  message?: string;
-}
-
-// State management types for Jotai atoms
-export interface ${modelName}State {
-  items: Record<string, ${modelName}>;
-  loading: boolean;
-  creating: boolean;
-  updating: Record<string, boolean>;
-  deleting: Record<string, boolean>;
-  error: string | null;
-}
-
-export interface ${modelName}OptimisticUpdate {
-  id: string;
-  data: Partial<${modelName}>;
-  timestamp: number;
-}
-
-// Form types (useful for React Hook Form integration)
-export type ${modelName}FormData = Omit<${modelName}Input, 'id' | 'createdAt' | 'updatedAt'>;
-export type ${modelName}UpdateFormData = Partial<${modelName}FormData>;
-
-// Field configuration for form hooks
-export interface ${modelName}FieldConfig {
-  name: string;
-  value: any;
-  onChange: (value: any) => void;
-  onBlur: () => void;
-  error?: string;
-  required?: boolean;
-}
-
-// Event types for custom hooks
-export interface ${modelName}ChangeEvent {
-  type: 'create' | 'update' | 'delete';
-  ${lowerName}: ${modelName};
-  previousValue?: ${modelName};
-}
-
-// Validation error types
-export interface ${modelName}ValidationError {
-  field: keyof ${modelName}Input;
-  message: string;
-  code: string;
-}
-
-export interface ${modelName}ValidationErrors {
-  errors: ${modelName}ValidationError[];
-  message: string;
-}
+${relationshipsInterface}
 `;
 
-	const filePath = path.join(modelDir, "types.ts");
-	await fs.writeFile(filePath, template, "utf-8");
+	const filePath = join(modelDir, "types.ts");
+	await writeFile(filePath, template);
+}
+
+function createSelectType(modelInfo: ModelInfo, context: GeneratorContext): string {
+	const { selectFields, analyzed } = modelInfo;
+
+	if (!selectFields || selectFields.length === 0) {
+		return "true"; // Select all fields
+	}
+
+	// Build select with circular reference detection
+	return buildSelectObject(modelInfo, context, new Set()).trimmedResult;
+}
+
+function buildSelectObject(
+	modelInfo: ModelInfo,
+	context: GeneratorContext,
+	visited: Set<string>,
+): { trimmedResult: string; fullResult: string } {
+	const { selectFields, analyzed, name: currentModelName } = modelInfo;
+
+	if (!selectFields || selectFields.length === 0) {
+		return { trimmedResult: "true", fullResult: "true" };
+	}
+
+	// Add current model to visited set to prevent circular references
+	const newVisited = new Set([...visited, currentModelName]);
+
+	const selectEntries: string[] = [];
+
+	for (const field of selectFields) {
+		// Check if this is a relation field
+		const relationField = [...(analyzed.relationships?.owns || []), ...(analyzed.relationships?.referencedBy || [])].find(
+			(rel: any) => rel.fieldName === field,
+		);
+
+		if (relationField) {
+			const relatedModelName = relationField.relatedModel;
+
+			// Skip if we would create a circular reference
+			if (visited.has(relatedModelName)) {
+				continue; // Drop the field to avoid circular reference
+			}
+
+			// Get the related model's configuration
+			const relatedModelConfig = getModelConfig(relatedModelName, context);
+			const relatedSelectFields = getSelectFieldsForModel(relatedModelName, relatedModelConfig, context);
+
+			if (relatedSelectFields.length === 0) {
+				// No select configuration for related model, select all fields
+				selectEntries.push(`\t\t${field}: true`);
+			} else {
+				// Create a temporary ModelInfo for the related model to build its select
+				const relatedModel = context.dmmf.datamodel.models.find((m) => m.name === relatedModelName);
+				if (relatedModel) {
+					// Analyze the related model properly
+					const schemaRelationships = analyzeSchemaRelationships(context.dmmf);
+					const relatedModelRelationships = schemaRelationships.get(relatedModelName);
+					const relatedRelationshipInfo = relatedModelRelationships
+						? {
+								owns: relatedModelRelationships.ownsRelations,
+								referencedBy: relatedModelRelationships.referencedBy,
+								relatedModels: Array.from(relatedModelRelationships.relatedModels),
+							}
+						: undefined;
+
+					const relatedAnalyzed = analyzeModel(relatedModel, relatedRelationshipInfo);
+					const relatedModelInfo = {
+						name: relatedModelName,
+						lowerName: relatedModelName.toLowerCase(),
+						pluralName: "", // Not needed for select generation
+						lowerPluralName: "", // Not needed for select generation
+						config: relatedModelConfig,
+						model: relatedModel,
+						selectFields: relatedSelectFields,
+						analyzed: relatedAnalyzed,
+						validationRules: [],
+					};
+
+					const nestedSelect = buildSelectObject(relatedModelInfo, context, newVisited);
+
+					if (nestedSelect.trimmedResult === "true") {
+						selectEntries.push(`\t\t${field}: true`);
+					} else {
+						selectEntries.push(`\t\t${field}: {
+\t\t\tselect: ${nestedSelect.trimmedResult};
+\t\t}`);
+					}
+				} else {
+					// Fallback if model not found
+					selectEntries.push(`\t\t${field}: true`);
+				}
+			}
+		} else {
+			// Regular field
+			selectEntries.push(`\t\t${field}: true`);
+		}
+	}
+
+	const result =
+		selectEntries.length > 0
+			? `{
+${selectEntries.join(";\n")};
+\t}`
+			: "{}";
+
+	return { trimmedResult: result, fullResult: result };
+}
+
+function getModelConfig(modelName: string, context: GeneratorContext): any {
+	const lowerModelName = modelName.toLowerCase();
+	return context.config[lowerModelName] || {};
+}
+
+function getSelectFieldsForModel(modelName: string, modelConfig: any, context: GeneratorContext): string[] {
+	if (modelConfig.select && Array.isArray(modelConfig.select)) {
+		return modelConfig.select;
+	}
+
+	// Default: all scalar and enum fields
+	const model = context.dmmf.datamodel.models.find((m) => m.name === modelName);
+	if (model) {
+		return model.fields.filter((f) => f.kind === "scalar" || f.kind === "enum").map((f) => f.name);
+	}
+
+	return [];
+}
+
+function generateRelationshipsInterface(analyzed: any, modelName: string): string {
+	// Get all relationships from both owns and referencedBy
+	const allRelationships = [...(analyzed.relationships?.owns || []), ...(analyzed.relationships?.referencedBy || [])];
+
+	if (!allRelationships.length) {
+		return `export interface Relationships extends Record<string, { where: any; many: boolean }> {
+	// No relationships found for this model
+}`;
+	}
+
+	// Remove duplicates by field name
+	const uniqueRelationships = allRelationships.reduce((acc: any[], rel: any) => {
+		if (!acc.find((existing) => existing.fieldName === rel.fieldName)) {
+			acc.push(rel);
+		}
+		return acc;
+	}, []);
+
+	const relationEntries = uniqueRelationships
+		.map((rel: any) => {
+			const isList = rel.type === "one-to-many" || rel.type === "many-to-many";
+			const relatedModel = rel.relatedModel;
+			const whereType = isList ? `Prisma.${relatedModel}WhereUniqueInput[]` : `Prisma.${relatedModel}WhereUniqueInput`;
+
+			return `\t${rel.fieldName}: { where: ${whereType}; many: ${isList} }`;
+		})
+		.join(";\n");
+
+	return `export interface Relationships extends Record<string, { where: any; many: boolean }> {
+${relationEntries};
+}`;
 }

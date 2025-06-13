@@ -8,14 +8,14 @@
 
 A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
 
-## 🚀 What's New in v0.2.2
+## 🚀 What's New in v0.2.4
 
-- **FlowProvider** - Global state management with SSR support, error boundaries, and dev tools
-- **Enhanced Developer Experience** - React DevTools integration and automatic debug utilities  
-- **Global Error Handling** - Centralized error boundaries for all Flow operations
-- **Development Tools** - Built-in debug controls and state inspection tools
-- **Improved Documentation** - Complete static documentation site with examples
-- **Better SSR Support** - Hydration safety and server-side data pre-population
+- **Enhanced Form System** - Smart ModelType transformation with automatic ID extraction from nested objects
+- **Automatic Mode Detection** - Forms automatically detect create vs update based on instance presence
+- **Flexible Transform Functions** - Custom data transformation via `fromModelType`, `toCreateInput`, and `toUpdateInput`
+- **Improved Data Handling** - Seamless conversion between rich ModelType and flat form input schemas
+- **Better Edit Forms** - Pre-populated forms now properly handle nested relationship data
+- **Type-Safe Transformations** - Full TypeScript support throughout the form transformation pipeline
 
 ## Features
 
@@ -27,7 +27,8 @@ A powerful Prisma generator that scaffolds a full stack of typed code for Next.j
 - 📦 **Batch Operations**: Generated batch create/delete operations
 - 🛡️ **Input Validation**: Zod schema validation for all mutations
 - 📊 **Selective Fields**: Control which fields are exposed via configuration
-- 🎨 **Smart Forms**: Zero-config form hooks with automatic validation
+- 🎨 **Smart Forms**: Enhanced form hooks with automatic data transformation
+- 🔀 **Auto Transformations**: Seamless conversion between ModelType and form schemas
 - 🏗️ **Namespace Exports**: Organized, intuitive API structure
 
 ## Installation
@@ -68,7 +69,7 @@ generator flow {
   userOptimistic = "merge"
   
   // Post configuration
-  postSelect     = ["id", "title", "content", "published", "authorId"]
+  postSelect     = ["id", "title", "content", "published", "authorId", "author"]
   postOptimistic = "overwrite"
   postPagination = "true"
 }
@@ -123,6 +124,14 @@ generated/flow/
 │   ├── form-provider.tsx
 │   ├── smart-form.ts
 │   └── namespace.ts
+├── shared/
+│   ├── actions/
+│   │   ├── factory.ts
+│   │   └── unwrap.ts
+│   └── hooks/
+│       ├── relation-helper.ts
+│       ├── use-form-factory.ts    # Enhanced form factory with smart transformations
+│       └── useAutoload.ts
 ├── actions.ts            # Direct exports for actions
 ├── atoms.ts              # Direct exports for atoms
 ├── hooks.ts              # Direct exports for hooks
@@ -133,7 +142,7 @@ generated/flow/
 └── index.ts              # Enhanced main export with namespaces
 ```
 
-#### Modern v0.2.0 Import Structure
+#### Modern v0.2.0+ Import Structure
 
 ```typescript
 import { users, posts } from '@/generated/flow';
@@ -141,7 +150,7 @@ import { users, posts } from '@/generated/flow';
 // Everything organized under model namespaces:
 users.hooks.useUsers()         // Unified CRUD hook
 users.hooks.useUser(id)        // Individual item hook
-users.hooks.useCreateUserForm() // Smart form hook
+users.hooks.useUserForm()      // Enhanced form hook with smart transformations
 users.actions.create()         // Server actions
 users.atoms.usersAtom          // Jotai atoms
 users.types.User               // TypeScript types
@@ -162,44 +171,184 @@ export { GET, POST, PATCH, DELETE } from '@/generated/flow/post/routes';
 
 ### 4. Use in your React components
 
-#### 🎯 Modern API (v0.2.0+) - Recommended
+#### 🎯 Enhanced Form System (v0.2.4+)
 
 ```typescript
 'use client';
 
-import { users, posts } from '@/generated/flow';
+import { posts, users } from '@/generated/flow';
 
-export default function UsersList() {
-  // One hook, everything you need
+export default function CreatePostForm() {
+  const { data: userList } = users.hooks.useUsers();
+  
+  // Enhanced form with automatic transformation
+  const form = posts.hooks.usePostForm(undefined, {
+    onSuccess: (result) => console.log('Post created:', result),
+    onError: (error) => console.error('Creation failed:', error),
+    transform: {
+      // Custom transformation for create (optional - smart defaults provided)
+      toCreateInput: (formData) => ({
+        ...formData,
+        published: formData.status === 'PUBLISHED',
+        publishedAt: formData.status === 'PUBLISHED' ? new Date() : null,
+      }),
+    },
+  });
+  
+  return (
+    <form onSubmit={form.handleSubmit} className="space-y-4">
+      <input 
+        {...form.register('title')} 
+        placeholder="Post title"
+        className="w-full p-2 border rounded"
+      />
+      
+      <textarea 
+        {...form.register('content')} 
+        placeholder="Post content"
+        className="w-full p-2 border rounded h-32"
+      />
+      
+      <select {...form.register('authorId')} className="w-full p-2 border rounded">
+        <option value="">Select author</option>
+        {userList.map(user => (
+          <option key={user.id} value={user.id}>{user.name}</option>
+        ))}
+      </select>
+      
+      <select {...form.register('status')} className="w-full p-2 border rounded">
+        <option value="DRAFT">Draft</option>
+        <option value="PUBLISHED">Published</option>
+      </select>
+      
+      <button 
+        type="submit" 
+        disabled={form.isSubmitting}
+        className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+      >
+        {form.isCreating ? 'Creating Post...' : 'Create Post'}
+      </button>
+      
+      {form.submitError && (
+        <div className="text-red-500">Error: {form.submitError.message}</div>
+      )}
+    </form>
+  );
+}
+
+// Edit form with automatic data transformation
+export function EditPostForm({ postId }: { postId: string }) {
+  const { data: post } = posts.hooks.usePost(postId);
+  const { data: userList } = users.hooks.useUsers();
+  
+  // Form automatically detects update mode and transforms ModelType data
+  const form = posts.hooks.usePostForm(post, {
+    onSuccess: () => console.log('Post updated!'),
+    transform: {
+      // Automatic transformation handles:
+      // - author: { id, name, email } → authorId
+      // - Nested objects → flat IDs
+      // - Arrays are skipped for form inputs
+      fromModelType: (post) => ({
+        title: post.title,
+        content: post.content,
+        authorId: post.author?.id || post.authorId,
+        status: post.published ? 'PUBLISHED' : 'DRAFT',
+      }),
+      toUpdateInput: (formData) => ({
+        title: formData.title,
+        content: formData.content,
+        authorId: formData.authorId,
+        published: formData.status === 'PUBLISHED',
+      }),
+    },
+  });
+  
+  if (!post) return <div>Loading post...</div>;
+  
+  return (
+    <form onSubmit={form.handleSubmit} className="space-y-4">
+      <input 
+        {...form.register('title')} 
+        placeholder="Post title"
+        className="w-full p-2 border rounded"
+      />
+      
+      <textarea 
+        {...form.register('content')} 
+        placeholder="Post content"
+        className="w-full p-2 border rounded h-32"
+      />
+      
+      <select {...form.register('authorId')} className="w-full p-2 border rounded">
+        {userList.map(user => (
+          <option key={user.id} value={user.id}>{user.name}</option>
+        ))}
+      </select>
+      
+      <select {...form.register('status')} className="w-full p-2 border rounded">
+        <option value="DRAFT">Draft</option>
+        <option value="PUBLISHED">Published</option>
+      </select>
+      
+      <button 
+        type="submit" 
+        disabled={form.isSubmitting}
+        className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+      >
+        {form.isUpdating ? 'Updating Post...' : 'Update Post'}
+      </button>
+      
+      {form.submitError && (
+        <div className="text-red-500">Error: {form.submitError.message}</div>
+      )}
+    </form>
+  );
+}
+```
+
+#### List and CRUD Operations
+
+```typescript
+import { posts } from '@/generated/flow';
+
+function PostsList() {
   const { 
-    data: userList, 
-    createUser, 
-    updateUser, 
-    deleteUser,
+    data: postList, 
+    createPost, 
+    updatePost, 
+    deletePost,
     loading, 
     error 
-  } = users.hooks.useUsers();
+  } = posts.hooks.usePosts();
   
-  // Zero-config form with auto-validation
-  const form = users.hooks.useCreateUserForm();
-  
-  if (loading) return <div>Loading users...</div>;
+  if (loading) return <div>Loading posts...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <form onSubmit={form.submit}>
-        <input {...form.field('name')} placeholder="Name" />
-        <input {...form.field('email')} placeholder="Email" />
-        <button type="submit" disabled={!form.isValid || form.loading}>
-          {form.loading ? 'Creating...' : 'Create User'}
-        </button>
-      </form>
+      <h1>Posts ({postList.length})</h1>
       
       <ul>
-        {userList.map(user => (
-          <li key={user.id}>
-            {user.name} ({user.email})
+        {postList.map(post => (
+          <li key={post.id} className="border p-4 mb-2">
+            <h3>{post.title}</h3>
+            <p>{post.content}</p>
+            <p>By: {post.author?.name || 'Unknown'}</p>
+            <div className="flex gap-2 mt-2">
+              <button 
+                onClick={() => updatePost({ published: !post.published })}
+                className="px-2 py-1 bg-blue-500 text-white rounded"
+              >
+                {post.published ? 'Unpublish' : 'Publish'}
+              </button>
+              <button 
+                onClick={() => deletePost()}
+                className="px-2 py-1 bg-red-500 text-white rounded"
+              >
+                Delete
+              </button>
+            </div>
           </li>
         ))}
       </ul>
@@ -207,31 +356,6 @@ export default function UsersList() {
   );
 }
 ```
-
-#### Individual Item Management
-
-```typescript
-import { users } from '@/generated/flow';
-
-function UserProfile({ id }: { id: string }) {
-  // Individual item with form integration
-  const { data: user, form, update, delete: deleteUser } = users.hooks.useUser(id);
-  
-  if (!user) return <div>Loading...</div>;
-  
-  return (
-    <div>
-      <form onSubmit={form.submit}>
-        <input {...form.field('name')} />
-        <input {...form.field('email')} />
-        <button type="submit">Update</button>
-      </form>
-      <button onClick={() => deleteUser()}>Delete</button>
-    </div>
-  );
-}
-```
-
 
 ## Configuration Options
 
@@ -250,7 +374,7 @@ generator flow {
   userOptimistic = "merge"                 # Optimistic update strategy
   userPagination = "true"                  # Enable pagination helpers
   
-  postSelect     = ["id", "title", "content"]
+  postSelect     = ["id", "title", "content", "author"]  # Include relationships
   postOptimistic = "overwrite"
 }
 ```
@@ -288,8 +412,13 @@ Array of field names to include in API responses. This acts as a whitelist for s
 
 ```prisma
 userSelect = ["id", "name", "email", "posts"]
-postSelect = ["id", "title", "content", "published"]
+postSelect = ["id", "title", "content", "published", "author"]  # Include relationships
 ```
+
+**Smart Form Integration**: When relationships are included in select (like `"author"`), the form system automatically:
+- Extracts IDs for form inputs (`author: { id, name }` → `authorId`)
+- Pre-populates edit forms with correct relationship data
+- Handles nested object transformation seamlessly
 
 #### `{modelName}Optimistic` 
 Strategy for handling optimistic update conflicts:
@@ -312,6 +441,25 @@ userPagination = "false"  # or omit entirely
 
 ## Generated Code Overview
 
+### Enhanced Form Hooks
+Form hooks provide automatic data transformation and mode detection:
+
+```typescript
+// Generated in post/hooks.ts
+export function usePostForm(
+  instance?: ModelType, 
+  options: UseFormOptions<ModelType> = {}
+): UseModelFormReturn<CreateInput, UpdateInput>
+
+// Automatic features:
+// - Mode detection: create vs update based on instance presence
+// - Data transformation: ModelType ↔ CreateInput/UpdateInput
+// - Nested object handling: author.id → authorId
+// - Validation: Integrated Zod schema validation
+// - Loading states: isSubmitting, isCreating, isUpdating
+// - Error handling: submitError with detailed error info
+```
+
 ### Server Actions
 Server actions provide the business logic layer:
 
@@ -331,6 +479,7 @@ Hooks provide a React-Query-like experience:
 // Generated in user/hooks.ts
 export function useUsers(): UseUsersResult
 export function useUser(id: string): UseUserResult
+export function useUserForm(instance?: ModelType, options?: UseFormOptions): UseModelFormReturn
 export function useCreateUser(): UseCreateUserResult
 export function useUpdateUser(): UseUpdateUserResult
 export function useDeleteUser(): UseDeleteUserResult
@@ -361,39 +510,117 @@ export async function DELETE(request: NextRequest): Promise<NextResponse>
 
 ## Advanced Usage
 
-### 🎯 Modern API (v0.2.0+)
+### 🎯 Enhanced Form Transformations (v0.2.4+)
 
-#### Smart Form Integration
+#### Custom Data Transformations
 
 ```typescript
-import { todos } from '@/generated/flow';
+import { posts, categories } from '@/generated/flow';
 
-function TodoForm() {
-  const form = todos.hooks.useCreateTodoForm({
-    title: '',
-    priority: 'MEDIUM'
+function AdvancedPostForm() {
+  const form = posts.hooks.usePostForm(postInstance, {
+    transform: {
+      // Transform ModelType to form format (handles complex relationships)
+      fromModelType: (post) => ({
+        title: post.title,
+        content: post.content,
+        authorId: post.author?.id || post.authorId,
+        categoryIds: post.categories?.map(cat => cat.id) || [],
+        tags: post.tags?.join(', ') || '',
+        published: post.status === 'PUBLISHED',
+      }),
+      
+      // Transform form data for creation
+      toCreateInput: (formData) => ({
+        title: formData.title,
+        content: formData.content,
+        authorId: formData.authorId,
+        status: formData.published ? 'PUBLISHED' : 'DRAFT',
+        publishedAt: formData.published ? new Date() : null,
+        // Handle complex relationships
+        categories: {
+          connect: formData.categoryIds.map(id => ({ id }))
+        },
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      }),
+      
+      // Transform form data for updates
+      toUpdateInput: (formData) => ({
+        title: formData.title,
+        content: formData.content,
+        authorId: formData.authorId,
+        status: formData.published ? 'PUBLISHED' : 'DRAFT',
+        // Only update publishedAt if changing to published
+        ...(formData.published && { publishedAt: new Date() }),
+      }),
+    },
+    
+    // Callbacks for success/error handling
+    onSuccess: (result) => {
+      toast.success(result ? 'Post updated!' : 'Post created!');
+    },
+    onError: (error) => {
+      toast.error(`Failed: ${error.message}`);
+    },
   });
   
-  // Auto-save functionality
-  form.enableAutoSave(1000); // Save every 1 second
-  
   return (
-    <form onSubmit={form.submit}>
-      <input 
-        {...form.field('title')}
-        placeholder="Todo title"
-      />
-      <select {...form.field('priority')}>
-        <option value="LOW">Low</option>
-        <option value="MEDIUM">Medium</option>
-        <option value="HIGH">High</option>
+    <form onSubmit={form.handleSubmit}>
+      {/* Form fields automatically pre-populated for edit mode */}
+      <input {...form.register('title')} />
+      <textarea {...form.register('content')} />
+      
+      {/* Multi-select handled via transformation */}
+      <select multiple {...form.register('categoryIds')}>
+        {/* Options */}
       </select>
-      <button type="submit" disabled={!form.isValid}>
-        {form.loading ? 'Creating...' : 'Create Todo'}
+      
+      <input {...form.register('tags')} placeholder="Comma-separated tags" />
+      
+      <label>
+        <input 
+          type="checkbox" 
+          {...form.register('published')} 
+        />
+        Published
+      </label>
+      
+      <button type="submit" disabled={form.isSubmitting}>
+        {form.mode === 'create' 
+          ? (form.isCreating ? 'Creating...' : 'Create Post')
+          : (form.isUpdating ? 'Updating...' : 'Update Post')
+        }
       </button>
-      {form.error && <div className="error">{form.error.message}</div>}
     </form>
   );
+}
+```
+
+#### Automatic Relationship Handling
+
+The enhanced form system automatically handles common relationship patterns:
+
+```typescript
+// Input ModelType with nested relationships:
+const post = {
+  id: "123",
+  title: "My Post",
+  author: { id: "456", name: "John Doe", email: "john@example.com" },
+  category: { id: "789", name: "Technology" },
+  tags: [
+    { id: "1", name: "React" },
+    { id: "2", name: "TypeScript" }
+  ],
+  comments: [...] // Arrays are automatically skipped
+}
+
+// Automatically transformed to form input:
+const formData = {
+  title: "My Post",
+  authorId: "456",    // Extracted from author.id
+  categoryId: "789",  // Extracted from category.id
+  // tags array skipped (not a simple relationship)
+  // comments array skipped
 }
 ```
 
@@ -490,7 +717,7 @@ import { users, todos } from '@/generated/flow';
 
 // Access everything through the namespace
 const { data, createUser } = users.hooks.useUsers();
-const form = users.hooks.useCreateUserForm();
+const form = users.hooks.useUserForm();
 ```
 
 ### 2. Security First
@@ -500,20 +727,32 @@ Always configure `select` to exclude sensitive fields:
 userSelect = ["id", "name", "email"]  # Excludes password, internal fields
 ```
 
-### 3. Leverage Specialized Form Hooks
-Use the dedicated form hooks for create and update operations:
+### 3. Leverage Enhanced Form System
+Use the improved form hooks for automatic data transformation:
 
 ```typescript
-// ✅ Good - Specialized create form
-const createForm = users.hooks.useCreateUserForm();
-return <form onSubmit={createForm.submit}>...</form>;
+// ✅ Good - Enhanced form with automatic transformation
+const form = users.hooks.useUserForm(userInstance, {
+  onSuccess: (result) => toast.success('User saved!'),
+  transform: {
+    // Custom transformation only when needed
+    // Automatic handling includes ID extraction from nested objects
+  },
+});
 
-// ✅ Good - Specialized update form
-const updateForm = users.hooks.useUpdateUserForm(id, userData);
-return <form onSubmit={updateForm.submit}>...</form>;
+return <form onSubmit={form.handleSubmit}>...</form>;
 ```
 
-### 4. Use Type Imports
+### 4. Include Relationships in Select
+For forms that need relationship data, include them in select:
+
+```prisma
+postSelect = ["id", "title", "content", "author", "category"]  # Include relationships
+```
+
+This enables automatic form pre-population with relationship IDs.
+
+### 5. Use Type Imports
 Import types separately to avoid bundle bloat:
 
 ```typescript
@@ -521,7 +760,7 @@ import type { User, UserCreateInput } from '@/generated/flow/types';
 import { users } from '@/generated/flow';
 ```
 
-### 5. Error Boundaries
+### 6. Error Boundaries
 Wrap components using hooks in error boundaries:
 
 ```typescript
@@ -532,7 +771,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 </ErrorBoundary>
 ```
 
-### 6. Optimistic Updates
+### 7. Optimistic Updates
 Take advantage of built-in optimistic updates:
 
 ```typescript
@@ -542,7 +781,7 @@ const { updateUser } = users.hooks.useUsers();
 await updateUser(userId, { name: 'New Name' });
 ```
 
-### 7. Custom State Derivation
+### 8. Custom State Derivation
 Use direct atom access for complex state logic:
 
 ```typescript
@@ -568,7 +807,7 @@ const activeUsersAtom = atom((get) => {
 Make sure to install these in your project:
 
 ```bash
-npm install prisma @prisma/client jotai jotai-immer next react zod
+npm install prisma @prisma/client jotai jotai-immer next react zod react-hook-form @hookform/resolvers
 ```
 
 ## Development
@@ -599,6 +838,7 @@ npx prisma generate
 2. **Type errors**: Run `npm run build` to ensure all generated types are compiled
 3. **Import errors**: Check that your `zodPrismaImport` path is correct
 4. **Cache issues**: Clear Next.js cache with `rm -rf .next`
+5. **Form not pre-populated**: Ensure relationships are included in model select configuration
 
 ### Debug Mode
 

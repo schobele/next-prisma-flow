@@ -1,6 +1,6 @@
 {
 	"name": "next-prisma-flow",
-	"version": "0.2.3",
+	"version": "0.2.4",
 	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js applications",
 	"main": "dist/index.js",
 	"module": "index.ts",
@@ -10,13 +10,20 @@
 	},
 	"files": ["dist/", "README.md", "package.json"],
 	"scripts": {
-		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/todolist/generator.js",
+		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/blog/generator.js",
 		"dev": "bun run index.ts",
 		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"baseline:compare": "bun run tests/tools/baseline-compare.ts",
+		"validation": "bun run tests/scripts/run-validation.ts",
 		"prepublishOnly": "bun run build",
-		"lint": "biome check .",
-		"lint:fix": "biome check . --write",
-		"prepare": "husky"
+		"check": "biome check .",
+		"check:fix": "biome check . --write --unsafe",
+		"tsc": "bunx tsc --noEmit",
+		"prepare": "husky",
+		"prisma:generate": "prisma generate --schema=baseline/schema.prisma",
+		"test:baseline": "bun run scripts/test-baseline.ts all",
+		"test:baseline:script": "bun test tests/baseline-comparison.test.ts"
 	},
 	"repository": {
 		"type": "git",
@@ -42,34 +49,43 @@
 		"node": ">=18.0.0"
 	},
 	"dependencies": {
+		"@hookform/resolvers": "^5.1.1",
+		"change-case": "^5.4.4",
+		"pluralize": "^8.0.0",
+		"react-hook-form": "^7.57.0",
+		"validator": "^13.15.15",
 		"zod-prisma-types": "^3.2.4"
 	},
 	"devDependencies": {
-		"@prisma/client": "^5.0.0",
-		"@prisma/generator-helper": "^5.0.0",
-		"zod": "^3.25.46",
-		"lint-staged": "^16.1.0",
-		"@types/bun": "latest",
-		"@types/node": "^20.0.0",
+		"@prisma/client": "^6.9.0",
+		"@prisma/generator-helper": "^6.9.0",
+		"@types/bun": "^1.2.15",
+		"@types/node": "^22.15.30",
+		"@types/react": "^19.1.6",
+		"@types/pluralize": "^0.0.33",
+		"@types/validator": "^13.15.1",
+		"@typescript-eslint/parser": "^8.33.1",
+		"@babel/parser": "^7.27.5",
+		"@babel/traverse": "^7.27.4",
+		"@types/babel__traverse": "^7.20.4",
+		"@babel/types": "^7.27.6",
+		"chalk": "^5.4.1",
+		"diff": "^8.0.2",
+		"fast-glob": "^3.3.3",
 		"husky": "^9.1.7",
-		"jotai": "^2.6.0",
+		"jotai": "^2.12.5",
+		"jotai-devtools": "^0.12.0",
 		"jotai-immer": "^0.4.1",
-		"jotai-devtools": "^0.10.0",
-		"zod-prisma-types": "^3.2.4"
+		"lint-staged": "^16.1.0",
+		"ora": "^8.2.0",
+		"react": "^19.1.0",
+		"zod": "^3.25.56"
 	},
 	"peerDependencies": {
-		"typescript": "^5",
-		"prisma": "^5.0.0"
+		"typescript": "^5.8.3",
+		"prisma": "^6.9.0"
 	},
 	"lint-staged": {
-		"!(examples/**/*)*.{js,ts,cjs,mjs,d.cts,d.mts,jsx,tsx,json,jsonc}": [
-			"biome check --files-ignore-unknown=true",
-			"biome check --write --no-errors-on-unmatched",
-			"biome check --write --organize-imports-enabled=true --no-errors-on-unmatched",
-			"biome check --write --unsafe --no-errors-on-unmatched",
-			"biome format --write --no-errors-on-unmatched",
-			"biome lint --write --no-errors-on-unmatched"
-		],
-		"!(examples/**/*)*": ["biome check --no-errors-on-unmatched --files-ignore-unknown=true"]
+		"!(examples/**/*)*": ["bun run check:fix"]
 	}
 }

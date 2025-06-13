@@ -1,0 +1,99 @@
+// Blog - Simple Prisma Schema
+// Demonstrates core Next Prisma Flow Generator features with minimal complexity
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator flow {
+  provider = "next-prisma-flow"
+  output   = "../flow"
+  models   = ["Author", "Category", "Post", "Comment"]
+
+  // Author configuration
+  authorSelect     = ["id", "email", "name", "avatar", "createdAt", "updatedAt"]
+  authorOptimistic = "overwrite"
+  authorPagination = "false"
+
+  // Category configuration
+  categorySelect     = ["id", "name", "color", "createdAt"]
+  categoryOptimistic = "overwrite"
+  categoryPagination = "false"
+
+  // Post configuration
+  postSelect     = ["id", "title", "description", "status", "publishedAt", "createdAt", "updatedAt", "author", "category", "comments"]
+  postOptimistic = "overwrite"
+  postPagination = "true"
+
+  // Comment configuration
+  commentSelect     = ["id", "content", "createdAt", "updatedAt"]
+  commentOptimistic = "overwrite"
+  commentPagination = "true"
+}
+
+// ============================================================================
+// MODELS - Simple blog
+// ============================================================================
+
+model Author {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  posts Post[]
+
+  @@map("authors")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  color     String   @default("#3b82f6")
+  createdAt DateTime @default(now())
+
+  // Relationships
+  posts Post[]
+
+  @@map("categories")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Post {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relationships
+  authorId   String
+  author     Author    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  comments   Comment[]
+
+  @@map("posts")
+}

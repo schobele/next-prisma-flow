@@ -1,4 +1,4 @@
-import path from "node:path";
+import * as path from "node:path";
 import type { GeneratorOptions } from "@prisma/generator-helper";
 import { ConfigurationError, ModelNotFoundError } from "./errors.js";
 import type { FlowGeneratorConfig, ModelConfig } from "./types.js";
@@ -24,6 +24,17 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 		prismaImport: resolvedPrismaImport,
 		models,
 	};
+
+	// Only set optional paths if they are actually provided
+	if (config.prismaClientPath) {
+		parsedConfig.prismaClientPath = config.prismaClientPath as string;
+	}
+	if (config.serverPath) {
+		parsedConfig.serverPath = config.serverPath as string;
+	}
+	if (config.cacheUtilsPath) {
+		parsedConfig.cacheUtilsPath = config.cacheUtilsPath as string;
+	}
 
 	// Parse model-specific configurations using flattened keys
 	for (const modelName of models) {

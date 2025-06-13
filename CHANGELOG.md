@@ -5,6 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4] - 2024-12-01 🎯 Enhanced Form System
+
+### ✨ Major Form Enhancements
+
+#### Smart ModelType Transformation System
+- **Automatic Mode Detection**: Forms now auto-detect create vs update mode based on whether an instance is provided
+- **Smart Data Transformation**: Nested objects like `author: { id, name }` are automatically transformed to `authorId` for form inputs
+- **Enhanced Transform Options**: New `fromModelType` transform function for custom ModelType → form input conversion
+- **Type-Safe Transformations**: Full TypeScript support throughout the form transformation pipeline
+
+#### Improved Edit Form Handling
+- **Pre-populated Forms**: Edit forms now properly extract and pre-populate relationship IDs from nested objects
+- **Seamless Data Flow**: Automatic conversion between rich ModelType (with nested objects) and flat form input schemas
+- **Array Handling**: Arrays like `comments` are automatically skipped for form inputs
+- **Flexible Customization**: Custom transformation functions override defaults when needed
+
+#### Enhanced Form Factory System
+- **`defaultModelTypeTransform`**: Built-in function handles common transformation patterns
+- **Flexible Options**: `fromModelType`, `toCreateInput`, and `toUpdateInput` transform functions
+- **Better Error Handling**: Improved error messages and linter compliance
+- **Template Literals**: Updated to use template literals instead of string concatenation
+
+### 🔧 Technical Improvements
+- **Linter Compliance**: Fixed template literal and unnecessary continue statement issues
+- **Code Quality**: Improved readability and maintainability of transformation logic
+- **TypeScript Safety**: Enhanced type inference for transformation functions
+- **Consistent API**: Unified transformation approach across baseline and generator templates
+
+### 📚 Documentation Updates
+- **Enhanced Examples**: Updated CLAUDE.md with comprehensive form transformation examples
+- **README Improvements**: Added detailed documentation of new form features and transformation patterns
+- **Best Practices**: New recommendations for relationship handling and form configuration
+
+### 🎯 Usage Examples
+
+```typescript
+// Enhanced form with automatic transformation
+const form = posts.hooks.usePostForm(postInstance, {
+  transform: {
+    // Automatic transformation handles common patterns:
+    // - author: { id, name } → authorId
+    // - category: { id, name } → categoryId
+    // - Arrays are automatically skipped
+    fromModelType: (post) => ({
+      title: post.title,
+      description: post.description,
+      authorId: post.author?.id || post.authorId,
+      categoryId: post.category?.id || post.categoryId,
+    }),
+  },
+});
+
+// Form automatically detects mode and handles data appropriately
+<form onSubmit={form.handleSubmit}>
+  <input {...form.register('title')} />
+  <select {...form.register('authorId')}>
+    {/* Pre-populated with current author in edit mode */}
+  </select>
+  <button type="submit">
+    {form.mode === 'create' ? 'Create Post' : 'Update Post'}
+  </button>
+</form>
+```
+
+### 🔄 Backward Compatibility
+- **Fully Backward Compatible**: All existing form usage continues to work without changes
+- **Optional Enhancements**: New transformation features are opt-in via the `transform` options
+- **Default Behavior**: Smart defaults handle common patterns automatically
+
+---
+
 ## [0.2.0] - 2025-06-03 🚀 Major Release
 
 ### ✨ Major New Features

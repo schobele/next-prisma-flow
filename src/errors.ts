@@ -1,7 +1,7 @@
 export class FlowGeneratorError extends Error {
 	constructor(
 		message: string,
-		public cause?: unknown,
+		public override cause?: unknown,
 	) {
 		super(message);
 		this.name = "FlowGeneratorError";
@@ -49,6 +49,7 @@ export class FileSystemError extends FlowGeneratorError {
 }
 
 export function handleGeneratorError(error: unknown): never {
+	console.error("🔴 Error:", error);
 	if (error instanceof FlowGeneratorError) {
 		throw error;
 	}
