@@ -162,11 +162,7 @@ export function useComment(id: string, opts: { autoLoad?: boolean } = { autoLoad
 	const relations = makeRelationHelpers<Relationships>(id, updateComment);
 
 	useAutoload(
-		() =>
-			opts.autoLoad !== false &&
-			!busyItem &&
-			!comment &&
-			!pendingPatches[id],
+		() => opts.autoLoad !== false && !busyItem && !comment && !pendingPatches[id],
 		() => fetch({ id }),
 	);
 
@@ -190,7 +186,7 @@ export function useComment(id: string, opts: { autoLoad?: boolean } = { autoLoad
 
 /**
  * Enhanced form hook with integrated CRUD operations and optimistic updates.
- * 
+ *
  * Automatically detects create vs update mode based on whether an instance is provided.
  * Integrates directly with the comment atoms for seamless state management.
  *
@@ -230,8 +226,8 @@ export function useComment(id: string, opts: { autoLoad?: boolean } = { autoLoad
  *       <input {...form.register('title')} placeholder="Title" />
  *       <textarea {...form.register('description')} placeholder="Description" />
  *       <button type="submit" disabled={form.isSubmitting}>
- *         {form.isSubmitting 
- *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *         {form.isSubmitting
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...')
  *           : (form.mode === 'create' ? 'Create Comment' : 'Update Comment')
  *         }
  *       </button>
@@ -243,15 +239,15 @@ export function useComment(id: string, opts: { autoLoad?: boolean } = { autoLoad
 export function useCommentForm(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
 	const createCommentAction = useSetAtom(createAtom);
 	const updateCommentAction = useSetAtom(updateAtom);
-	
+
 	const formActions = createFormActions(createCommentAction, updateCommentAction);
-	
+
 	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
 		{
 			create: schemas.createInput,
 			update: schemas.updateInput,
 		},
-		formActions
+		formActions,
 	)(instance, options);
 }
 

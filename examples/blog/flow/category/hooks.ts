@@ -162,11 +162,7 @@ export function useCategory(id: string, opts: { autoLoad?: boolean } = { autoLoa
 	const relations = makeRelationHelpers<Relationships>(id, updateCategory);
 
 	useAutoload(
-		() =>
-			opts.autoLoad !== false &&
-			!busyItem &&
-			!category &&
-			!pendingPatches[id],
+		() => opts.autoLoad !== false && !busyItem && !category && !pendingPatches[id],
 		() => fetch({ id }),
 	);
 
@@ -190,7 +186,7 @@ export function useCategory(id: string, opts: { autoLoad?: boolean } = { autoLoa
 
 /**
  * Enhanced form hook with integrated CRUD operations and optimistic updates.
- * 
+ *
  * Automatically detects create vs update mode based on whether an instance is provided.
  * Integrates directly with the category atoms for seamless state management.
  *
@@ -230,8 +226,8 @@ export function useCategory(id: string, opts: { autoLoad?: boolean } = { autoLoa
  *       <input {...form.register('title')} placeholder="Title" />
  *       <textarea {...form.register('description')} placeholder="Description" />
  *       <button type="submit" disabled={form.isSubmitting}>
- *         {form.isSubmitting 
- *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *         {form.isSubmitting
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...')
  *           : (form.mode === 'create' ? 'Create Category' : 'Update Category')
  *         }
  *       </button>
@@ -243,15 +239,15 @@ export function useCategory(id: string, opts: { autoLoad?: boolean } = { autoLoa
 export function useCategoryForm(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
 	const createCategoryAction = useSetAtom(createAtom);
 	const updateCategoryAction = useSetAtom(updateAtom);
-	
+
 	const formActions = createFormActions(createCategoryAction, updateCategoryAction);
-	
+
 	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
 		{
 			create: schemas.createInput,
 			update: schemas.updateInput,
 		},
-		formActions
+		formActions,
 	)(instance, options);
 }
 

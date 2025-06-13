@@ -162,11 +162,7 @@ export function usePost(id: string, opts: { autoLoad?: boolean } = { autoLoad: t
 	const relations = makeRelationHelpers<Relationships>(id, updatePost);
 
 	useAutoload(
-		() =>
-			opts.autoLoad !== false &&
-			!busyItem &&
-			!post &&
-			!pendingPatches[id],
+		() => opts.autoLoad !== false && !busyItem && !post && !pendingPatches[id],
 		() => fetch({ id }),
 	);
 
@@ -190,7 +186,7 @@ export function usePost(id: string, opts: { autoLoad?: boolean } = { autoLoad: t
 
 /**
  * Enhanced form hook with integrated CRUD operations and optimistic updates.
- * 
+ *
  * Automatically detects create vs update mode based on whether an instance is provided.
  * Integrates directly with the post atoms for seamless state management.
  *
@@ -230,8 +226,8 @@ export function usePost(id: string, opts: { autoLoad?: boolean } = { autoLoad: t
  *       <input {...form.register('title')} placeholder="Title" />
  *       <textarea {...form.register('description')} placeholder="Description" />
  *       <button type="submit" disabled={form.isSubmitting}>
- *         {form.isSubmitting 
- *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *         {form.isSubmitting
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...')
  *           : (form.mode === 'create' ? 'Create Post' : 'Update Post')
  *         }
  *       </button>
@@ -243,15 +239,15 @@ export function usePost(id: string, opts: { autoLoad?: boolean } = { autoLoad: t
 export function usePostForm(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
 	const createPostAction = useSetAtom(createAtom);
 	const updatePostAction = useSetAtom(updateAtom);
-	
+
 	const formActions = createFormActions(createPostAction, updatePostAction);
-	
+
 	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
 		{
 			create: schemas.createInput,
 			update: schemas.updateInput,
 		},
-		formActions
+		formActions,
 	)(instance, options);
 }
 
