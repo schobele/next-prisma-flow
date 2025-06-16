@@ -42,23 +42,24 @@ jobs:
 
       - name: Test generator with example
         run: |
-          cd examples/todolist
+          cd examples/blog
           bun install
           # Test that generator runs without errors
           bunx prisma generate
 
       - name: Verify generated code structure
         run: |
-          cd examples/todolist
+          cd examples/blog
           # Check that expected files are generated
-          test -f generated/flow/index.ts
-          test -f generated/flow/store.ts
-          test -f generated/flow/todo/actions.ts
-          test -f generated/flow/todo/types.ts
-          test -f generated/flow/todo/hooks.ts
-          test -f generated/flow/todo/routes.ts
-          test -f generated/flow/category/actions.ts
-          test -f generated/flow/user/actions.ts
+          test -f flow/index.ts
+          test -f flow/prisma.ts
+          test -f flow/post/actions.ts
+          test -f flow/post/types.ts
+          test -f flow/post/hooks.ts
+          test -f flow/post/atoms.ts
+          test -f flow/author/actions.ts
+          test -f flow/category/actions.ts
+          test -f flow/comment/actions.ts
 
   publish:
     needs: test

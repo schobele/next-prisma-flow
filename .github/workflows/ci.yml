@@ -41,9 +41,9 @@ jobs:
           test -f dist/index.js
           echo "✅ Build output verified"
 
-      - name: Test generator with TodoList example
+      - name: Test generator with Blog example
         run: |
-          cd examples/todolist
+          cd examples/blog
           bun install
           echo "🔄 Running Prisma generate..."
           bunx prisma generate
@@ -51,74 +51,82 @@ jobs:
 
       - name: Verify generated code structure
         run: |
-          cd examples/todolist
+          cd examples/blog
           echo "🔍 Checking generated file structure..."
           
           # Core files
-          test -f generated/flow/index.ts && echo "✅ index.ts"
-          test -f generated/flow/store.ts && echo "✅ store.ts"
-          test -f generated/flow/actions.ts && echo "✅ actions.ts"
-          test -f generated/flow/atoms.ts && echo "✅ atoms.ts"
-          test -f generated/flow/hooks.ts && echo "✅ hooks.ts"
-          test -f generated/flow/types.ts && echo "✅ types.ts"
+          test -f flow/index.ts && echo "✅ index.ts"
+          test -f flow/prisma.ts && echo "✅ prisma.ts"
           
-          # Todo model files
-          test -f generated/flow/todo/actions.ts && echo "✅ todo/actions.ts"
-          test -f generated/flow/todo/types.ts && echo "✅ todo/types.ts"
-          test -f generated/flow/todo/hooks.ts && echo "✅ todo/hooks.ts"
-          test -f generated/flow/todo/routes.ts && echo "✅ todo/routes.ts"
-          test -f generated/flow/todo/atoms.ts && echo "✅ todo/atoms.ts"
+          # Post model files
+          test -f flow/post/actions.ts && echo "✅ post/actions.ts"
+          test -f flow/post/types.ts && echo "✅ post/types.ts"
+          test -f flow/post/hooks.ts && echo "✅ post/hooks.ts"
+          test -f flow/post/atoms.ts && echo "✅ post/atoms.ts"
+          test -f flow/post/derived.ts && echo "✅ post/derived.ts"
+          test -f flow/post/fx.ts && echo "✅ post/fx.ts"
+          test -f flow/post/schemas.ts && echo "✅ post/schemas.ts"
+          test -f flow/post/index.ts && echo "✅ post/index.ts"
+          
+          # Author model files
+          test -f flow/author/actions.ts && echo "✅ author/actions.ts"
+          test -f flow/author/types.ts && echo "✅ author/types.ts"
+          test -f flow/author/hooks.ts && echo "✅ author/hooks.ts"
+          test -f flow/author/atoms.ts && echo "✅ author/atoms.ts"
           
           # Category model files
-          test -f generated/flow/category/actions.ts && echo "✅ category/actions.ts"
-          test -f generated/flow/category/types.ts && echo "✅ category/types.ts"
-          test -f generated/flow/category/hooks.ts && echo "✅ category/hooks.ts"
-          test -f generated/flow/category/routes.ts && echo "✅ category/routes.ts"
-          test -f generated/flow/category/atoms.ts && echo "✅ category/atoms.ts"
+          test -f flow/category/actions.ts && echo "✅ category/actions.ts"
+          test -f flow/category/types.ts && echo "✅ category/types.ts"
+          test -f flow/category/hooks.ts && echo "✅ category/hooks.ts"
+          test -f flow/category/atoms.ts && echo "✅ category/atoms.ts"
           
-          # User model files
-          test -f generated/flow/user/actions.ts && echo "✅ user/actions.ts"
-          test -f generated/flow/user/types.ts && echo "✅ user/types.ts"
-          test -f generated/flow/user/hooks.ts && echo "✅ user/hooks.ts"
-          test -f generated/flow/user/routes.ts && echo "✅ user/routes.ts"
-          test -f generated/flow/user/atoms.ts && echo "✅ user/atoms.ts"
+          # Comment model files
+          test -f flow/comment/actions.ts && echo "✅ comment/actions.ts"
+          test -f flow/comment/types.ts && echo "✅ comment/types.ts"
+          test -f flow/comment/hooks.ts && echo "✅ comment/hooks.ts"
+          test -f flow/comment/atoms.ts && echo "✅ comment/atoms.ts"
           
           echo "✅ All expected files generated successfully"
 
       - name: Verify code quality
         run: |
-          cd examples/todolist
+          cd examples/blog
           echo "🔍 Checking for critical functions..."
           
           # Check for server actions
-          grep -q "export async function getAllTodos" generated/flow/todo/actions.ts && echo "✅ getAllTodos function"
-          grep -q "export async function createTodo" generated/flow/todo/actions.ts && echo "✅ createTodo function"
-          grep -q "export async function updateTodo" generated/flow/todo/actions.ts && echo "✅ updateTodo function"
-          grep -q "export async function deleteTodo" generated/flow/todo/actions.ts && echo "✅ deleteTodo function"
-          grep -q "export async function createManyTodos" generated/flow/todo/actions.ts && echo "✅ createManyTodos function"
+          grep -q "export async function getAll" flow/post/actions.ts && echo "✅ findMany function"
+          grep -q "export async function create" flow/post/actions.ts && echo "✅ create function"
+          grep -q "export async function update" flow/post/actions.ts && echo "✅ update function"
+          grep -q "export async function delete" flow/post/actions.ts && echo "✅ delete function"
           
           # Check for proper types
-          grep -q "TodoCreateInput" generated/flow/todo/types.ts && echo "✅ TodoCreateInput type"
-          grep -q "TodoUpdateInput" generated/flow/todo/types.ts && echo "✅ TodoUpdateInput type"
-          grep -q "TodoCreateManyInput" generated/flow/todo/types.ts && echo "✅ TodoCreateManyInput type"
+          grep -q "CreateInput" flow/post/types.ts && echo "✅ CreateInput type"
+          grep -q "UpdateInput" flow/post/types.ts && echo "✅ UpdateInput type"
+          grep -q "ModelType" flow/post/types.ts && echo "✅ ModelType type"
           
-          # Check for Zod schemas
-          grep -q "TodoCreateInputSchema" generated/flow/todo/types.ts && echo "✅ TodoCreateInputSchema"
-          grep -q "TodoUpdateInputSchema" generated/flow/todo/types.ts && echo "✅ TodoUpdateInputSchema"
-          grep -q "TodoCreateManyInputSchema" generated/flow/todo/types.ts && echo "✅ TodoCreateManyInputSchema"
+          # Check for atoms
+          grep -q "entitiesAtom" flow/post/atoms.ts && echo "✅ entitiesAtom"
+          grep -q "pendingPatchesAtom" flow/post/atoms.ts && echo "✅ pendingPatchesAtom"
           
-          # Check for circular reference prevention
-          grep -q "category: { select:" generated/flow/todo/actions.ts && echo "✅ Nested category select"
-          grep -q "user: { select:" generated/flow/todo/actions.ts && echo "✅ Nested user select"
+          # Check for hooks
+          grep -q "usePosts" flow/post/hooks.ts && echo "✅ usePosts hook"
+          grep -q "usePost" flow/post/hooks.ts && echo "✅ usePost hook"
+          grep -q "usePostForm" flow/post/hooks.ts && echo "✅ usePostForm hook"
           
           echo "✅ Code quality checks passed"
 
       - name: Check TypeScript compilation
         run: |
-          cd examples/todolist
+          cd examples/blog
           echo "🔍 Checking TypeScript compilation..."
           bunx tsc --noEmit --skipLibCheck
           echo "✅ TypeScript compilation successful"
+          
+      - name: Run baseline tests
+        run: |
+          echo "🧪 Running baseline comparison tests..."
+          bun test
+          echo "✅ Baseline tests passed"
 
   lint:
     runs-on: ubuntu-latest
