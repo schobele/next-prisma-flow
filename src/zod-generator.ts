@@ -66,7 +66,7 @@ export async function generateZodSchemas(
 async function createTempSchemaWithZodGenerator(
 	options: GeneratorOptions,
 	zodOutputDir: string,
-	models: string[],
+	_models: string[],
 ): Promise<string> {
 	try {
 		// Create temporary schema for zod generation

@@ -48,7 +48,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * @example
  * ```tsx
  * function PostsList() {
- *   const { data, loading, error, createPost, updatePost, deletePost } = usePosts();
+ *   const { data, loading, error, createPost, updatePost, deletePost } = usePostsList();
  *
  *   if (loading) return <div>Loading posts...</div>;
  *   if (error) return <div>Error: {error.message}</div>;
@@ -63,7 +63,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * }
  * ```
  */
-export function usePosts(opts: { autoLoad?: boolean } = { autoLoad: true }) {
+export function usePostsList(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const loadable = useAtomValue(listLoadable);
 	const busy = useAtomValue(loadingAtom);
 	const count = useAtomValue(countAtom);
@@ -79,7 +79,7 @@ export function usePosts(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 
 	useAutoload(
 		() => opts.autoLoad !== false && !busy && !hasAny,
-		() => fetchAll({}, {}),
+		() => fetchAll(),
 	);
 
 	return {

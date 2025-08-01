@@ -20,8 +20,7 @@ import { generateRootIndex } from "./src/templates/root-index.js";
 import { generateSchemas } from "./src/templates/schemas.js";
 import { generateSharedInfrastructure } from "./src/templates/shared.js";
 import { generateTypeDefinitions } from "./src/templates/types.js";
-import type { GeneratorContext } from "./src/types.js";
-import { capitalize, createGeneratorContext, plural } from "./src/utils.js";
+import { capitalize, createGeneratorContext, plural, camelCase } from "./src/utils.js";
 import { generateZodSchemas } from "./src/zod-generator.js";
 
 generatorHandler({
@@ -97,6 +96,7 @@ generatorHandler({
 				const modelInfo = {
 					name: modelName,
 					lowerName: lowerModelName,
+					camelCaseName: camelCase(modelName),
 					pluralName,
 					lowerPluralName,
 					config: modelConfig,

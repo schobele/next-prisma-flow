@@ -198,7 +198,7 @@ function filterFieldsForCircularReference(
 
 		// Check if this is a list relationship that could contain the parent model
 		if (field.isList) {
-			const relationshipModel = field.type;
+			const _relationshipModel = field.type;
 			// This is a more complex check - for now, we'll be conservative
 			// and remove any list relationships that could potentially create cycles
 			return false;
@@ -211,7 +211,7 @@ function filterFieldsForCircularReference(
 function createSelectObjectWithCircularPrevention(
 	fields: string[],
 	modelInfo: ModelInfo,
-	context: GeneratorContext,
+	_context: GeneratorContext,
 	visited: Set<string>,
 ): string {
 	const selectEntries: string[] = [];
@@ -266,6 +266,7 @@ function getModelConfigFromContext(modelName: string, context: GeneratorContext)
 	return {
 		name: modelName,
 		lowerName: lowerModelName,
+		camelCaseName: camelCase(modelName),
 		pluralName: capitalize(plural(modelName)),
 		lowerPluralName: plural(lowerModelName),
 		config: modelConfig,

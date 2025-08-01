@@ -4,7 +4,7 @@ import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
 export async function generateEffectAtoms(
 	modelInfo: ModelInfo,
-	context: GeneratorContext,
+	_context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
 	const { name: modelName } = modelInfo;
@@ -18,7 +18,7 @@ import type { CreateInput, ModelType, Options, UpdateInput, WhereInput, WhereUni
 /* ---------- create ---------- */
 export const createAtom = atom(null, async (_get, set, data: CreateInput) => {
 	const tempId = crypto.randomUUID();
-	set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...data, id: tempId } as ModelType }));
+	set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...data, id: tempId } as unknown as ModelType }));
 	set(pendingPatchesAtom, (p) => ({ ...p, [tempId]: { type: "create" } }));
 
 	try {
@@ -46,7 +46,7 @@ export const createAtom = atom(null, async (_get, set, data: CreateInput) => {
 export const updateAtom = atom(null, async (get, set, { id, data }: { id: string; data: UpdateInput }) => {
 	set(pendingPatchesAtom, (p) => ({ ...p, [id]: { type: "update" } }));
 	const prev = get(entitiesAtom)[id] ?? ({} as ModelType);
-	set(entitiesAtom, (m) => ({ ...m, [id]: { ...prev, ...data } as ModelType }));
+	set(entitiesAtom, (m) => ({ ...m, [id]: { ...prev, ...data } as unknown as ModelType }));
 
 	try {
 		const updated = unwrap(await actions.update({ id }, data));
@@ -75,7 +75,7 @@ export const upsertAtom = atom(
 
 		/* optimistic */
 		set(pendingPatchesAtom, (p) => ({ ...p, [tempId]: { type: "upsert" } }));
-		set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...prev, ...payload.update } as ModelType }));
+		set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...prev, ...payload.update } as unknown as ModelType }));
 
 		try {
 			const updated = unwrap(await actions.upsert(selector, payload.create, payload.update));
@@ -124,7 +124,7 @@ export const deleteAtom = atom(null, async (get, set, id: string) => {
 });
 
 /* ---------- load helpers ---------- */
-export const loadsListAtom = atom(null, async (_get, set, filter: WhereInput, options: Options) => {
+export const loadsListAtom = atom(null, async (_get, set, filter: WhereInput = {}, options: Options = {}) => {
 	try {
 		const list = unwrap(await actions.findMany(filter, options));
 		const map = list.reduce<Record<string, ModelType>>((acc, p) => {

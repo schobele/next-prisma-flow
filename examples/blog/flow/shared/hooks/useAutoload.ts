@@ -1,5 +1,4 @@
 import { useEffect, useRef, startTransition } from "react";
-import type { StartTransitionOptions } from "react";
 
 /**
  * Fire `action()` exactly once per component when `shouldLoad()` is true.
@@ -11,13 +10,8 @@ import type { StartTransitionOptions } from "react";
  *
  * @param shouldLoad - Function that returns true when loading should occur
  * @param action - Action to execute (can be sync/async)
- * @param options - Optional startTransition options for concurrent mode
  */
-export function useAutoload(
-	shouldLoad: () => boolean,
-	action: () => undefined | Promise<unknown>,
-	options?: StartTransitionOptions,
-) {
+export function useAutoload(shouldLoad: () => boolean, action: () => void | Promise<unknown>) {
 	const fired = useRef(false);
 
 	useEffect(() => {
@@ -26,7 +20,7 @@ export function useAutoload(
 			// Keep UI responsive; polyfills to direct call in non-concurrent envs
 			startTransition(() => {
 				action();
-			}, options);
+			});
 		}
-	}, [shouldLoad, action, options]);
+	}, [shouldLoad, action]);
 }

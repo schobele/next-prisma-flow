@@ -13,7 +13,7 @@ datasource db {
 generator flow {
   provider = "./generator.js"
   output   = "../flow"
-  models   = ["Author", "Category", "Post", "Comment"]
+  models   = ["Author", "Category", "Post", "Comment", "Todo", "TodoList"]
 
   // Author configuration
   authorSelect     = ["id", "email", "name", "avatar", "createdAt", "updatedAt"]
@@ -34,6 +34,14 @@ generator flow {
   commentSelect     = ["id", "content", "createdAt", "updatedAt"]
   commentOptimistic = "overwrite"
   commentPagination = "true"
+
+  // Todo configuration
+  todoSelect     = ["id", "title", "completed", "createdAt", "updatedAt"]
+  todoOptimistic = "overwrite"
+  todoPagination = "true"
+
+  // TodoList configuration
+  todoListSelect = ["id", "name", "createdAt", "updatedAt", "todos"]
 }
 
 // ============================================================================
@@ -96,4 +104,28 @@ model Post {
   comments   Comment[]
 
   @@map("posts")
+}
+
+model Todo {
+  id        String   @id @default(uuid())
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  todoListId String
+  todoList   TodoList @relation(fields: [todoListId], references: [id], onDelete: Cascade)
+
+  @@map("todos")
+}
+
+model TodoList {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  todos Todo[]
 }

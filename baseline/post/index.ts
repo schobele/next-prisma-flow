@@ -22,4 +22,4 @@ export const posts = {
 	types: Types,
 } as const;
 
-export const { usePosts, usePost, usePostForm } = Hooks;
+export const { usePostsList, usePost, usePostForm } = Hooks;

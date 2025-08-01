@@ -4,7 +4,7 @@ import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
 export async function generateServerActions(
 	modelInfo: ModelInfo,
-	context: GeneratorContext,
+	_context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
 	const { name: modelName } = modelInfo;

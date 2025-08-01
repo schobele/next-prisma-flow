@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { formatGeneratedFileHeader, writeFile } from "../utils.js";
+import { formatGeneratedFileHeader, writeFile, camelCase } from "../utils.js";
 import { analyzeModel } from "../model-analyzer.js";
 import { analyzeSchemaRelationships } from "../relationship-analyzer.js";
 
@@ -9,7 +9,7 @@ export async function generateModelConfig(
 	context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
-	const { name: modelName, lowerName, selectFields } = modelInfo;
+	const { name: modelName, lowerName, camelCaseName, selectFields } = modelInfo;
 
 	// Create select object from configured fields using the same logic as types
 	const selectObject = createSelectObject(modelInfo, context);
@@ -17,7 +17,7 @@ export async function generateModelConfig(
 	const template = `${formatGeneratedFileHeader()}import { prisma } from "../prisma";
 import type { SelectInput } from "./types";
 
-export const model = "${lowerName}" as const;
+export const model = "${camelCaseName}" as const;
 export const modelPrismaClient = prisma[model];
 export const select: SelectInput = ${selectObject};
 `;
@@ -93,6 +93,7 @@ function buildSelectObject(
 					const relatedModelInfo = {
 						name: relatedModelName,
 						lowerName: relatedModelName.toLowerCase(),
+						camelCaseName: camelCase(relatedModelName),
 						pluralName: "", // Not needed for select generation
 						lowerPluralName: "", // Not needed for select generation
 						config: relatedModelConfig,

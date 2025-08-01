@@ -4,7 +4,7 @@ import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
 export async function generateModelIndex(
 	modelInfo: ModelInfo,
-	context: GeneratorContext,
+	_context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
 	const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
@@ -33,7 +33,7 @@ export const ${lowerPluralName} = {
 	types: Types,
 } as const;
 
-export const { use${pluralName}, use${modelName}, use${modelName}Form } = Hooks;
+export const { use${pluralName}List, use${modelName}, use${modelName}Form } = Hooks;
 `;
 
 	const filePath = join(modelDir, "index.ts");

@@ -15,7 +15,7 @@ export interface FormSchemas<CreateInput, UpdateInput> {
 /* -----------------------------------------------------------
    Form submission actions interface
    ----------------------------------------------------------- */
-export interface FormActions<Model, CreateInput, UpdateInput> {
+export interface FormActions<_Model, CreateInput, UpdateInput> {
 	create: (data: CreateInput) => Promise<void> | void;
 	update: (args: { id: string; data: UpdateInput }) => Promise<void> | void;
 }

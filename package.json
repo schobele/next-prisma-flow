@@ -1,6 +1,6 @@
 {
 	"name": "next-prisma-flow",
-	"version": "0.2.5",
+	"version": "0.2.6",
 	"description": "A Prisma generator that scaffolds full-stack end-to-end state management for Next.js applications",
 	"main": "dist/index.js",
 	"module": "index.ts",
@@ -8,7 +8,11 @@
 	"bin": {
 		"next-prisma-flow": "dist/index.js"
 	},
-	"files": ["dist/", "README.md", "package.json"],
+	"files": [
+		"dist/",
+		"README.md",
+		"package.json"
+	],
 	"scripts": {
 		"build": "bun build index.ts --outdir dist --target node && cp dist/index.js examples/blog/generator.js",
 		"dev": "bun run index.ts",
@@ -86,6 +90,8 @@
 		"prisma": "^6.9.0"
 	},
 	"lint-staged": {
-		"!(examples/**/*)*": ["bun run check:fix"]
+		"!(examples/**/*)*": [
+			"bun run check:fix"
+		]
 	}
 }

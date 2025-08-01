@@ -8,14 +8,13 @@
 
 A powerful Prisma generator that scaffolds a full stack of typed code for Next.js applications with a modern, intuitive developer experience. Automatically generates API routes, server actions, Jotai state management, enhanced React hooks, and smart form integration - all fully type-safe and derived from your Prisma schema.
 
-## 🚀 What's New in v0.2.4
+## 🚀 What's New in v0.2.6
 
-- **Enhanced Form System** - Smart ModelType transformation with automatic ID extraction from nested objects
-- **Automatic Mode Detection** - Forms automatically detect create vs update based on instance presence
-- **Flexible Transform Functions** - Custom data transformation via `fromModelType`, `toCreateInput`, and `toUpdateInput`
-- **Improved Data Handling** - Seamless conversion between rich ModelType and flat form input schemas
-- **Better Edit Forms** - Pre-populated forms now properly handle nested relationship data
-- **Type-Safe Transformations** - Full TypeScript support throughout the form transformation pipeline
+- **Fixed Naming Conflicts** - List hooks now use `useModelsList()` pattern to avoid conflicts with plural model names
+- **Improved DX** - List hook parameters are now optional, eliminating the need for empty objects
+- **Fixed Model Naming** - Properly handles multi-word models like `TodoList` with correct camelCase
+- **Updated Documentation** - README now accurately reflects the current implementation and file structure
+- **React 19 Compatibility** - Fixed TypeScript issues with latest React version
 
 ## Features
 
@@ -109,21 +108,23 @@ generated/flow/
 ├── user/
 │   ├── actions.ts        # Server actions
 │   ├── atoms.ts          # Jotai atoms
+│   ├── config.ts         # Model configuration
+│   ├── derived.ts        # Derived state and selectors
+│   ├── fx.ts             # Side effects and async operations
 │   ├── hooks.ts          # Enhanced React hooks with unified API
-│   ├── routes.ts         # API route handlers
-│   ├── types.ts          # TypeScript types
-│   ├── form-provider.tsx # Form context providers
-│   ├── smart-form.ts     # Smart form utilities
-│   └── namespace.ts      # Model-specific organized exports
+│   ├── index.ts          # Model-specific organized exports
+│   ├── schemas.ts        # Zod validation schemas
+│   └── types.ts          # TypeScript types
 ├── post/
 │   ├── actions.ts
 │   ├── atoms.ts
+│   ├── config.ts
+│   ├── derived.ts
+│   ├── fx.ts
 │   ├── hooks.ts
-│   ├── routes.ts
-│   ├── types.ts
-│   ├── form-provider.tsx
-│   ├── smart-form.ts
-│   └── namespace.ts
+│   ├── index.ts
+│   ├── schemas.ts
+│   └── types.ts
 ├── shared/
 │   ├── actions/
 │   │   ├── factory.ts
@@ -132,14 +133,10 @@ generated/flow/
 │       ├── relation-helper.ts
 │       ├── use-form-factory.ts    # Enhanced form factory with smart transformations
 │       └── useAutoload.ts
-├── actions.ts            # Direct exports for actions
-├── atoms.ts              # Direct exports for atoms
-├── hooks.ts              # Direct exports for hooks
-├── types.ts              # Direct exports for types
-├── store.ts              # Central store setup
-├── zod/                  # Zod schema exports
-│   └── index.ts
-└── index.ts              # Enhanced main export with namespaces
+├── index.ts              # Enhanced main export with namespaces
+├── prisma.ts             # Re-exported Prisma client
+└── zod/                  # Zod schema exports
+    └── index.ts
 ```
 
 #### Modern v0.2.0+ Import Structure
@@ -148,7 +145,7 @@ generated/flow/
 import { users, posts } from '@/generated/flow';
 
 // Everything organized under model namespaces:
-users.hooks.useUsers()         // Unified CRUD hook
+users.hooks.useUsersList()     // Unified CRUD hook
 users.hooks.useUser(id)        // Individual item hook
 users.hooks.useUserForm()      // Enhanced form hook with smart transformations
 users.actions.create()         // Server actions
@@ -157,19 +154,11 @@ users.types.User               // TypeScript types
 users.schemas.create           // Zod schemas
 ```
 
-### 3. Set up your Next.js API routes
+### 3. Use in your React components
 
-Copy the generated route handlers to your API routes:
+The generator creates a complete state management system without requiring additional API routes. All operations work through server actions integrated with the generated hooks.
 
-```typescript
-// app/api/user/route.ts
-export { GET, POST, PATCH, DELETE } from '@/generated/flow/user/routes';
-
-// app/api/post/route.ts  
-export { GET, POST, PATCH, DELETE } from '@/generated/flow/post/routes';
-```
-
-### 4. Use in your React components
+### 4. Example Usage
 
 #### 🎯 Enhanced Form System (v0.2.4+)
 
@@ -179,7 +168,7 @@ export { GET, POST, PATCH, DELETE } from '@/generated/flow/post/routes';
 import { posts, users } from '@/generated/flow';
 
 export default function CreatePostForm() {
-  const { data: userList } = users.hooks.useUsers();
+  const { data: userList } = users.hooks.useUsersList();
   
   // Enhanced form with automatic transformation
   const form = posts.hooks.usePostForm(undefined, {
@@ -239,7 +228,7 @@ export default function CreatePostForm() {
 // Edit form with automatic data transformation
 export function EditPostForm({ postId }: { postId: string }) {
   const { data: post } = posts.hooks.usePost(postId);
-  const { data: userList } = users.hooks.useUsers();
+  const { data: userList } = users.hooks.useUsersList();
   
   // Form automatically detects update mode and transforms ModelType data
   const form = posts.hooks.usePostForm(post, {
@@ -320,7 +309,7 @@ function PostsList() {
     deletePost,
     loading, 
     error 
-  } = posts.hooks.usePosts();
+  } = posts.hooks.usePostsList();
   
   if (loading) return <div>Loading posts...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -477,13 +466,10 @@ Hooks provide a React-Query-like experience:
 
 ```typescript
 // Generated in user/hooks.ts
-export function useUsers(): UseUsersResult
+export function useUsersList(): UseUsersListResult
 export function useUser(id: string): UseUserResult
 export function useUserForm(instance?: ModelType, options?: UseFormOptions): UseModelFormReturn
-export function useCreateUser(): UseCreateUserResult
-export function useUpdateUser(): UseUpdateUserResult
-export function useDeleteUser(): UseDeleteUserResult
-export function useUserMutations(): UseUserMutationsResult
+// Additional utility hooks available for advanced usage
 ```
 
 ### Jotai Atoms
@@ -497,16 +483,8 @@ export const usersLoadingAtom: Atom<boolean>
 export const refreshUsersAtom: WriteOnlyAtom<null, void>
 ```
 
-### API Routes
-RESTful API route handlers for external consumption:
-
-```typescript
-// Generated in user/routes.ts
-export async function GET(request: NextRequest): Promise<NextResponse>
-export async function POST(request: NextRequest): Promise<NextResponse>
-export async function PATCH(request: NextRequest): Promise<NextResponse>
-export async function DELETE(request: NextRequest): Promise<NextResponse>
-```
+### Server Actions
+All operations are handled through server actions integrated with the state management system. No separate API routes are needed for basic CRUD operations.
 
 ## Advanced Usage
 
@@ -631,10 +609,10 @@ import { atom } from 'jotai';
 import { todos } from '@/generated/flow';
 
 // Direct atom access for custom derived state
-const { todosAtom } = todos.atoms;
+const { entitiesAtom } = todos.atoms;
 
 export const myTodosAtom = atom((get) => {
-  const allTodos = get(todosAtom);
+  const allTodos = get(entitiesAtom);
   return Object.values(allTodos).filter(t => t.userId === currentUserId);
 });
 
@@ -674,7 +652,7 @@ export async function createTodoFromTemplate(template: TodoTemplate) {
 import { users } from '@/generated/flow';
 
 function BatchUserActions() {
-  const { createMany, deleteMany } = users.hooks.useUsers();
+  const { createMany, deleteMany } = users.hooks.useUsersList();
   
   const handleBatchCreate = async () => {
     await createMany([
@@ -716,7 +694,7 @@ Always use the new namespace imports for better DX:
 import { users, todos } from '@/generated/flow';
 
 // Access everything through the namespace
-const { data, createUser } = users.hooks.useUsers();
+const { data, createUser } = users.hooks.useUsersList();
 const form = users.hooks.useUserForm();
 ```
 
@@ -775,7 +753,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 Take advantage of built-in optimistic updates:
 
 ```typescript
-const { updateUser } = users.hooks.useUsers();
+const { updateUser } = users.hooks.useUsersList();
 
 // UI updates immediately, then syncs with server
 await updateUser(userId, { name: 'New Name' });
@@ -789,7 +767,7 @@ import { atom } from 'jotai';
 import { users } from '@/generated/flow';
 
 const activeUsersAtom = atom((get) => {
-  const allUsers = get(users.atoms.usersAtom);
+  const allUsers = get(users.atoms.entitiesAtom);
   return Object.values(allUsers).filter(u => u.status === 'ACTIVE');
 });
 ```

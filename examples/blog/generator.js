@@ -1627,6 +1627,92 @@ var require_pluralize = __commonJS((exports, module) => {
 var import_generator_helper = __toESM(require_dist2(), 1);
 import { join as join14 } from "node:path";
 
+// node_modules/change-case/dist/index.js
+var SPLIT_LOWER_UPPER_RE = /([\p{Ll}\d])(\p{Lu})/gu;
+var SPLIT_UPPER_UPPER_RE = /(\p{Lu})([\p{Lu}][\p{Ll}])/gu;
+var SPLIT_SEPARATE_NUMBER_RE = /(\d)\p{Ll}|(\p{L})\d/u;
+var DEFAULT_STRIP_REGEXP = /[^\p{L}\d]+/giu;
+var SPLIT_REPLACE_VALUE = "$1\x00$2";
+var DEFAULT_PREFIX_SUFFIX_CHARACTERS = "";
+function split(value) {
+  let result = value.trim();
+  result = result.replace(SPLIT_LOWER_UPPER_RE, SPLIT_REPLACE_VALUE).replace(SPLIT_UPPER_UPPER_RE, SPLIT_REPLACE_VALUE);
+  result = result.replace(DEFAULT_STRIP_REGEXP, "\x00");
+  let start = 0;
+  let end = result.length;
+  while (result.charAt(start) === "\x00")
+    start++;
+  if (start === end)
+    return [];
+  while (result.charAt(end - 1) === "\x00")
+    end--;
+  return result.slice(start, end).split(/\0/g);
+}
+function splitSeparateNumbers(value) {
+  const words = split(value);
+  for (let i = 0;i < words.length; i++) {
+    const word = words[i];
+    const match = SPLIT_SEPARATE_NUMBER_RE.exec(word);
+    if (match) {
+      const offset = match.index + (match[1] ?? match[2]).length;
+      words.splice(i, 1, word.slice(0, offset), word.slice(offset));
+    }
+  }
+  return words;
+}
+function camelCase(input, options) {
+  const [prefix, words, suffix] = splitPrefixSuffix(input, options);
+  const lower = lowerFactory(options?.locale);
+  const upper = upperFactory(options?.locale);
+  const transform = options?.mergeAmbiguousCharacters ? capitalCaseTransformFactory(lower, upper) : pascalCaseTransformFactory(lower, upper);
+  return prefix + words.map((word, index) => {
+    if (index === 0)
+      return lower(word);
+    return transform(word, index);
+  }).join(options?.delimiter ?? "") + suffix;
+}
+function lowerFactory(locale) {
+  return locale === false ? (input) => input.toLowerCase() : (input) => input.toLocaleLowerCase(locale);
+}
+function upperFactory(locale) {
+  return locale === false ? (input) => input.toUpperCase() : (input) => input.toLocaleUpperCase(locale);
+}
+function capitalCaseTransformFactory(lower, upper) {
+  return (word) => `${upper(word[0])}${lower(word.slice(1))}`;
+}
+function pascalCaseTransformFactory(lower, upper) {
+  return (word, index) => {
+    const char0 = word[0];
+    const initial = index > 0 && char0 >= "0" && char0 <= "9" ? "_" + char0 : upper(char0);
+    return initial + lower(word.slice(1));
+  };
+}
+function splitPrefixSuffix(input, options = {}) {
+  const splitFn = options.split ?? (options.separateNumbers ? splitSeparateNumbers : split);
+  const prefixCharacters = options.prefixCharacters ?? DEFAULT_PREFIX_SUFFIX_CHARACTERS;
+  const suffixCharacters = options.suffixCharacters ?? DEFAULT_PREFIX_SUFFIX_CHARACTERS;
+  let prefixIndex = 0;
+  let suffixIndex = input.length;
+  while (prefixIndex < input.length) {
+    const char = input.charAt(prefixIndex);
+    if (!prefixCharacters.includes(char))
+      break;
+    prefixIndex++;
+  }
+  while (suffixIndex > prefixIndex) {
+    const index = suffixIndex - 1;
+    const char = input.charAt(index);
+    if (!suffixCharacters.includes(char))
+      break;
+    suffixIndex = index;
+  }
+  return [
+    input.slice(0, prefixIndex),
+    splitFn(input.slice(prefixIndex, suffixIndex)),
+    input.slice(suffixIndex)
+  ];
+}
+
 // src/utils.ts
 var pluralize = __toESM(require_pluralize(), 1);
 import { dirname as dirname2, join, relative as relative2, resolve as resolve2 } from "node:path";
@@ -1996,6 +2082,9 @@ function createGeneratorContext(config, dmmf, outputPath) {
 function capitalize(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+function camelCase2(str) {
+  return camelCase(str);
+}
 function plural2(word) {
   return pluralize.plural(word);
 }
@@ -2097,7 +2186,7 @@ function analyzeSchemaRelationships(dmmf) {
 
 // src/templates/actions.ts
 import { join as join2 } from "node:path";
-async function generateServerActions(modelInfo, context, modelDir) {
+async function generateServerActions(modelInfo, _context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}"use server";
 
@@ -2128,7 +2217,7 @@ export const {
 
 // src/templates/atoms.ts
 import { join as join3 } from "node:path";
-async function generateJotaiAtoms(modelInfo, context, modelDir) {
+async function generateJotaiAtoms(modelInfo, _context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
@@ -2158,12 +2247,12 @@ export const entityAtomFamily = atomFamily((id: string) =>
 // src/templates/config.ts
 import { join as join4 } from "node:path";
 async function generateModelConfig(modelInfo, context, modelDir) {
-  const { name: modelName, lowerName, selectFields } = modelInfo;
+  const { name: modelName, lowerName, camelCaseName, selectFields } = modelInfo;
   const selectObject = createSelectObject(modelInfo, context);
   const template = `${formatGeneratedFileHeader()}import { prisma } from "../prisma";
 import type { SelectInput } from "./types";
 
-export const model = "${lowerName}" as const;
+export const model = "${camelCaseName}" as const;
 export const modelPrismaClient = prisma[model];
 export const select: SelectInput = ${selectObject};
 `;
@@ -2209,6 +2298,7 @@ function buildSelectObject(modelInfo, context, visited) {
           const relatedModelInfo = {
             name: relatedModelName,
             lowerName: relatedModelName.toLowerCase(),
+            camelCaseName: camelCase2(relatedModelName),
             pluralName: "",
             lowerPluralName: "",
             config: relatedModelConfig,
@@ -2256,7 +2346,7 @@ function getSelectFieldsForModel(modelName, modelConfig, context) {
 
 // src/templates/derived.ts
 import { join as join5 } from "node:path";
-async function generateDerivedAtoms(modelInfo, context, modelDir) {
+async function generateDerivedAtoms(modelInfo, _context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from "jotai";
 import { atomFamily, loadable } from "jotai/utils";
@@ -2318,7 +2408,7 @@ export const searchAtom = atomFamily((query: string) =>
 
 // src/templates/fx.ts
 import { join as join6 } from "node:path";
-async function generateEffectAtoms(modelInfo, context, modelDir) {
+async function generateEffectAtoms(modelInfo, _context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { atom } from "jotai";
 import { unwrap } from "../shared/actions/unwrap";
@@ -2329,7 +2419,7 @@ import type { CreateInput, ModelType, Options, UpdateInput, WhereInput, WhereUni
 /* ---------- create ---------- */
 export const createAtom = atom(null, async (_get, set, data: CreateInput) => {
 	const tempId = crypto.randomUUID();
-	set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...data, id: tempId } as ModelType }));
+	set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...data, id: tempId } as unknown as ModelType }));
 	set(pendingPatchesAtom, (p) => ({ ...p, [tempId]: { type: "create" } }));
 
 	try {
@@ -2357,7 +2447,7 @@ export const createAtom = atom(null, async (_get, set, data: CreateInput) => {
 export const updateAtom = atom(null, async (get, set, { id, data }: { id: string; data: UpdateInput }) => {
 	set(pendingPatchesAtom, (p) => ({ ...p, [id]: { type: "update" } }));
 	const prev = get(entitiesAtom)[id] ?? ({} as ModelType);
-	set(entitiesAtom, (m) => ({ ...m, [id]: { ...prev, ...data } as ModelType }));
+	set(entitiesAtom, (m) => ({ ...m, [id]: { ...prev, ...data } as unknown as ModelType }));
 
 	try {
 		const updated = unwrap(await actions.update({ id }, data));
@@ -2386,7 +2476,7 @@ export const upsertAtom = atom(
 
 		/* optimistic */
 		set(pendingPatchesAtom, (p) => ({ ...p, [tempId]: { type: "upsert" } }));
-		set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...prev, ...payload.update } as ModelType }));
+		set(entitiesAtom, (m) => ({ ...m, [tempId]: { ...prev, ...payload.update } as unknown as ModelType }));
 
 		try {
 			const updated = unwrap(await actions.upsert(selector, payload.create, payload.update));
@@ -2435,7 +2525,7 @@ export const deleteAtom = atom(null, async (get, set, id: string) => {
 });
 
 /* ---------- load helpers ---------- */
-export const loadsListAtom = atom(null, async (_get, set, filter: WhereInput, options: Options) => {
+export const loadsListAtom = atom(null, async (_get, set, filter: WhereInput = {}, options: Options = {}) => {
 	try {
 		const list = unwrap(await actions.findMany(filter, options));
 		const map = list.reduce<Record<string, ModelType>>((acc, p) => {
@@ -2463,7 +2553,7 @@ export const loadEntityAtom = atom(null, async (_get, set, selector: WhereUnique
 
 // src/templates/hooks.ts
 import { join as join7 } from "node:path";
-async function generateReactHooks(modelInfo, context, modelDir) {
+async function generateReactHooks(modelInfo, _context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import { useAtomValue, useSetAtom } from "jotai";
 import { entityAtomFamily, errorAtom, pendingPatchesAtom } from "./atoms";
@@ -2514,7 +2604,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * @example
  * \`\`\`tsx
  * function ${pluralName}List() {
- *   const { data, loading, error, create${modelName}, update${modelName}, delete${modelName} } = use${pluralName}();
+ *   const { data, loading, error, create${modelName}, update${modelName}, delete${modelName} } = use${pluralName}List();
  *
  *   if (loading) return <div>Loading ${lowerPluralName}...</div>;
  *   if (error) return <div>Error: {error.message}</div>;
@@ -2529,7 +2619,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * }
  * \`\`\`
  */
-export function use${pluralName}(opts: { autoLoad?: boolean } = { autoLoad: true }) {
+export function use${pluralName}List(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const loadable = useAtomValue(listLoadable);
 	const busy = useAtomValue(loadingAtom);
 	const count = useAtomValue(countAtom);
@@ -2545,7 +2635,7 @@ export function use${pluralName}(opts: { autoLoad?: boolean } = { autoLoad: true
 
 	useAutoload(
 		() => opts.autoLoad !== false && !busy && !hasAny,
-		() => fetchAll({}, {}),
+		() => fetchAll(),
 	);
 
 	return {
@@ -2746,7 +2836,7 @@ export function useCountByFieldValue<K extends keyof ModelType>(field: K, value:
 
 // src/templates/index.ts
 import { join as join8 } from "node:path";
-async function generateModelIndex(modelInfo, context, modelDir) {
+async function generateModelIndex(modelInfo, _context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import * as Actions from "./actions";
 import * as baseAtoms from "./atoms";
@@ -2772,7 +2862,7 @@ export const ${lowerPluralName} = {
 	types: Types,
 } as const;
 
-export const { use${pluralName}, use${modelName}, use${modelName}Form } = Hooks;
+export const { use${pluralName}List, use${modelName}, use${modelName}Form } = Hooks;
 `;
   const filePath = join8(modelDir, "index.ts");
   await writeFile(filePath, template);
@@ -2841,7 +2931,7 @@ export * as zod from "./zod";
 
 // src/templates/schemas.ts
 import { join as join10 } from "node:path";
-async function generateSchemas(modelInfo, context, modelDir) {
+async function generateSchemas(modelInfo, _context, modelDir) {
   const { name: modelName } = modelInfo;
   const template = `${formatGeneratedFileHeader()}import {
 	${modelName}CreateManyInputSchema,
@@ -2876,7 +2966,7 @@ async function generateSharedInfrastructure(context) {
   await ensureDirectory(sharedDir);
   await ensureDirectory(actionsDir);
   await ensureDirectory(hooksDir);
-  const baselineSharedPath = join11(process.cwd(), "baseline", "shared");
+  const _baselineSharedPath = join11(process.cwd(), "baseline", "shared");
   const factoryContent = `import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { z } from "zod";
 
@@ -3333,7 +3423,6 @@ export function createFormActions<Model, CreateInput, UpdateInput>(
 }`;
   await writeFile(join11(hooksDir, "use-form-factory.ts"), useFormFactoryContent);
   const useAutoloadContent = `import { useEffect, useRef, startTransition } from "react";
-import type { StartTransitionOptions } from "react";
 
 /**
  * Fire \`action()\` exactly once per component when \`shouldLoad()\` is true.
@@ -3345,12 +3434,10 @@ import type { StartTransitionOptions } from "react";
  * 
  * @param shouldLoad - Function that returns true when loading should occur
  * @param action - Action to execute (can be sync/async)
- * @param options - Optional startTransition options for concurrent mode
  */
 export function useAutoload(
 	shouldLoad: () => boolean,
 	action: () => void | Promise<unknown>,
-	options?: StartTransitionOptions,
 ) {
 	const fired = useRef(false);
 
@@ -3360,9 +3447,9 @@ export function useAutoload(
 			// Keep UI responsive; polyfills to direct call in non-concurrent envs
 			startTransition(() => {
 				action();
-			}, options);
+			});
 		}
-	}, [shouldLoad, action, options]);
+	}, [shouldLoad, action]);
 }`;
   await writeFile(join11(hooksDir, "useAutoload.ts"), useAutoloadContent);
 }
@@ -3446,6 +3533,7 @@ function buildSelectObject2(modelInfo, context, visited) {
           const relatedModelInfo = {
             name: relatedModelName,
             lowerName: relatedModelName.toLowerCase(),
+            camelCaseName: camelCase2(relatedModelName),
             pluralName: "",
             lowerPluralName: "",
             config: relatedModelConfig,
@@ -3490,7 +3578,7 @@ function getSelectFieldsForModel2(modelName, modelConfig, context) {
   }
   return [];
 }
-function generateRelationshipsInterface(analyzed, modelName) {
+function generateRelationshipsInterface(analyzed, _modelName) {
   const allRelationships = [...analyzed.relationships?.owns || [], ...analyzed.relationships?.referencedBy || []];
   if (!allRelationships.length) {
     return `export interface Relationships extends Record<string, { where: any; many: boolean }> {
@@ -3549,7 +3637,7 @@ async function generateZodSchemas(options, outputDir, models) {
     } catch {}
   }
 }
-async function createTempSchemaWithZodGenerator(options, zodOutputDir, models) {
+async function createTempSchemaWithZodGenerator(options, zodOutputDir, _models) {
   try {
     console.log("\uD83D\uDCDD Creating temporary schema for zod generation...");
     console.log(`\uD83D\uDD0D Reading original schema... ${options.schemaPath}`);
@@ -3721,6 +3809,7 @@ import_generator_helper.generatorHandler({
         const modelInfo = {
           name: modelName,
           lowerName: lowerModelName,
+          camelCaseName: camelCase2(modelName),
           pluralName,
           lowerPluralName,
           config: modelConfig,

@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { analyzeModel } from "../model-analyzer.js";
 import { analyzeSchemaRelationships } from "../relationship-analyzer.js";
 import type { GeneratorContext, ModelInfo } from "../types.js";
-import { formatGeneratedFileHeader, writeFile } from "../utils.js";
+import { formatGeneratedFileHeader, writeFile, camelCase } from "../utils.js";
 
 export async function generateTypeDefinitions(
 	modelInfo: ModelInfo,
@@ -120,6 +120,7 @@ function buildSelectObject(
 					const relatedModelInfo = {
 						name: relatedModelName,
 						lowerName: relatedModelName.toLowerCase(),
+						camelCaseName: camelCase(relatedModelName),
 						pluralName: "", // Not needed for select generation
 						lowerPluralName: "", // Not needed for select generation
 						config: relatedModelConfig,
@@ -178,7 +179,7 @@ function getSelectFieldsForModel(modelName: string, modelConfig: any, context: G
 	return [];
 }
 
-function generateRelationshipsInterface(analyzed: any, modelName: string): string {
+function generateRelationshipsInterface(analyzed: any, _modelName: string): string {
 	// Get all relationships from both owns and referencedBy
 	const allRelationships = [...(analyzed.relationships?.owns || []), ...(analyzed.relationships?.referencedBy || [])];
 

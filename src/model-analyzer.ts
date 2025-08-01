@@ -247,7 +247,7 @@ export function generateValidationRules(model: AnalyzedModel): ValidationRule[] 
 /**
  * Generate TypeScript validation function code
  */
-export function generateValidationFunction(rules: ValidationRule[], modelName: string): string {
+export function generateValidationFunction(rules: ValidationRule[], _modelName: string): string {
 	const validationChecks = rules
 		.map((rule) => {
 			switch (rule.type) {

@@ -29,6 +29,7 @@ export interface GeneratorContext {
 export interface ModelInfo {
 	name: string;
 	lowerName: string;
+	camelCaseName: string;
 	pluralName: string;
 	lowerPluralName: string;
 	config: ModelConfig;

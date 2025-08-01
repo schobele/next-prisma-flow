@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, Zap, Shield, Code, Wrench } from "lucide-react";
+import { CheckCircle, Zap, Shield, Wrench } from "lucide-react";
 
 export function HookComparisonSection() {
 	return (

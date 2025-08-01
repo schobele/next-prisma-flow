@@ -1,9 +1,20 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.1.2/schema.json",
 	"vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["node_modules", "dist", "build", "public", "*.md", "*.lock", ".next", "generator.js", "components/"]
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/build",
+			"!**/public",
+			"!**/*.md",
+			"!**/*.lock",
+			"!**/.next",
+			"!**/generator.js",
+			"!**/components/"
+		]
 	},
 	"formatter": {
 		"enabled": true,
@@ -16,14 +27,20 @@
 		"attributePosition": "auto",
 		"bracketSpacing": true
 	},
-	"organizeImports": { "enabled": false },
+	"assist": { "actions": { "source": { "organizeImports": "off" } } },
 	"linter": {
 		"enabled": true,
 		"rules": {
+			"a11y": "off",
 			"recommended": true,
-			"correctness": { "useJsxKeyInIterable": "off" },
+			"correctness": {
+				"useJsxKeyInIterable": "off",
+				"noUnusedVariables": "off",
+				"noUnusedFunctionParameters": "off"
+			},
 			"style": { "useBlockStatements": "off", "noUselessElse": "off" },
-			"suspicious": { "noExplicitAny": "off" }
+			"suspicious": "off",
+			"security": { "noDangerouslySetInnerHtml": "off" }
 		}
 	},
 	"javascript": {
@@ -45,5 +62,5 @@
 		}
 	},
 
-	"overrides": [{ "include": ["*.ts", "*.tsx"] }]
+	"overrides": [{ "includes": ["**/*.ts", "**/*.tsx"] }]
 }

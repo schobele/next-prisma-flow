@@ -229,10 +229,10 @@ export default function BlogPage() {
 		updatePost,
 		deletePost,
 		hasAny: hasAnyPosts,
-	} = posts.hooks.usePosts();
+	} = posts.hooks.usePostsList();
 
-	const { data: categoriesData } = categories.hooks.useCategories();
-	const { data: authorsData } = authors.hooks.useAuthors();
+	const { data: categoriesData } = categories.hooks.useCategoriesList();
+	const { data: authorsData } = authors.hooks.useAuthorsList();
 
 	// Filter and search posts
 	const filteredPosts = useMemo(() => {
@@ -270,7 +270,7 @@ export default function BlogPage() {
 		categories: categoriesData?.length || 0,
 	};
 
-	const handleCreatePost = async (data: Prisma.PostUncheckedCreateInput) => {
+	const _handleCreatePost = async (data: Prisma.PostUncheckedCreateInput) => {
 		await createPost({
 			title: data.title,
 			description: data.description,

@@ -62,7 +62,7 @@ export {
 
 export {
   // Hooks
-  use${pluralName},
+  use${pluralName}List,
   use${modelName},
   use${modelName}Form,
 } from './hooks';

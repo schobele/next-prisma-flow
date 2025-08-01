@@ -4,7 +4,7 @@ import { formatGeneratedFileHeader, writeFile } from "../utils.js";
 
 export async function generateReactHooks(
 	modelInfo: ModelInfo,
-	context: GeneratorContext,
+	_context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
 	const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
@@ -58,7 +58,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * @example
  * \`\`\`tsx
  * function ${pluralName}List() {
- *   const { data, loading, error, create${modelName}, update${modelName}, delete${modelName} } = use${pluralName}();
+ *   const { data, loading, error, create${modelName}, update${modelName}, delete${modelName} } = use${pluralName}List();
  *
  *   if (loading) return <div>Loading ${lowerPluralName}...</div>;
  *   if (error) return <div>Error: {error.message}</div>;
@@ -73,7 +73,7 @@ import type { CreateInput, ModelType, Relationships, UpdateInput } from "./types
  * }
  * \`\`\`
  */
-export function use${pluralName}(opts: { autoLoad?: boolean } = { autoLoad: true }) {
+export function use${pluralName}List(opts: { autoLoad?: boolean } = { autoLoad: true }) {
 	const loadable = useAtomValue(listLoadable);
 	const busy = useAtomValue(loadingAtom);
 	const count = useAtomValue(countAtom);
@@ -89,7 +89,7 @@ export function use${pluralName}(opts: { autoLoad?: boolean } = { autoLoad: true
 
 	useAutoload(
 		() => opts.autoLoad !== false && !busy && !hasAny,
-		() => fetchAll({}, {}),
+		() => fetchAll(),
 	);
 
 	return {
