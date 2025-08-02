@@ -7,10 +7,16 @@ export async function generateDerivedAtoms(
 	_context: GeneratorContext,
 	modelDir: string,
 ): Promise<void> {
-	const { name: modelName } = modelInfo;
+	const { name: modelName, analyzed } = modelInfo;
+
+	// Extract searchable string fields from the model
+	const searchableFields = analyzed.stringFields
+		.map((field) => field.name)
+		.filter((name) => !["id", "password", "hash", "token"].includes(name.toLowerCase()));
 
 	const template = `${formatGeneratedFileHeader()}import { atom } from "jotai";
 import { atomFamily, loadable } from "jotai/utils";
+import Fuse, { type IFuseOptions } from "fuse.js";
 import { entitiesAtom, entityAtomFamily, pendingPatchesAtom } from "./atoms";
 import type { ModelType } from "./types";
 
@@ -58,9 +64,66 @@ export const pagedAtom = atomFamily(({ page, pageSize }: { page: number; pageSiz
 	}),
 );
 
-/* local search */
-export const searchAtom = atomFamily((query: string) =>
-	atom<ModelType[]>((get) => get(listAtom).filter((e) => JSON.stringify(e).toLowerCase().includes(query.toLowerCase()))),
+/* Enhanced search with Fuse.js */
+interface SearchParams {
+	query: string;
+	options?: IFuseOptions<ModelType>;
+}
+
+// Default search keys - all string fields commonly searched
+const defaultSearchKeys = ${JSON.stringify(searchableFields)};
+
+// Cache Fuse instances to avoid recreation
+interface FuseCache {
+	fuse: Fuse<ModelType>;
+	list: ModelType[];
+}
+const fuseCache = new Map<string, FuseCache>();
+
+export const searchAtom = atomFamily(
+	(params: SearchParams | string) => 
+		atom<ModelType[]>((get) => {
+			const list = get(listAtom);
+			
+			// Handle backward compatibility for string-only parameter
+			const { query, options } = typeof params === "string" 
+				? { query: params, options: undefined }
+				: params;
+			
+			// Return all items if query is empty
+			if (!query || query.trim() === "") {
+				return list;
+			}
+			
+			// Create cache key based on options
+			const cacheKey = JSON.stringify(options?.keys || defaultSearchKeys);
+			
+			// Get or create Fuse instance
+			let cached = fuseCache.get(cacheKey);
+			if (!cached || cached.list !== list) {
+				const fuseOptions: IFuseOptions<ModelType> = {
+					keys: defaultSearchKeys,
+					threshold: 0.3,
+					ignoreLocation: true,
+					...options,
+				};
+				const fuse = new Fuse(list, fuseOptions);
+				cached = { fuse, list };
+				fuseCache.set(cacheKey, cached);
+			}
+			
+			// Perform search
+			const results = cached.fuse.search(query);
+			
+			// Return just the items (not the Fuse result objects)
+			return results.map(result => result.item);
+		}),
+	// Custom equality function to ensure stable keys
+	(a, b) => {
+		const aKey = typeof a === "string" ? a : JSON.stringify(a);
+		const bKey = typeof b === "string" ? b : JSON.stringify(b);
+		return aKey === bKey;
+	}
 );
 `;
 

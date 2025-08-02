@@ -28,6 +28,7 @@ A powerful Prisma generator that scaffolds a full stack of typed code for Next.j
 - 📊 **Selective Fields**: Control which fields are exposed via configuration
 - 🎨 **Smart Forms**: Enhanced form hooks with automatic data transformation
 - 🔀 **Auto Transformations**: Seamless conversion between ModelType and form schemas
+- 🔍 **Fuzzy Search**: Built-in Fuse.js integration with type-safe search keys
 - 🏗️ **Namespace Exports**: Organized, intuitive API structure
 
 ## Installation
@@ -61,7 +62,9 @@ generator flow {
   output   = "./generated/flow"
   zodPrismaImport = "./generated/zod"
   prismaImport = "@/lib/prisma"
-  models   = ["User", "Post"]
+  models   = ["User", "Post"]  // List specific models
+  # OR use "all" to generate for every model:
+  # models = "all"
   
   // User configuration  
   userSelect     = ["id", "name", "email", "posts"]
@@ -148,6 +151,7 @@ import { users, posts } from '@/generated/flow';
 users.hooks.useUsersList()     // Unified CRUD hook
 users.hooks.useUser(id)        // Individual item hook
 users.hooks.useUserForm()      // Enhanced form hook with smart transformations
+users.hooks.useSearch()        // Fuzzy search with type-safe keys
 users.actions.create()         // Server actions
 users.atoms.usersAtom          // Jotai atoms
 users.types.User               // TypeScript types
@@ -357,6 +361,8 @@ generator flow {
   zodPrismaImport = "./generated/zod"       # Path to zod-prisma-types
   prismaImport = "@/lib/prisma"             # Path to your Prisma client instance
   models   = ["User", "Post"]               # Models to generate for
+  # OR use "all" to generate for every model:
+  # models = "all"
   
   # Model-specific configuration (flat format)
   userSelect     = ["id", "name", "email"] # Fields to include in responses
@@ -390,7 +396,13 @@ prismaImport = "~/utils/database"      # Custom path alias
 ```
 
 #### `models`
-Array of model names to generate code for.
+Array of model names to generate code for, or the string `"all"` to generate for every model in your schema.
+
+Examples:
+```prisma
+models = ["User", "Post", "Comment"]  # Generate only for these models
+models = "all"                        # Generate for all models in schema
+```
 
 ### Model Configuration Options
 
@@ -469,6 +481,7 @@ Hooks provide a React-Query-like experience:
 export function useUsersList(): UseUsersListResult
 export function useUser(id: string): UseUserResult
 export function useUserForm(instance?: ModelType, options?: UseFormOptions): UseModelFormReturn
+export function useSearch(options?: UseSearchOptions): UseSearchReturn<ModelType>
 // Additional utility hooks available for advanced usage
 ```
 
@@ -663,6 +676,100 @@ function BatchUserActions() {
   
   return <button onClick={handleBatchCreate}>Create Multiple Users</button>;
 }
+```
+
+### 🔍 Fuzzy Search with Fuse.js (v0.2.6+)
+
+The generated hooks include built-in fuzzy search powered by Fuse.js with full TypeScript support:
+
+#### Basic Search Usage
+
+```typescript
+import { posts } from '@/generated/flow';
+
+function SearchablePostsList() {
+  const { search, results, query } = posts.hooks.useSearch();
+  
+  return (
+    <div>
+      <input
+        type="text"
+        placeholder="Search posts..."
+        value={query}
+        onChange={(e) => search(e.target.value)}
+      />
+      
+      <div>
+        {results.map((post) => (
+          <div key={post.id}>
+            <h3>{post.title}</h3>
+            <p>{post.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+#### Type-Safe Search Configuration
+
+The search hook provides type-safe keys that automatically include valid property paths:
+
+```typescript
+import { posts } from '@/generated/flow';
+
+function AdvancedSearch() {
+  const { search, results, query } = posts.hooks.useSearch({
+    // TypeScript will autocomplete valid paths!
+    keys: [
+      "title",           // Direct fields
+      "description",     
+      "author.name",     // ✅ Nested object paths
+      "author.email",    // ✅ Type-safe!
+      "category.name",   // ✅ Relationship fields
+      // "author.invalid" // ❌ TypeScript error - invalid path
+    ],
+    threshold: 0.3,      // Fuzzy matching tolerance
+    includeScore: true,  // Include match scores
+    shouldSort: true,    // Sort by relevance
+  });
+  
+  return (
+    <div>
+      <input
+        placeholder="Search posts, authors, categories..."
+        value={query}
+        onChange={(e) => search(e.target.value)}
+      />
+      
+      {/* Results are automatically filtered and sorted */}
+      {results.map((post) => (
+        <PostCard key={post.id} post={post} />
+      ))}
+    </div>
+  );
+}
+```
+
+#### Search Features
+
+- **Fuzzy Matching**: Tolerates typos and partial matches
+- **Type-Safe Keys**: Full TypeScript support for nested paths
+- **Automatic Caching**: Fuse.js instances are cached for performance
+- **Smart Defaults**: Searches common string fields by default
+- **Relationship Search**: Search through nested relationships
+- **Real-time Results**: Instant search as you type
+
+#### Default Search Fields
+
+Each model automatically searches through its string fields, excluding sensitive data:
+
+```typescript
+// For a Post model, default searchable fields might include:
+["title", "description", "status", "authorId", "categoryId"]
+
+// Sensitive fields like 'password', 'hash', 'token' are automatically excluded
 ```
 
 ### Server-Side Usage

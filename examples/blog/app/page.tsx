@@ -215,7 +215,6 @@ function EditPostForm({
 }
 
 export default function BlogPage() {
-	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("__all__");
 	const [selectedStatus, setSelectedStatus] = useState<string>("__all__");
 	const [showCreateForm, setShowCreateForm] = useState(false);
@@ -233,21 +232,15 @@ export default function BlogPage() {
 
 	const { data: categoriesData } = categories.hooks.useCategoriesList();
 	const { data: authorsData } = authors.hooks.useAuthorsList();
+	const { search, results, query } = posts.hooks.useSearch({
+		keys: ["title", "status", "description", "author.name", "category.name", "author.email"],
+		threshold: 0.4,
+		includeScore: true,
+	});
 
 	// Filter and search posts
 	const filteredPosts = useMemo(() => {
-		if (!postsData) return [];
-
-		return postsData.filter((post) => {
-			// Search filter
-			if (
-				searchQuery &&
-				!post.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-				!post.description?.toLowerCase().includes(searchQuery.toLowerCase())
-			) {
-				return false;
-			}
-
+		return results.filter((post) => {
 			// Category filter
 			if (selectedCategory !== "__all__" && post.category?.id !== selectedCategory) {
 				return false;
@@ -260,13 +253,13 @@ export default function BlogPage() {
 
 			return true;
 		});
-	}, [postsData, searchQuery, selectedCategory, selectedStatus]);
+	}, [selectedCategory, selectedStatus, results]);
 
 	// Calculate statistics
 	const stats = {
-		total: postsData?.length || 0,
-		published: postsData?.filter((p) => p.status === "PUBLISHED").length || 0,
-		draft: postsData?.filter((p) => p.status === "DRAFT").length || 0,
+		total: results?.length || 0,
+		published: results?.filter((p) => p.status === "PUBLISHED").length || 0,
+		draft: results?.filter((p) => p.status === "DRAFT").length || 0,
 		categories: categoriesData?.length || 0,
 	};
 
@@ -385,8 +378,8 @@ export default function BlogPage() {
 									<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
 									<Input
 										placeholder="Search posts..."
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
+										value={query}
+										onChange={(e) => search(e.target.value)}
 										className="pl-10"
 									/>
 								</div>
@@ -419,11 +412,11 @@ export default function BlogPage() {
 								</Select>
 
 								{/* Clear Filters */}
-								{(searchQuery || selectedCategory !== "__all__" || selectedStatus !== "__all__") && (
+								{(query || selectedCategory !== "__all__" || selectedStatus !== "__all__") && (
 									<Button
 										variant="outline"
 										onClick={() => {
-											setSearchQuery("");
+											search("");
 											setSelectedCategory("__all__");
 											setSelectedStatus("__all__");
 										}}

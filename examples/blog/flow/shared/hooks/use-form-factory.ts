@@ -58,7 +58,7 @@ function defaultModelTypeTransform(instance: any): any {
 
 	// Transform each field
 	for (const [key, value] of Object.entries(rest)) {
-		if (value && typeof value === "object" && "id" in value) {
+		if (value && typeof value === 'object' && 'id' in value) {
 			// This is a relation object, extract the ID
 			transformed[`${key}Id`] = value.id;
 		} else if (!Array.isArray(value)) {
@@ -75,13 +75,19 @@ function defaultModelTypeTransform(instance: any): any {
    ----------------------------------------------------------- */
 export function makeUseFormHook<Model, CreateInput, UpdateInput>(
 	schemas: FormSchemas<CreateInput, UpdateInput>,
-	actions: FormActions<Model, CreateInput, UpdateInput>,
+	actions: FormActions<Model, CreateInput, UpdateInput>
 ) {
 	return function useModelForm(
 		instance?: Model,
-		options: UseFormOptions<Model> = {},
+		options: UseFormOptions<Model> = {}
 	): UseModelFormReturn<CreateInput, UpdateInput> {
-		const { onSuccess, onError, resetOnSuccess = true, mode = "onChange", transform = {} } = options;
+		const {
+			onSuccess,
+			onError,
+			resetOnSuccess = true,
+			mode = "onChange",
+			transform = {},
+		} = options;
 
 		const [isSubmitting, setIsSubmitting] = useState(false);
 		const [submitError, setSubmitError] = useState<any>(null);
@@ -91,7 +97,7 @@ export function makeUseFormHook<Model, CreateInput, UpdateInput>(
 		const { schema, defaults } = useMemo(() => {
 			if (isUpdateMode && instance) {
 				// Transform ModelType to UpdateInput format
-				const transformedData = transform.fromModelType
+				const transformedData = transform.fromModelType 
 					? transform.fromModelType(instance)
 					: defaultModelTypeTransform(instance);
 
@@ -131,22 +137,26 @@ export function makeUseFormHook<Model, CreateInput, UpdateInput>(
 					try {
 						if (isUpdateMode && instance) {
 							// Update mode
-							const transformedData = transform.toUpdateInput ? transform.toUpdateInput(data) : data;
-
+							const transformedData = transform.toUpdateInput 
+								? transform.toUpdateInput(data) 
+								: data;
+							
 							await actions.update({
 								id: (instance as any).id,
 								data: transformedData as UpdateInput,
 							});
 						} else {
 							// Create mode
-							const transformedData = transform.toCreateInput ? transform.toCreateInput(data) : data;
-
+							const transformedData = transform.toCreateInput 
+								? transform.toCreateInput(data) 
+								: data;
+							
 							await actions.create(transformedData as CreateInput);
 						}
 
 						// Handle success
 						onSuccess?.(isUpdateMode ? instance : null);
-
+						
 						if (resetOnSuccess && !isUpdateMode) {
 							form.reset();
 						}
@@ -159,7 +169,7 @@ export function makeUseFormHook<Model, CreateInput, UpdateInput>(
 					}
 				})(e);
 			},
-			[form, isUpdateMode, instance, actions, transform, onSuccess, onError, resetOnSuccess],
+			[form, isUpdateMode, instance, actions, transform, onSuccess, onError, resetOnSuccess]
 		);
 
 		return {
@@ -177,7 +187,10 @@ export function makeUseFormHook<Model, CreateInput, UpdateInput>(
 /* -----------------------------------------------------------
    Utility for creating action integration
    ----------------------------------------------------------- */
-export function createFormActions<Model, CreateInput, UpdateInput>(createAtom: any, updateAtom: any) {
+export function createFormActions<Model, CreateInput, UpdateInput>(
+	createAtom: any,
+	updateAtom: any
+) {
 	return {
 		create: createAtom,
 		update: updateAtom,

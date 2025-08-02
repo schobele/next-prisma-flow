@@ -14,7 +14,16 @@ export function parseGeneratorConfig(options: GeneratorOptions): FlowGeneratorCo
 		throw new ConfigurationError('Missing required "models" configuration', "models");
 	}
 
-	const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
+	let models: string[];
+
+	// Check if models is set to "all"
+	if (config.models === "all") {
+		// Get all model names from the schema
+		models = options.dmmf.datamodel.models.map((m) => m.name);
+	} else {
+		// Parse models as before
+		models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
+	}
 
 	// Resolve prismaImport relative to schema file location
 	const resolvedPrismaImport = resolvePrismaImportPath(options, (config.prismaImport as string) || "@prisma/client");
@@ -126,11 +135,18 @@ export function getPrismaImportForNesting(basePrismaImport: string, nestingLevel
 }
 
 export function validateConfig(config: FlowGeneratorConfig, modelNames: string[]): void {
-	// Validate that all specified models exist in the schema
-	const invalidModels = config.models.filter((modelName) => !modelNames.includes(modelName));
+	// Skip validation if models were auto-populated from "all"
+	// We can detect this by checking if the models array matches all schema models
+	const isUsingAllModels =
+		config.models.length === modelNames.length && config.models.every((model) => modelNames.includes(model));
 
-	if (invalidModels.length > 0) {
-		throw new ModelNotFoundError(`Unknown models specified in config: ${invalidModels.join(", ")}`);
+	if (!isUsingAllModels) {
+		// Validate that all specified models exist in the schema
+		const invalidModels = config.models.filter((modelName) => !modelNames.includes(modelName));
+
+		if (invalidModels.length > 0) {
+			throw new ModelNotFoundError(`Unknown models specified in config: ${invalidModels.join(", ")}`);
+		}
 	}
 
 	// Validate model-specific configurations

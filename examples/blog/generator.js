@@ -1771,7 +1771,12 @@ function parseGeneratorConfig(options) {
   if (!config.models) {
     throw new ConfigurationError('Missing required "models" configuration', "models");
   }
-  const models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
+  let models;
+  if (config.models === "all") {
+    models = options.dmmf.datamodel.models.map((m) => m.name);
+  } else {
+    models = Array.isArray(config.models) ? config.models : config.models.split(",").map((m) => m.trim());
+  }
   const resolvedPrismaImport = resolvePrismaImportPath(options, config.prismaImport || "@prisma/client");
   const parsedConfig = {
     output,
@@ -1830,9 +1835,12 @@ function resolvePrismaImportPath(options, importPath) {
   return relativeFromOutput.replace(/\\/g, "/").replace(/\.ts$/, "");
 }
 function validateConfig(config, modelNames) {
-  const invalidModels = config.models.filter((modelName) => !modelNames.includes(modelName));
-  if (invalidModels.length > 0) {
-    throw new ModelNotFoundError(`Unknown models specified in config: ${invalidModels.join(", ")}`);
+  const isUsingAllModels = config.models.length === modelNames.length && config.models.every((model) => modelNames.includes(model));
+  if (!isUsingAllModels) {
+    const invalidModels = config.models.filter((modelName) => !modelNames.includes(modelName));
+    if (invalidModels.length > 0) {
+      throw new ModelNotFoundError(`Unknown models specified in config: ${invalidModels.join(", ")}`);
+    }
   }
   for (const modelName of config.models) {
     const lowerModelName = modelName.toLowerCase();
@@ -2347,9 +2355,11 @@ function getSelectFieldsForModel(modelName, modelConfig, context) {
 // src/templates/derived.ts
 import { join as join5 } from "node:path";
 async function generateDerivedAtoms(modelInfo, _context, modelDir) {
-  const { name: modelName } = modelInfo;
+  const { name: modelName, analyzed } = modelInfo;
+  const searchableFields = analyzed.stringFields.map((field) => field.name).filter((name) => !["id", "password", "hash", "token"].includes(name.toLowerCase()));
   const template = `${formatGeneratedFileHeader()}import { atom } from "jotai";
 import { atomFamily, loadable } from "jotai/utils";
+import Fuse, { type IFuseOptions } from "fuse.js";
 import { entitiesAtom, entityAtomFamily, pendingPatchesAtom } from "./atoms";
 import type { ModelType } from "./types";
 
@@ -2397,9 +2407,66 @@ export const pagedAtom = atomFamily(({ page, pageSize }: { page: number; pageSiz
 	}),
 );
 
-/* local search */
-export const searchAtom = atomFamily((query: string) =>
-	atom<ModelType[]>((get) => get(listAtom).filter((e) => JSON.stringify(e).toLowerCase().includes(query.toLowerCase()))),
+/* Enhanced search with Fuse.js */
+interface SearchParams {
+	query: string;
+	options?: IFuseOptions<ModelType>;
+}
+
+// Default search keys - all string fields commonly searched
+const defaultSearchKeys = ${JSON.stringify(searchableFields)};
+
+// Cache Fuse instances to avoid recreation
+interface FuseCache {
+	fuse: Fuse<ModelType>;
+	list: ModelType[];
+}
+const fuseCache = new Map<string, FuseCache>();
+
+export const searchAtom = atomFamily(
+	(params: SearchParams | string) => 
+		atom<ModelType[]>((get) => {
+			const list = get(listAtom);
+			
+			// Handle backward compatibility for string-only parameter
+			const { query, options } = typeof params === "string" 
+				? { query: params, options: undefined }
+				: params;
+			
+			// Return all items if query is empty
+			if (!query || query.trim() === "") {
+				return list;
+			}
+			
+			// Create cache key based on options
+			const cacheKey = JSON.stringify(options?.keys || defaultSearchKeys);
+			
+			// Get or create Fuse instance
+			let cached = fuseCache.get(cacheKey);
+			if (!cached || cached.list !== list) {
+				const fuseOptions: IFuseOptions<ModelType> = {
+					keys: defaultSearchKeys,
+					threshold: 0.3,
+					ignoreLocation: true,
+					...options,
+				};
+				const fuse = new Fuse(list, fuseOptions);
+				cached = { fuse, list };
+				fuseCache.set(cacheKey, cached);
+			}
+			
+			// Perform search
+			const results = cached.fuse.search(query);
+			
+			// Return just the items (not the Fuse result objects)
+			return results.map(result => result.item);
+		}),
+	// Custom equality function to ensure stable keys
+	(a, b) => {
+		const aKey = typeof a === "string" ? a : JSON.stringify(a);
+		const bKey = typeof b === "string" ? b : JSON.stringify(b);
+		return aKey === bKey;
+	}
 );
 `;
   const filePath = join5(modelDir, "derived.ts");
@@ -2555,7 +2622,9 @@ export const loadEntityAtom = atom(null, async (_get, set, selector: WhereUnique
 import { join as join7 } from "node:path";
 async function generateReactHooks(modelInfo, _context, modelDir) {
   const { name: modelName, lowerName, pluralName, lowerPluralName } = modelInfo;
-  const template = `${formatGeneratedFileHeader()}import { useAtomValue, useSetAtom } from "jotai";
+  const template = `${formatGeneratedFileHeader()}import { useCallback, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import type { IFuseOptions } from "fuse.js";
 import { entityAtomFamily, errorAtom, pendingPatchesAtom } from "./atoms";
 import {
 	countAtom,
@@ -2821,8 +2890,43 @@ export function usePagedList(page: number, pageSize = 10) {
 	return useAtomValue(pagedAtom({ page, pageSize }));
 }
 
-export function useSearch(query: string) {
-	return useAtomValue(searchAtom(query));
+// Type helper to extract all string paths from a type
+type PathsToStringProps<T, P extends string = ""> = T extends string | number | boolean | Date | null | undefined
+	? P
+	: T extends Array<infer U>
+	? PathsToStringProps<U, P>
+	: T extends object
+	? {
+			[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : \`\${P}.\${K & string}\`>
+	  }[keyof T]
+	: never;
+
+// Get all valid search keys for ModelType
+type SearchKeys = PathsToStringProps<ModelType>;
+
+interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, 'keys'> {
+	keys?: SearchKeys[];
+}
+
+interface UseSearchReturn<T> {
+	search: (query: string) => void;
+	results: T[];
+	query: string;
+}
+
+export function useSearch(options?: UseSearchOptions): UseSearchReturn<ModelType> {
+	const [query, setQuery] = useState("");
+	const results = useAtomValue(searchAtom({ query, options }));
+	
+	const search = useCallback((newQuery: string) => {
+		setQuery(newQuery);
+	}, []);
+	
+	return {
+		search,
+		results,
+		query,
+	};
 }
 
 export function useCountByFieldValue<K extends keyof ModelType>(field: K, value: ModelType[K]) {

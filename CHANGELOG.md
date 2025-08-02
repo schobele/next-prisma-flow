@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2025-08-02 🔍 Fuzzy Search & Enhanced Configuration
+
+### ✨ Major New Features
+
+#### Fuzzy Search with Fuse.js Integration
+- **Type-Safe Search**: Built-in fuzzy search with full TypeScript support for property paths
+- **Smart Auto-complete**: TypeScript knows all valid search paths including nested relationships
+- **Flexible Configuration**: Support for all Fuse.js options (threshold, keys, includeScore, etc.)
+- **Performance Optimized**: Automatic caching of Fuse instances for efficiency
+- **Intuitive API**: Clean destructured return: `const { search, results, query } = posts.hooks.useSearch()`
+
+#### Enhanced Model Configuration
+- **"All" Models Option**: Set `models = "all"` to generate code for every model in your schema
+- **Improved Defaults**: Smart defaults for search keys based on model's string fields
+- **Security First**: Sensitive fields like 'password', 'hash', 'token' automatically excluded from search
+
+### 🔧 Technical Improvements
+- **Recursive Type Helpers**: `PathsToStringProps` type extracts all valid nested paths from ModelType
+- **Atom Family Optimization**: Custom equality function prevents infinite render loops
+- **Enhanced Templates**: Improved code generation with proper template literal escaping
+- **Better Error Handling**: More informative error messages for search operations
+
+### 📚 Documentation Updates
+- **Search Examples**: Comprehensive documentation of search API with TypeScript examples
+- **Configuration Guide**: Updated README with "all" models option
+- **Best Practices**: Guidelines for search configuration and performance optimization
+
+### 🎯 Usage Examples
+
+```typescript
+// Basic search with smart defaults
+const { search, results, query } = posts.hooks.useSearch();
+
+// Advanced search with type-safe configuration
+const { search, results, query } = posts.hooks.useSearch({
+  keys: [
+    "title",           // Direct fields
+    "author.name",     // ✅ Nested paths - TypeScript knows these!
+    "category.name",   // ✅ Relationship fields
+    // "author.invalid" // ❌ TypeScript error
+  ],
+  threshold: 0.3,      // Fuzzy tolerance
+  includeScore: true,  // Include match scores
+});
+
+// Use in your component
+<input value={query} onChange={(e) => search(e.target.value)} />
+{results.map(post => <PostCard key={post.id} post={post} />)}
+```
+
+### 🔄 Backward Compatibility
+- **Fully Backward Compatible**: All existing hooks and APIs continue to work
+- **Legacy Search Support**: String parameter still supported: `searchAtom("query")`
+- **Gradual Adoption**: New search features are opt-in
+
+---
+
 ## [0.2.4] - 2024-12-01 🎯 Enhanced Form System
 
 ### ✨ Major Form Enhancements

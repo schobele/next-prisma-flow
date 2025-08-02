@@ -1,5 +1,7 @@
 // hooks.ts
+import { useCallback, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
+import type { IFuseOptions } from "fuse.js";
 import { entityAtomFamily, errorAtom, pendingPatchesAtom } from "./atoms";
 import {
 	countAtom,
@@ -261,8 +263,43 @@ export function usePagedList(page: number, pageSize = 10) {
 	return useAtomValue(pagedAtom({ page, pageSize }));
 }
 
-export function useSearch(query: string) {
-	return useAtomValue(searchAtom(query));
+// Type helper to extract all string paths from a type
+type PathsToStringProps<T, P extends string = ""> = T extends string | number | boolean | Date | null | undefined
+	? P
+	: T extends Array<infer U>
+		? PathsToStringProps<U, P>
+		: T extends object
+			? {
+					[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : `${P}.${K & string}`>;
+				}[keyof T]
+			: never;
+
+// Get all valid search keys for ModelType
+type SearchKeys = PathsToStringProps<ModelType>;
+
+interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, "keys"> {
+	keys?: SearchKeys[];
+}
+
+interface UseSearchReturn<T> {
+	search: (query: string) => void;
+	results: T[];
+	query: string;
+}
+
+export function useSearch(options?: UseSearchOptions): UseSearchReturn<ModelType> {
+	const [query, setQuery] = useState("");
+	const results = useAtomValue(searchAtom({ query, options }));
+
+	const search = useCallback((newQuery: string) => {
+		setQuery(newQuery);
+	}, []);
+
+	return {
+		search,
+		results,
+		query,
+	};
 }
 
 export function useCountByFieldValue<K extends keyof ModelType>(field: K, value: ModelType[K]) {
