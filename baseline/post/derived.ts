@@ -55,7 +55,7 @@ interface SearchParams {
 }
 
 // Default search keys - all string fields commonly searched
-const defaultSearchKeys = ["title", "description", "status"];
+const defaultSearchKeys = ["title", "description", "status", "authorId", "categoryId"];
 
 // Cache Fuse instances to avoid recreation
 interface FuseCache {
