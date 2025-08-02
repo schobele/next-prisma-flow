@@ -164,11 +164,7 @@ export function useAuthor(id: string, opts: { autoLoad?: boolean } = { autoLoad:
 	const relations = makeRelationHelpers<Relationships>(id, updateAuthor);
 
 	useAutoload(
-		() =>
-			opts.autoLoad !== false &&
-			!busyItem &&
-			!author &&
-			!pendingPatches[id],
+		() => opts.autoLoad !== false && !busyItem && !author && !pendingPatches[id],
 		() => fetch({ id }),
 	);
 
@@ -192,7 +188,7 @@ export function useAuthor(id: string, opts: { autoLoad?: boolean } = { autoLoad:
 
 /**
  * Enhanced form hook with integrated CRUD operations and optimistic updates.
- * 
+ *
  * Automatically detects create vs update mode based on whether an instance is provided.
  * Integrates directly with the author atoms for seamless state management.
  *
@@ -232,8 +228,8 @@ export function useAuthor(id: string, opts: { autoLoad?: boolean } = { autoLoad:
  *       <input {...form.register('title')} placeholder="Title" />
  *       <textarea {...form.register('description')} placeholder="Description" />
  *       <button type="submit" disabled={form.isSubmitting}>
- *         {form.isSubmitting 
- *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *         {form.isSubmitting
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...')
  *           : (form.mode === 'create' ? 'Create Author' : 'Update Author')
  *         }
  *       </button>
@@ -245,15 +241,15 @@ export function useAuthor(id: string, opts: { autoLoad?: boolean } = { autoLoad:
 export function useAuthorForm(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
 	const createAuthorAction = useSetAtom(createAtom);
 	const updateAuthorAction = useSetAtom(updateAtom);
-	
+
 	const formActions = createFormActions(createAuthorAction, updateAuthorAction);
-	
+
 	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
 		{
 			create: schemas.createInput,
 			update: schemas.updateInput,
 		},
-		formActions
+		formActions,
 	)(instance, options);
 }
 
@@ -274,17 +270,17 @@ export function usePagedList(page: number, pageSize = 10) {
 type PathsToStringProps<T, P extends string = ""> = T extends string | number | boolean | Date | null | undefined
 	? P
 	: T extends Array<infer U>
-	? PathsToStringProps<U, P>
-	: T extends object
-	? {
-			[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : `${P}.${K & string}`>
-	  }[keyof T]
-	: never;
+		? PathsToStringProps<U, P>
+		: T extends object
+			? {
+					[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : `${P}.${K & string}`>;
+				}[keyof T]
+			: never;
 
 // Get all valid search keys for ModelType
 type SearchKeys = PathsToStringProps<ModelType>;
 
-interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, 'keys'> {
+interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, "keys"> {
 	keys?: SearchKeys[];
 }
 
@@ -297,11 +293,11 @@ interface UseSearchReturn<T> {
 export function useSearch(options?: UseSearchOptions): UseSearchReturn<ModelType> {
 	const [query, setQuery] = useState("");
 	const results = useAtomValue(searchAtom({ query, options }));
-	
+
 	const search = useCallback((newQuery: string) => {
 		setQuery(newQuery);
 	}, []);
-	
+
 	return {
 		search,
 		results,

@@ -24,7 +24,7 @@ export type ModelType = Prisma.TodoListGetPayload<{
 		name: true;
 		createdAt: true;
 		updatedAt: true;
-	}
+	};
 }>;
 
 export type Options = {

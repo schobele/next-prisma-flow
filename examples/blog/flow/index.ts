@@ -17,24 +17,10 @@ import type { ModelType as Todo } from "./todo/types";
 import type { ModelType as TodoList } from "./todolist/types";
 
 // Export all models
-export {
-	authors,
-	categories,
-	posts,
-	comments,
-	todos,
-	todolists,
-};
+export { authors, categories, posts, comments, todos, todolists };
 
 // Export all types
-export {
-	type Author,
-	type Category,
-	type Post,
-	type Comment,
-	type Todo,
-	type TodoList,
-};
+export type { Author, Category, Post, Comment, Todo, TodoList };
 
 // Export shared utilities
 export { prisma } from "./prisma";

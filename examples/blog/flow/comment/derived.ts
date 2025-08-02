@@ -59,7 +59,7 @@ interface SearchParams {
 }
 
 // Default search keys - all string fields commonly searched
-const defaultSearchKeys = ["content","postId"];
+const defaultSearchKeys = ["content", "postId"];
 
 // Cache Fuse instances to avoid recreation
 interface FuseCache {
@@ -69,23 +69,21 @@ interface FuseCache {
 const fuseCache = new Map<string, FuseCache>();
 
 export const searchAtom = atomFamily(
-	(params: SearchParams | string) => 
+	(params: SearchParams | string) =>
 		atom<ModelType[]>((get) => {
 			const list = get(listAtom);
-			
+
 			// Handle backward compatibility for string-only parameter
-			const { query, options } = typeof params === "string" 
-				? { query: params, options: undefined }
-				: params;
-			
+			const { query, options } = typeof params === "string" ? { query: params, options: undefined } : params;
+
 			// Return all items if query is empty
 			if (!query || query.trim() === "") {
 				return list;
 			}
-			
+
 			// Create cache key based on options
 			const cacheKey = JSON.stringify(options?.keys || defaultSearchKeys);
-			
+
 			// Get or create Fuse instance
 			let cached = fuseCache.get(cacheKey);
 			if (!cached || cached.list !== list) {
@@ -99,17 +97,17 @@ export const searchAtom = atomFamily(
 				cached = { fuse, list };
 				fuseCache.set(cacheKey, cached);
 			}
-			
+
 			// Perform search
 			const results = cached.fuse.search(query);
-			
+
 			// Return just the items (not the Fuse result objects)
-			return results.map(result => result.item);
+			return results.map((result) => result.item);
 		}),
 	// Custom equality function to ensure stable keys
 	(a, b) => {
 		const aKey = typeof a === "string" ? a : JSON.stringify(a);
 		const bKey = typeof b === "string" ? b : JSON.stringify(b);
 		return aKey === bKey;
-	}
+	},
 );

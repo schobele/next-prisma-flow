@@ -164,11 +164,7 @@ export function useTodoList(id: string, opts: { autoLoad?: boolean } = { autoLoa
 	const relations = makeRelationHelpers<Relationships>(id, updateTodoList);
 
 	useAutoload(
-		() =>
-			opts.autoLoad !== false &&
-			!busyItem &&
-			!todolist &&
-			!pendingPatches[id],
+		() => opts.autoLoad !== false && !busyItem && !todolist && !pendingPatches[id],
 		() => fetch({ id }),
 	);
 
@@ -192,7 +188,7 @@ export function useTodoList(id: string, opts: { autoLoad?: boolean } = { autoLoa
 
 /**
  * Enhanced form hook with integrated CRUD operations and optimistic updates.
- * 
+ *
  * Automatically detects create vs update mode based on whether an instance is provided.
  * Integrates directly with the todolist atoms for seamless state management.
  *
@@ -232,8 +228,8 @@ export function useTodoList(id: string, opts: { autoLoad?: boolean } = { autoLoa
  *       <input {...form.register('title')} placeholder="Title" />
  *       <textarea {...form.register('description')} placeholder="Description" />
  *       <button type="submit" disabled={form.isSubmitting}>
- *         {form.isSubmitting 
- *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...') 
+ *         {form.isSubmitting
+ *           ? (form.mode === 'create' ? 'Creating...' : 'Updating...')
  *           : (form.mode === 'create' ? 'Create TodoList' : 'Update TodoList')
  *         }
  *       </button>
@@ -245,15 +241,15 @@ export function useTodoList(id: string, opts: { autoLoad?: boolean } = { autoLoa
 export function useTodoListForm(instance?: ModelType, options: UseFormOptions<ModelType> = {}) {
 	const createTodoListAction = useSetAtom(createAtom);
 	const updateTodoListAction = useSetAtom(updateAtom);
-	
+
 	const formActions = createFormActions(createTodoListAction, updateTodoListAction);
-	
+
 	return makeUseFormHook<ModelType, CreateInput, UpdateInput>(
 		{
 			create: schemas.createInput,
 			update: schemas.updateInput,
 		},
-		formActions
+		formActions,
 	)(instance, options);
 }
 
@@ -274,17 +270,17 @@ export function usePagedList(page: number, pageSize = 10) {
 type PathsToStringProps<T, P extends string = ""> = T extends string | number | boolean | Date | null | undefined
 	? P
 	: T extends Array<infer U>
-	? PathsToStringProps<U, P>
-	: T extends object
-	? {
-			[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : `${P}.${K & string}`>
-	  }[keyof T]
-	: never;
+		? PathsToStringProps<U, P>
+		: T extends object
+			? {
+					[K in keyof T]: PathsToStringProps<T[K], P extends "" ? K & string : `${P}.${K & string}`>;
+				}[keyof T]
+			: never;
 
 // Get all valid search keys for ModelType
 type SearchKeys = PathsToStringProps<ModelType>;
 
-interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, 'keys'> {
+interface UseSearchOptions extends Omit<IFuseOptions<ModelType>, "keys"> {
 	keys?: SearchKeys[];
 }
 
@@ -297,11 +293,11 @@ interface UseSearchReturn<T> {
 export function useSearch(options?: UseSearchOptions): UseSearchReturn<ModelType> {
 	const [query, setQuery] = useState("");
 	const results = useAtomValue(searchAtom({ query, options }));
-	
+
 	const search = useCallback((newQuery: string) => {
 		setQuery(newQuery);
 	}, []);
-	
+
 	return {
 		search,
 		results,
