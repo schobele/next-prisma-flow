@@ -1,0 +1,27 @@
+{
+  "name": "next-prisma-flow-state-engine",
+  "version": "1.0.0",
+  "description": "DX-first generator: deep acyclic selects, Zod schemas, server queries/actions, client hooks for Next.js + Prisma",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@prisma/generator-helper": "^5.15.0",
+    "@prisma/internals": "^5.15.0",
+    "@types/node": "^24.2.1",
+    "prettier": "^3.3.3"
+  },
+  "peerDependencies": {
+    "@prisma/client": ">=5.0.0"
+  }
+}
