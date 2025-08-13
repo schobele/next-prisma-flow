@@ -12,7 +12,7 @@ import {
   FlowValidationError,
 } from "../../core";
 import { canAuthor } from "../../policies";
-import { AuthorDeepSelect } from "./selects";
+import { AuthorSelect } from "./selects";
 import { AuthorCreateSchema, AuthorUpdateSchema } from "../types/schemas";
 import type { FlowAuthorCreate, FlowAuthorUpdate } from "../types/schemas";
 import {
@@ -40,7 +40,7 @@ export async function createAuthor(data: FlowAuthorCreate, ctx: FlowCtx = {}) {
   const createData = transformAuthorCreate(parsed.data as any);
   const item = await prisma.author.create({
     data: { ...createData, ...policy.data },
-    select: AuthorDeepSelect,
+    select: AuthorSelect,
   });
 
   await invalidateTags([keys.m("Author").tag()]);
@@ -64,7 +64,7 @@ export async function updateAuthor(
   const item = await prisma.author.update({
     where: { id: id, ...policy.where },
     data: { ...updateData, ...policy.data },
-    select: AuthorDeepSelect,
+    select: AuthorSelect,
   });
 
   await invalidateTags([

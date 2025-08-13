@@ -3,16 +3,11 @@
 
 import type { Prisma } from "../../prisma";
 import type { FlowOrganizationCreate, FlowOrganizationUpdate } from "./schemas";
-import { transformAuthorCreate } from "../../author/types/transforms";
-import { transformPostCreate } from "../../post/types/transforms";
-import { transformCommentCreate } from "../../comment/types/transforms";
-import { transformTagCreate } from "../../tag/types/transforms";
 
 export function transformOrganizationCreate(
   input: FlowOrganizationCreate,
 ): Prisma.OrganizationCreateInput {
-  const result: Prisma.OrganizationCreateInput =
-    {} as Prisma.OrganizationCreateInput;
+  const result: any = {};
 
   if ("name" in input && input.name !== undefined) {
     result.name = input.name;
@@ -27,9 +22,15 @@ export function transformOrganizationCreate(
         result.authors = { connect: authorsData.connect };
       } else if ("create" in authorsData && authorsData.create) {
         result.authors = {
-          create: Array.isArray(authorsData.create)
-            ? authorsData.create.map((item) => transformAuthorCreate(item))
-            : transformAuthorCreate(authorsData.create),
+          create: authorsData.create as any,
+        };
+      } else if ("createMany" in authorsData && authorsData.createMany) {
+      } else if (
+        "connectOrCreate" in authorsData &&
+        authorsData.connectOrCreate
+      ) {
+        result.authors = {
+          connectOrCreate: authorsData.connectOrCreate as any,
         };
       }
     }
@@ -41,9 +42,12 @@ export function transformOrganizationCreate(
         result.posts = { connect: postsData.connect };
       } else if ("create" in postsData && postsData.create) {
         result.posts = {
-          create: Array.isArray(postsData.create)
-            ? postsData.create.map((item) => transformPostCreate(item))
-            : transformPostCreate(postsData.create),
+          create: postsData.create as any,
+        };
+      } else if ("createMany" in postsData && postsData.createMany) {
+      } else if ("connectOrCreate" in postsData && postsData.connectOrCreate) {
+        result.posts = {
+          connectOrCreate: postsData.connectOrCreate as any,
         };
       }
     }
@@ -55,9 +59,15 @@ export function transformOrganizationCreate(
         result.comments = { connect: commentsData.connect };
       } else if ("create" in commentsData && commentsData.create) {
         result.comments = {
-          create: Array.isArray(commentsData.create)
-            ? commentsData.create.map((item) => transformCommentCreate(item))
-            : transformCommentCreate(commentsData.create),
+          create: commentsData.create as any,
+        };
+      } else if ("createMany" in commentsData && commentsData.createMany) {
+      } else if (
+        "connectOrCreate" in commentsData &&
+        commentsData.connectOrCreate
+      ) {
+        result.comments = {
+          connectOrCreate: commentsData.connectOrCreate as any,
         };
       }
     }
@@ -69,9 +79,12 @@ export function transformOrganizationCreate(
         result.tags = { connect: tagsData.connect };
       } else if ("create" in tagsData && tagsData.create) {
         result.tags = {
-          create: Array.isArray(tagsData.create)
-            ? tagsData.create.map((item) => transformTagCreate(item))
-            : transformTagCreate(tagsData.create),
+          create: tagsData.create as any,
+        };
+      } else if ("createMany" in tagsData && tagsData.createMany) {
+      } else if ("connectOrCreate" in tagsData && tagsData.connectOrCreate) {
+        result.tags = {
+          connectOrCreate: tagsData.connectOrCreate as any,
         };
       }
     }
@@ -83,8 +96,7 @@ export function transformOrganizationCreate(
 export function transformOrganizationUpdate(
   input: FlowOrganizationUpdate,
 ): Prisma.OrganizationUpdateInput {
-  const result: Prisma.OrganizationUpdateInput =
-    {} as Prisma.OrganizationUpdateInput;
+  const result: any = {};
 
   const nameValue = input.name;
   if (nameValue !== undefined) {
@@ -97,165 +109,25 @@ export function transformOrganizationUpdate(
   if (input.authors !== undefined) {
     const authorsData = input.authors;
     if (authorsData) {
-      result.authors = {};
-      if ("create" in authorsData && authorsData.create) {
-        result.authors.create = Array.isArray(authorsData.create)
-          ? authorsData.create.map((item) => transformAuthorCreate(item))
-          : transformAuthorCreate(authorsData.create);
-      }
-      if ("createMany" in authorsData && authorsData.createMany) {
-        result.authors.createMany = authorsData.createMany;
-      }
-      if ("connect" in authorsData && authorsData.connect) {
-        result.authors.connect = authorsData.connect;
-      }
-      if ("connectOrCreate" in authorsData && authorsData.connectOrCreate) {
-        result.authors.connectOrCreate = authorsData.connectOrCreate;
-      }
-      if ("update" in authorsData && authorsData.update) {
-        result.authors.update = authorsData.update;
-      }
-      if ("updateMany" in authorsData && authorsData.updateMany) {
-        result.authors.updateMany = authorsData.updateMany;
-      }
-      if ("upsert" in authorsData && authorsData.upsert) {
-        result.authors.upsert = authorsData.upsert;
-      }
-      if ("delete" in authorsData && authorsData.delete) {
-        result.authors.delete = authorsData.delete;
-      }
-      if ("deleteMany" in authorsData && authorsData.deleteMany) {
-        result.authors.deleteMany = authorsData.deleteMany;
-      }
-      if ("disconnect" in authorsData && authorsData.disconnect) {
-        result.authors.disconnect = authorsData.disconnect;
-      }
-      if ("set" in authorsData && authorsData.set) {
-        result.authors.set = authorsData.set;
-      }
+      result.authors = authorsData as any;
     }
   }
   if (input.posts !== undefined) {
     const postsData = input.posts;
     if (postsData) {
-      result.posts = {};
-      if ("create" in postsData && postsData.create) {
-        result.posts.create = Array.isArray(postsData.create)
-          ? postsData.create.map((item) => transformPostCreate(item))
-          : transformPostCreate(postsData.create);
-      }
-      if ("createMany" in postsData && postsData.createMany) {
-        result.posts.createMany = postsData.createMany;
-      }
-      if ("connect" in postsData && postsData.connect) {
-        result.posts.connect = postsData.connect;
-      }
-      if ("connectOrCreate" in postsData && postsData.connectOrCreate) {
-        result.posts.connectOrCreate = postsData.connectOrCreate;
-      }
-      if ("update" in postsData && postsData.update) {
-        result.posts.update = postsData.update;
-      }
-      if ("updateMany" in postsData && postsData.updateMany) {
-        result.posts.updateMany = postsData.updateMany;
-      }
-      if ("upsert" in postsData && postsData.upsert) {
-        result.posts.upsert = postsData.upsert;
-      }
-      if ("delete" in postsData && postsData.delete) {
-        result.posts.delete = postsData.delete;
-      }
-      if ("deleteMany" in postsData && postsData.deleteMany) {
-        result.posts.deleteMany = postsData.deleteMany;
-      }
-      if ("disconnect" in postsData && postsData.disconnect) {
-        result.posts.disconnect = postsData.disconnect;
-      }
-      if ("set" in postsData && postsData.set) {
-        result.posts.set = postsData.set;
-      }
+      result.posts = postsData as any;
     }
   }
   if (input.comments !== undefined) {
     const commentsData = input.comments;
     if (commentsData) {
-      result.comments = {};
-      if ("create" in commentsData && commentsData.create) {
-        result.comments.create = Array.isArray(commentsData.create)
-          ? commentsData.create.map((item) => transformCommentCreate(item))
-          : transformCommentCreate(commentsData.create);
-      }
-      if ("createMany" in commentsData && commentsData.createMany) {
-        result.comments.createMany = commentsData.createMany;
-      }
-      if ("connect" in commentsData && commentsData.connect) {
-        result.comments.connect = commentsData.connect;
-      }
-      if ("connectOrCreate" in commentsData && commentsData.connectOrCreate) {
-        result.comments.connectOrCreate = commentsData.connectOrCreate;
-      }
-      if ("update" in commentsData && commentsData.update) {
-        result.comments.update = commentsData.update;
-      }
-      if ("updateMany" in commentsData && commentsData.updateMany) {
-        result.comments.updateMany = commentsData.updateMany;
-      }
-      if ("upsert" in commentsData && commentsData.upsert) {
-        result.comments.upsert = commentsData.upsert;
-      }
-      if ("delete" in commentsData && commentsData.delete) {
-        result.comments.delete = commentsData.delete;
-      }
-      if ("deleteMany" in commentsData && commentsData.deleteMany) {
-        result.comments.deleteMany = commentsData.deleteMany;
-      }
-      if ("disconnect" in commentsData && commentsData.disconnect) {
-        result.comments.disconnect = commentsData.disconnect;
-      }
-      if ("set" in commentsData && commentsData.set) {
-        result.comments.set = commentsData.set;
-      }
+      result.comments = commentsData as any;
     }
   }
   if (input.tags !== undefined) {
     const tagsData = input.tags;
     if (tagsData) {
-      result.tags = {};
-      if ("create" in tagsData && tagsData.create) {
-        result.tags.create = Array.isArray(tagsData.create)
-          ? tagsData.create.map((item) => transformTagCreate(item))
-          : transformTagCreate(tagsData.create);
-      }
-      if ("createMany" in tagsData && tagsData.createMany) {
-        result.tags.createMany = tagsData.createMany;
-      }
-      if ("connect" in tagsData && tagsData.connect) {
-        result.tags.connect = tagsData.connect;
-      }
-      if ("connectOrCreate" in tagsData && tagsData.connectOrCreate) {
-        result.tags.connectOrCreate = tagsData.connectOrCreate;
-      }
-      if ("update" in tagsData && tagsData.update) {
-        result.tags.update = tagsData.update;
-      }
-      if ("updateMany" in tagsData && tagsData.updateMany) {
-        result.tags.updateMany = tagsData.updateMany;
-      }
-      if ("upsert" in tagsData && tagsData.upsert) {
-        result.tags.upsert = tagsData.upsert;
-      }
-      if ("delete" in tagsData && tagsData.delete) {
-        result.tags.delete = tagsData.delete;
-      }
-      if ("deleteMany" in tagsData && tagsData.deleteMany) {
-        result.tags.deleteMany = tagsData.deleteMany;
-      }
-      if ("disconnect" in tagsData && tagsData.disconnect) {
-        result.tags.disconnect = tagsData.disconnect;
-      }
-      if ("set" in tagsData && tagsData.set) {
-        result.tags.set = tagsData.set;
-      }
+      result.tags = tagsData as any;
     }
   }
 

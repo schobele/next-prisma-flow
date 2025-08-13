@@ -12,7 +12,7 @@ import {
   FlowValidationError,
 } from "../../core";
 import { canOrganization } from "../../policies";
-import { OrganizationDeepSelect } from "./selects";
+import { OrganizationSelect } from "./selects";
 import {
   OrganizationCreateSchema,
   OrganizationUpdateSchema,
@@ -48,7 +48,7 @@ export async function createOrganization(
   const createData = transformOrganizationCreate(parsed.data as any);
   const item = await prisma.organization.create({
     data: { ...createData, ...policy.data },
-    select: OrganizationDeepSelect,
+    select: OrganizationSelect,
   });
 
   await invalidateTags([keys.m("Organization").tag()]);
@@ -72,7 +72,7 @@ export async function updateOrganization(
   const item = await prisma.organization.update({
     where: { id: id, ...policy.where },
     data: { ...updateData, ...policy.data },
-    select: OrganizationDeepSelect,
+    select: OrganizationSelect,
   });
 
   await invalidateTags([

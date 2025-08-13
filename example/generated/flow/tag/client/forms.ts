@@ -3,7 +3,7 @@
 
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import {
   useForm,
   type UseFormReturn,
@@ -14,6 +14,14 @@ import { TagCreateSchema, TagUpdateSchema } from "../types/schemas";
 import type { FlowTag, FlowTagCreate, FlowTagUpdate } from "../types/schemas";
 import { useTag, useCreateTag, useUpdateTag } from "./hooks";
 
+export type TagAutosaveConfig = {
+  enabled: boolean;
+  debounceMs?: number;
+  fields?: string[];
+  onFieldSave?: (field: string, value: any) => void;
+  onFieldError?: (field: string, error: Error) => void;
+};
+
 export type TagFormOptions = {
   id?: string;
   defaultValues?: Partial<FlowTagCreate> | Partial<FlowTagUpdate>;
@@ -23,13 +31,21 @@ export type TagFormOptions = {
     UseFormProps<FlowTagCreate | FlowTagUpdate>,
     "resolver" | "defaultValues"
   >;
+  autosave?: TagAutosaveConfig;
 };
 
 export function useTagForm(options?: TagFormOptions) {
-  const { id, defaultValues, onSuccess, onError, formOptions } = options || {};
+  const { id, defaultValues, onSuccess, onError, formOptions, autosave } =
+    options || {};
 
   // Smart mode detection
   const mode = id ? "update" : "create";
+
+  // Autosave state
+  const [fieldSaveStates, setFieldSaveStates] = useState<
+    Record<string, "idle" | "saving" | "saved" | "error">
+  >({});
+  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Fetch existing data if updating
   const { data: existingData } = useTag(id || "", {
@@ -96,6 +112,67 @@ export function useTagForm(options?: TagFormOptions) {
 
   const mutation = mode === "update" ? updateMutation : createMutation;
 
+  // Autosave handler for individual fields
+  const handleAutosave = useCallback(
+    (fieldName: string, value: any) => {
+      if (!autosave?.enabled || mode !== "update") return;
+
+      // Check if this field should be autosaved
+      if (autosave.fields && !autosave.fields.includes(fieldName)) return;
+
+      // Clear existing timer for this field
+      if (debounceTimers.current[fieldName]) {
+        clearTimeout(debounceTimers.current[fieldName]);
+      }
+
+      // Set field state to saving after debounce
+      setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
+
+      // Create new debounced save
+      debounceTimers.current[fieldName] = setTimeout(async () => {
+        // Validate the specific field
+        const isValid = await form.trigger(fieldName as any);
+        if (!isValid) {
+          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
+          return;
+        }
+
+        setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saving" }));
+
+        try {
+          // Create partial update with just this field
+          const partialUpdate = { [fieldName]: value } as FlowTagUpdate;
+          await updateMutation.mutateAsync(partialUpdate);
+
+          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saved" }));
+          autosave.onFieldSave?.(fieldName, value);
+
+          // Reset to idle after 2 seconds
+          setTimeout(() => {
+            setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
+          }, 2000);
+        } catch (error) {
+          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
+          autosave.onFieldError?.(fieldName, error as Error);
+        }
+      }, autosave.debounceMs || 1000);
+    },
+    [autosave, mode, form, updateMutation],
+  );
+
+  // Watch for field changes if autosave is enabled
+  useEffect(() => {
+    if (!autosave?.enabled || mode !== "update") return;
+
+    const subscription = form.watch((value, { name }) => {
+      if (name) {
+        handleAutosave(name, value[name]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, autosave, mode, handleAutosave]);
+
   // Submit handler
   const submit = useCallback(
     (data: FlowTagCreate | FlowTagUpdate) => {
@@ -122,6 +199,12 @@ export function useTagForm(options?: TagFormOptions) {
     isSuccess: mutation.isSuccess,
     mode,
     reset: () => form.reset(),
+    // Autosave specific
+    fieldSaveStates,
+    isAutosaving: Object.values(fieldSaveStates).some(
+      (state) => state === "saving",
+    ),
+    autosaveEnabled: autosave?.enabled || false,
   };
 }
 

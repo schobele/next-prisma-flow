@@ -4,6 +4,7 @@ import type { FlowConfig } from "../../../config";
 import { write } from "../../fs";
 import { header, imp, impType } from "../../strings";
 import { isScalar, isEnum, isRelation, targetModel } from "../../../dmmf";
+import { isManyToMany } from "./schema-builder";
 
 export async function emitTypesTransforms({
   modelDir,
@@ -24,38 +25,17 @@ export async function emitTypesTransforms({
   // Get configured fields for this model
   const configuredFields = cfg.perModelSelect[model.name];
   
-  // Collect all referenced models for imports (only for configured fields)
-  const referencedModels = new Set<string>();
-  for (const field of model.fields) {
-    // Skip if field is not in configured fields
-    if (configuredFields && !configuredFields.includes(field.name)) {
-      continue;
-    }
-    
-    if (isRelation(field) && !field.isReadOnly) {
-      const target = targetModel(field);
-      if (target !== model.name) {
-        referencedModels.add(target);
-      }
-    }
-  }
-  
-  // Add imports for referenced model transformers
-  for (const refModel of referencedModels) {
-    const refModelLower = refModel.toLowerCase();
-    content.push(imp(`../../${refModelLower}/types/transforms`, [
-      `transform${refModel}Create`,
-    ]));
-  }
+  // We no longer need to import transform functions from other models
+  // since we'll pass nested data directly without transformation
   
   content.push("");
   
   // Generate create transformer
-  content.push(generateTransformer(model, dmmf, cfg, "create", referencedModels));
+  content.push(generateTransformer(model, dmmf, cfg, "create"));
   content.push("");
   
   // Generate update transformer
-  content.push(generateTransformer(model, dmmf, cfg, "update", referencedModels));
+  content.push(generateTransformer(model, dmmf, cfg, "update"));
   
   const typesDir = join(modelDir, "types");
   await write(join(typesDir, "transforms.ts"), content.join("\n"));
@@ -65,8 +45,7 @@ function generateTransformer(
   model: DMMF.Model,
   dmmf: DMMF.Document,
   cfg: FlowConfig,
-  operation: "create" | "update",
-  referencedModels: Set<string>
+  operation: "create" | "update"
 ): string {
   const lines: string[] = [];
   const fnName = `transform${model.name}${operation === "create" ? "Create" : "Update"}`;
@@ -77,7 +56,7 @@ function generateTransformer(
   const configuredFields = cfg.perModelSelect[model.name];
   
   lines.push(`export function ${fnName}(input: ${inputType}): ${outputType} {`);
-  lines.push(`  const result: ${outputType} = {} as ${outputType};`);
+  lines.push(`  const result: any = {};`);
   lines.push(``);
   
   // Handle scalar and enum fields
@@ -138,45 +117,28 @@ function generateTransformer(
       
       if (operation === "create") {
         // For create operations, handle connect/create/connectOrCreate
+        // Since our schemas already generate the correct "WithoutXxx" types,
+        // we can pass the data directly without transformation
         if (field.isList) {
           lines.push(`    const ${field.name}Data = input.${field.name};`);
           lines.push(`    if (${field.name}Data) {`);
           lines.push(`      if ("connect" in ${field.name}Data && ${field.name}Data.connect) {`);
           lines.push(`        result.${field.name} = { connect: ${field.name}Data.connect };`);
           lines.push(`      } else if ("create" in ${field.name}Data && ${field.name}Data.create) {`);
-          if (target !== model.name) {
+          lines.push(`        result.${field.name} = {`);
+          lines.push(`          create: ${field.name}Data.create as any`);
+          lines.push(`        };`);
+          lines.push(`      } else if ("createMany" in ${field.name}Data && ${field.name}Data.createMany) {`);
+          // Only handle createMany for one-to-many relations
+          if (!isManyToMany(field)) {
             lines.push(`        result.${field.name} = {`);
-            lines.push(`          create: Array.isArray(${field.name}Data.create)`);
-            lines.push(`            ? ${field.name}Data.create.map(item => transform${target}Create(item))`);
-            lines.push(`            : transform${target}Create(${field.name}Data.create)`);
+            lines.push(`          createMany: ${field.name}Data.createMany as any`);
             lines.push(`        };`);
-          } else {
-            // Self-reference - only pass scalar fields and FKs for unchecked input
-            lines.push(`        const cleanedData = Array.isArray(${field.name}Data.create)`);
-            lines.push(`          ? ${field.name}Data.create.map((item: any) => {`);
-            lines.push(`              // Extract only scalar fields and foreign keys that exist in input`);
-            lines.push(`              const cleaned: any = {};`);
-            // Add all scalar fields from the model that could be in the input
-            for (const f of model.fields) {
-              if (!isRelation(f)) {
-                lines.push(`              if ('${f.name}' in item && item.${f.name} !== undefined) cleaned.${f.name} = item.${f.name};`);
-              }
-            }
-            lines.push(`              return cleaned;`);
-            lines.push(`            })`);
-            lines.push(`          : (() => {`);
-            lines.push(`              const item = ${field.name}Data.create;`);
-            lines.push(`              const cleaned: any = {};`);
-            // Add all scalar fields from the model that could be in the input
-            for (const f of model.fields) {
-              if (!isRelation(f)) {
-                lines.push(`              if ('${f.name}' in item && item.${f.name} !== undefined) cleaned.${f.name} = item.${f.name};`);
-              }
-            }
-            lines.push(`              return cleaned;`);
-            lines.push(`            })();`);
-            lines.push(`        result.${field.name} = { create: cleanedData };`);
           }
+          lines.push(`      } else if ("connectOrCreate" in ${field.name}Data && ${field.name}Data.connectOrCreate) {`);
+          lines.push(`        result.${field.name} = {`);
+          lines.push(`          connectOrCreate: ${field.name}Data.connectOrCreate as any`);
+          lines.push(`        };`);
           lines.push(`      }`);
           lines.push(`    }`);
         } else {
@@ -187,128 +149,20 @@ function generateTransformer(
           lines.push(`      if ("connect" in ${field.name}Data && ${field.name}Data.connect) {`);
           lines.push(`        result.${field.name} = { connect: ${field.name}Data.connect };`);
           lines.push(`      } else if ("create" in ${field.name}Data && ${field.name}Data.create) {`);
-          if (target !== model.name) {
-            lines.push(`        result.${field.name} = { create: transform${target}Create(${field.name}Data.create) };`);
-          } else {
-            // Self-reference - only pass scalar fields and FKs for unchecked input
-            lines.push(`        const item = ${field.name}Data.create;`);
-            lines.push(`        const cleanedData: any = {};`);
-            // Add all scalar fields from the model that could be in the input
-            for (const f of model.fields) {
-              if (!isRelation(f)) {
-                lines.push(`        if ('${f.name}' in item && item.${f.name} !== undefined) cleanedData.${f.name} = item.${f.name};`);
-              }
-            }
-            lines.push(`        result.${field.name} = { create: cleanedData };`);
-          }
+          lines.push(`        result.${field.name} = { create: ${field.name}Data.create as any };`);
           lines.push(`      } else if ("connectOrCreate" in ${field.name}Data && ${field.name}Data.connectOrCreate) {`);
           lines.push(`        result.${field.name} = {`);
-          lines.push(`          connectOrCreate: {`);
-          lines.push(`            where: ${field.name}Data.connectOrCreate.where,`);
-          if (target !== model.name) {
-            lines.push(`            create: transform${target}Create(${field.name}Data.connectOrCreate.create)`);
-          } else {
-            // Self-reference - only pass scalar fields and FKs for unchecked input
-            lines.push(`            create: (() => {`);
-            lines.push(`              const item = ${field.name}Data.connectOrCreate.create;`);
-            lines.push(`              const cleanedData: any = {};`);
-            // Add all scalar fields from the model that could be in the input
-            for (const f of model.fields) {
-              if (!isRelation(f)) {
-                lines.push(`              if ('${f.name}' in item && item.${f.name} !== undefined) cleanedData.${f.name} = item.${f.name};`);
-              }
-            }
-            lines.push(`              return cleanedData;`);
-            lines.push(`            })()`);
-          }
-          lines.push(`          }`);
+          lines.push(`          connectOrCreate: ${field.name}Data.connectOrCreate as any`);
           lines.push(`        };`);
           lines.push(`      }`);
           lines.push(`    }`);
         }
       } else {
-        // For update operations, handle ALL Prisma operations
+        // For update operations, pass the data directly
+        // Our schemas already generate the correct types
         lines.push(`    const ${field.name}Data = input.${field.name};`);
         lines.push(`    if (${field.name}Data) {`);
-        lines.push(`      result.${field.name} = {};`);
-        
-        // Create operations
-        lines.push(`      if ("create" in ${field.name}Data && ${field.name}Data.create) {`);
-        if (target !== model.name) {
-          if (field.isList) {
-            lines.push(`        result.${field.name}.create = Array.isArray(${field.name}Data.create)`);
-            lines.push(`          ? ${field.name}Data.create.map(item => transform${target}Create(item))`);
-            lines.push(`          : transform${target}Create(${field.name}Data.create);`);
-          } else {
-            lines.push(`        result.${field.name}.create = transform${target}Create(${field.name}Data.create);`);
-          }
-        } else {
-          // Self-reference - pass through for unchecked input
-          lines.push(`        result.${field.name}.create = ${field.name}Data.create;`);
-        }
-        lines.push(`      }`);
-        
-        // CreateMany (only for list relations)
-        if (field.isList) {
-          lines.push(`      if ("createMany" in ${field.name}Data && ${field.name}Data.createMany) {`);
-          lines.push(`        result.${field.name}.createMany = ${field.name}Data.createMany;`);
-          lines.push(`      }`);
-        }
-        
-        // Connect
-        lines.push(`      if ("connect" in ${field.name}Data && ${field.name}Data.connect) {`);
-        lines.push(`        result.${field.name}.connect = ${field.name}Data.connect;`);
-        lines.push(`      }`);
-        
-        // ConnectOrCreate
-        lines.push(`      if ("connectOrCreate" in ${field.name}Data && ${field.name}Data.connectOrCreate) {`);
-        lines.push(`        result.${field.name}.connectOrCreate = ${field.name}Data.connectOrCreate;`);
-        lines.push(`      }`);
-        
-        // Update operations
-        lines.push(`      if ("update" in ${field.name}Data && ${field.name}Data.update) {`);
-        lines.push(`        result.${field.name}.update = ${field.name}Data.update;`);
-        lines.push(`      }`);
-        
-        if (field.isList) {
-          lines.push(`      if ("updateMany" in ${field.name}Data && ${field.name}Data.updateMany) {`);
-          lines.push(`        result.${field.name}.updateMany = ${field.name}Data.updateMany;`);
-          lines.push(`      }`);
-        }
-        
-        // Upsert
-        lines.push(`      if ("upsert" in ${field.name}Data && ${field.name}Data.upsert) {`);
-        lines.push(`        result.${field.name}.upsert = ${field.name}Data.upsert;`);
-        lines.push(`      }`);
-        
-        // Delete operations (only for list relations)
-        if (field.isList) {
-          lines.push(`      if ("delete" in ${field.name}Data && ${field.name}Data.delete) {`);
-          lines.push(`        result.${field.name}.delete = ${field.name}Data.delete;`);
-          lines.push(`      }`);
-          lines.push(`      if ("deleteMany" in ${field.name}Data && ${field.name}Data.deleteMany) {`);
-          lines.push(`        result.${field.name}.deleteMany = ${field.name}Data.deleteMany;`);
-          lines.push(`      }`);
-        }
-        
-        // Disconnect handling
-        if (field.isList) {
-          // Many-to-many relations always support disconnect with WhereUniqueInput
-          lines.push(`      if ("disconnect" in ${field.name}Data && ${field.name}Data.disconnect) {`);
-          lines.push(`        result.${field.name}.disconnect = ${field.name}Data.disconnect;`);
-          lines.push(`      }`);
-          // Set is also available for list relations  
-          lines.push(`      if ("set" in ${field.name}Data && ${field.name}Data.set) {`);
-          lines.push(`        result.${field.name}.set = ${field.name}Data.set;`);
-          lines.push(`      }`);
-        } else if (!field.isRequired) {
-          // Only optional one-to-one/many-to-one relations can be disconnected
-          lines.push(`      if ("disconnect" in ${field.name}Data && ${field.name}Data.disconnect) {`);
-          lines.push(`        result.${field.name}.disconnect = ${field.name}Data.disconnect;`);
-          lines.push(`      }`);
-        }
-        // Note: Required one-to-one/many-to-one relations cannot be disconnected
-        
+        lines.push(`      result.${field.name} = ${field.name}Data as any;`);
         lines.push(`    }`);
       }
       
@@ -334,7 +188,7 @@ function generateTransformer(
         // Only add if the relation wasn't already handled above
         if (foreignKeyField && configuredFields && !configuredFields.includes(field.name)) {
           lines.push(`  // Handle ${field.name} foreign key when relation is not configured`);
-          lines.push(`  if ("${foreignKeyField}" in input && input.${foreignKeyField}) {`);
+          lines.push(`  if ("${foreignKeyField}" in input && input.${foreignKeyField} !== undefined && input.${foreignKeyField} !== null) {`);
           lines.push(`    result.${field.name} = { connect: { id: input.${foreignKeyField} } };`);
           lines.push(`  }`);
         }

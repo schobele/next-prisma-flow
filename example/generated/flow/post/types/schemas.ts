@@ -88,6 +88,16 @@ const PostCreateAuthorInputSchema = z.object({
   name: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
   createdAt: z.date().optional(),
+  posts: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
   comments: z
     .object({
       connect: z
@@ -104,6 +114,7 @@ const PostCreateCommentsInputSchema = z.object({
   id: z.string().optional(),
   content: z.string(),
   createdAt: z.date().optional(),
+  postId: z.string(),
   authorId: z.string(),
   parentId: z.string().optional().nullable(),
   author: z
@@ -223,7 +234,29 @@ const PostUpdateAuthorInputSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
+  posts: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
   comments: z
     .object({
       connect: z
@@ -250,7 +283,8 @@ const PostUpdateAuthorInputSchema = z.object({
 
 const PostUpdateCommentsInputSchema = z.object({
   content: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
+  postId: z.string().optional(),
   authorId: z.string().optional(),
   parentId: z.string().optional().nullable(),
   author: z
@@ -284,24 +318,24 @@ const PostUpdateCommentsInputSchema = z.object({
 
 const PostUpdateTagsInputSchema = z.object({
   name: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
 });
 
 export const PostUpdateSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional().nullable(),
-  published: z.boolean().optional().nullable(),
-  views: z.number().int().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  published: z.boolean().optional(),
+  views: z.number().int().optional(),
+  createdAt: z.date().optional(),
   authorId: z.string().optional(),
   author: z
     .object({
-      create: PostUpdateAuthorInputSchema.optional(),
+      create: PostCreateAuthorInputSchema.optional(),
       connect: z.object({ id: z.string() }).optional(),
       connectOrCreate: z
         .object({
           where: z.object({ id: z.string() }),
-          create: PostUpdateAuthorInputSchema,
+          create: PostCreateAuthorInputSchema,
         })
         .optional(),
       update: z
@@ -314,7 +348,7 @@ export const PostUpdateSchema = z.object({
         .object({
           where: z.object({ id: z.string() }),
           update: PostUpdateAuthorInputSchema,
-          create: PostUpdateAuthorInputSchema,
+          create: PostCreateAuthorInputSchema,
         })
         .optional(),
     })
@@ -323,8 +357,8 @@ export const PostUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          PostUpdateCommentsInputSchema,
-          z.array(PostUpdateCommentsInputSchema),
+          PostCreateCommentsInputSchema,
+          z.array(PostCreateCommentsInputSchema),
         ])
         .optional(),
       connect: z
@@ -337,12 +371,12 @@ export const PostUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: PostUpdateCommentsInputSchema,
+            create: PostCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: PostUpdateCommentsInputSchema,
+              create: PostCreateCommentsInputSchema,
             }),
           ),
         ])
@@ -384,13 +418,13 @@ export const PostUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: PostUpdateCommentsInputSchema,
-            create: PostUpdateCommentsInputSchema,
+            create: PostCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: PostUpdateCommentsInputSchema,
-              create: PostUpdateCommentsInputSchema,
+              create: PostCreateCommentsInputSchema,
             }),
           ),
         ])
@@ -407,7 +441,7 @@ export const PostUpdateSchema = z.object({
   tags: z
     .object({
       create: z
-        .union([PostUpdateTagsInputSchema, z.array(PostUpdateTagsInputSchema)])
+        .union([PostCreateTagsInputSchema, z.array(PostCreateTagsInputSchema)])
         .optional(),
       connect: z
         .union([
@@ -419,12 +453,12 @@ export const PostUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: PostUpdateTagsInputSchema,
+            create: PostCreateTagsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: PostUpdateTagsInputSchema,
+              create: PostCreateTagsInputSchema,
             }),
           ),
         ])
@@ -466,13 +500,13 @@ export const PostUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: PostUpdateTagsInputSchema,
-            create: PostUpdateTagsInputSchema,
+            create: PostCreateTagsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: PostUpdateTagsInputSchema,
-              create: PostUpdateTagsInputSchema,
+              create: PostCreateTagsInputSchema,
             }),
           ),
         ])

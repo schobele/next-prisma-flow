@@ -80,6 +80,16 @@ const CommentCreateAuthorInputSchema = z.object({
         .optional(),
     })
     .optional(),
+  comments: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
 });
 
 const CommentCreateRepliesInputSchema = z.object({
@@ -88,9 +98,20 @@ const CommentCreateRepliesInputSchema = z.object({
   createdAt: z.date().optional(),
   postId: z.string(),
   authorId: z.string(),
+  parentId: z.string().optional().nullable(),
   author: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  replies: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
     })
     .optional(),
 });
@@ -160,8 +181,30 @@ const CommentUpdateAuthorInputSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   posts: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  comments: z
     .object({
       connect: z
         .union([
@@ -187,30 +230,53 @@ const CommentUpdateAuthorInputSchema = z.object({
 
 const CommentUpdateRepliesInputSchema = z.object({
   content: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   postId: z.string().optional(),
   authorId: z.string().optional(),
+  parentId: z.string().optional().nullable(),
   author: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  replies: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
     })
     .optional(),
 });
 
 export const CommentUpdateSchema = z.object({
   content: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   postId: z.string().optional(),
   authorId: z.string().optional(),
   parentId: z.string().optional().nullable(),
   author: z
     .object({
-      create: CommentUpdateAuthorInputSchema.optional(),
+      create: CommentCreateAuthorInputSchema.optional(),
       connect: z.object({ id: z.string() }).optional(),
       connectOrCreate: z
         .object({
           where: z.object({ id: z.string() }),
-          create: CommentUpdateAuthorInputSchema,
+          create: CommentCreateAuthorInputSchema,
         })
         .optional(),
       update: z
@@ -223,7 +289,7 @@ export const CommentUpdateSchema = z.object({
         .object({
           where: z.object({ id: z.string() }),
           update: CommentUpdateAuthorInputSchema,
-          create: CommentUpdateAuthorInputSchema,
+          create: CommentCreateAuthorInputSchema,
         })
         .optional(),
     })
@@ -232,8 +298,8 @@ export const CommentUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          CommentUpdateRepliesInputSchema,
-          z.array(CommentUpdateRepliesInputSchema),
+          CommentCreateRepliesInputSchema,
+          z.array(CommentCreateRepliesInputSchema),
         ])
         .optional(),
       connect: z
@@ -246,12 +312,12 @@ export const CommentUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: CommentUpdateRepliesInputSchema,
+            create: CommentCreateRepliesInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: CommentUpdateRepliesInputSchema,
+              create: CommentCreateRepliesInputSchema,
             }),
           ),
         ])
@@ -293,13 +359,13 @@ export const CommentUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: CommentUpdateRepliesInputSchema,
-            create: CommentUpdateRepliesInputSchema,
+            create: CommentCreateRepliesInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: CommentUpdateRepliesInputSchema,
-              create: CommentUpdateRepliesInputSchema,
+              create: CommentCreateRepliesInputSchema,
             }),
           ),
         ])

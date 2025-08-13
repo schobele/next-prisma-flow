@@ -3,14 +3,11 @@
 
 import type { Prisma } from "../../prisma";
 import type { FlowPostCreate, FlowPostUpdate } from "./schemas";
-import { transformAuthorCreate } from "../../author/types/transforms";
-import { transformCommentCreate } from "../../comment/types/transforms";
-import { transformTagCreate } from "../../tag/types/transforms";
 
 export function transformPostCreate(
   input: FlowPostCreate,
 ): Prisma.PostCreateInput {
-  const result: Prisma.PostCreateInput = {} as Prisma.PostCreateInput;
+  const result: any = {};
 
   result.title = input.title;
   if ("content" in input && input.content !== undefined) {
@@ -31,16 +28,13 @@ export function transformPostCreate(
       if ("connect" in authorData && authorData.connect) {
         result.author = { connect: authorData.connect };
       } else if ("create" in authorData && authorData.create) {
-        result.author = { create: transformAuthorCreate(authorData.create) };
+        result.author = { create: authorData.create as any };
       } else if (
         "connectOrCreate" in authorData &&
         authorData.connectOrCreate
       ) {
         result.author = {
-          connectOrCreate: {
-            where: authorData.connectOrCreate.where,
-            create: transformAuthorCreate(authorData.connectOrCreate.create),
-          },
+          connectOrCreate: authorData.connectOrCreate as any,
         };
       }
     }
@@ -56,9 +50,15 @@ export function transformPostCreate(
         result.comments = { connect: commentsData.connect };
       } else if ("create" in commentsData && commentsData.create) {
         result.comments = {
-          create: Array.isArray(commentsData.create)
-            ? commentsData.create.map((item) => transformCommentCreate(item))
-            : transformCommentCreate(commentsData.create),
+          create: commentsData.create as any,
+        };
+      } else if ("createMany" in commentsData && commentsData.createMany) {
+      } else if (
+        "connectOrCreate" in commentsData &&
+        commentsData.connectOrCreate
+      ) {
+        result.comments = {
+          connectOrCreate: commentsData.connectOrCreate as any,
         };
       }
     }
@@ -70,15 +70,22 @@ export function transformPostCreate(
         result.tags = { connect: tagsData.connect };
       } else if ("create" in tagsData && tagsData.create) {
         result.tags = {
-          create: Array.isArray(tagsData.create)
-            ? tagsData.create.map((item) => transformTagCreate(item))
-            : transformTagCreate(tagsData.create),
+          create: tagsData.create as any,
+        };
+      } else if ("createMany" in tagsData && tagsData.createMany) {
+      } else if ("connectOrCreate" in tagsData && tagsData.connectOrCreate) {
+        result.tags = {
+          connectOrCreate: tagsData.connectOrCreate as any,
         };
       }
     }
   }
   // Handle organization foreign key when relation is not configured
-  if ("organizationId" in input && input.organizationId) {
+  if (
+    "organizationId" in input &&
+    input.organizationId !== undefined &&
+    input.organizationId !== null
+  ) {
     result.organization = { connect: { id: input.organizationId } };
   }
 
@@ -88,7 +95,7 @@ export function transformPostCreate(
 export function transformPostUpdate(
   input: FlowPostUpdate,
 ): Prisma.PostUpdateInput {
-  const result: Prisma.PostUpdateInput = {} as Prisma.PostUpdateInput;
+  const result: any = {};
 
   const titleValue = input.title;
   if (titleValue !== undefined && titleValue !== null) {
@@ -113,104 +120,19 @@ export function transformPostUpdate(
   if (input.author !== undefined) {
     const authorData = input.author;
     if (authorData) {
-      result.author = {};
-      if ("create" in authorData && authorData.create) {
-        result.author.create = transformAuthorCreate(authorData.create);
-      }
-      if ("connect" in authorData && authorData.connect) {
-        result.author.connect = authorData.connect;
-      }
-      if ("connectOrCreate" in authorData && authorData.connectOrCreate) {
-        result.author.connectOrCreate = authorData.connectOrCreate;
-      }
-      if ("update" in authorData && authorData.update) {
-        result.author.update = authorData.update;
-      }
-      if ("upsert" in authorData && authorData.upsert) {
-        result.author.upsert = authorData.upsert;
-      }
+      result.author = authorData as any;
     }
   }
   if (input.comments !== undefined) {
     const commentsData = input.comments;
     if (commentsData) {
-      result.comments = {};
-      if ("create" in commentsData && commentsData.create) {
-        result.comments.create = Array.isArray(commentsData.create)
-          ? commentsData.create.map((item) => transformCommentCreate(item))
-          : transformCommentCreate(commentsData.create);
-      }
-      if ("createMany" in commentsData && commentsData.createMany) {
-        result.comments.createMany = commentsData.createMany;
-      }
-      if ("connect" in commentsData && commentsData.connect) {
-        result.comments.connect = commentsData.connect;
-      }
-      if ("connectOrCreate" in commentsData && commentsData.connectOrCreate) {
-        result.comments.connectOrCreate = commentsData.connectOrCreate;
-      }
-      if ("update" in commentsData && commentsData.update) {
-        result.comments.update = commentsData.update;
-      }
-      if ("updateMany" in commentsData && commentsData.updateMany) {
-        result.comments.updateMany = commentsData.updateMany;
-      }
-      if ("upsert" in commentsData && commentsData.upsert) {
-        result.comments.upsert = commentsData.upsert;
-      }
-      if ("delete" in commentsData && commentsData.delete) {
-        result.comments.delete = commentsData.delete;
-      }
-      if ("deleteMany" in commentsData && commentsData.deleteMany) {
-        result.comments.deleteMany = commentsData.deleteMany;
-      }
-      if ("disconnect" in commentsData && commentsData.disconnect) {
-        result.comments.disconnect = commentsData.disconnect;
-      }
-      if ("set" in commentsData && commentsData.set) {
-        result.comments.set = commentsData.set;
-      }
+      result.comments = commentsData as any;
     }
   }
   if (input.tags !== undefined) {
     const tagsData = input.tags;
     if (tagsData) {
-      result.tags = {};
-      if ("create" in tagsData && tagsData.create) {
-        result.tags.create = Array.isArray(tagsData.create)
-          ? tagsData.create.map((item) => transformTagCreate(item))
-          : transformTagCreate(tagsData.create);
-      }
-      if ("createMany" in tagsData && tagsData.createMany) {
-        result.tags.createMany = tagsData.createMany;
-      }
-      if ("connect" in tagsData && tagsData.connect) {
-        result.tags.connect = tagsData.connect;
-      }
-      if ("connectOrCreate" in tagsData && tagsData.connectOrCreate) {
-        result.tags.connectOrCreate = tagsData.connectOrCreate;
-      }
-      if ("update" in tagsData && tagsData.update) {
-        result.tags.update = tagsData.update;
-      }
-      if ("updateMany" in tagsData && tagsData.updateMany) {
-        result.tags.updateMany = tagsData.updateMany;
-      }
-      if ("upsert" in tagsData && tagsData.upsert) {
-        result.tags.upsert = tagsData.upsert;
-      }
-      if ("delete" in tagsData && tagsData.delete) {
-        result.tags.delete = tagsData.delete;
-      }
-      if ("deleteMany" in tagsData && tagsData.deleteMany) {
-        result.tags.deleteMany = tagsData.deleteMany;
-      }
-      if ("disconnect" in tagsData && tagsData.disconnect) {
-        result.tags.disconnect = tagsData.disconnect;
-      }
-      if ("set" in tagsData && tagsData.set) {
-        result.tags.set = tagsData.set;
-      }
+      result.tags = tagsData as any;
     }
   }
 

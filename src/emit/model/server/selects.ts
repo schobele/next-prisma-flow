@@ -227,7 +227,9 @@ function generateNestedRelationSelects(
 
   // Now generate this select
   // Use the scalar select for this model type from the root model's scalar selects
-  const scalarSelectName = `${rootModelName}${targetModelName}ScalarSelect`;
+  const scalarSelectName = rootModelName === targetModelName 
+    ? `${rootModelName}ScalarSelect`
+    : `${rootModelName}${targetModelName}ScalarSelect`;
   const nestedFields: string[] = [`  ...${scalarSelectName},`];
   
   for (const targetFieldName of targetConfig) {
@@ -241,7 +243,23 @@ function generateNestedRelationSelects(
       nestedFields.push(`  ${targetFieldName}: false,`);
     } else {
       const nestedSelectName = `${fieldPrefix}${targetFieldName.charAt(0).toUpperCase() + targetFieldName.slice(1)}Select`;
-      nestedFields.push(`  ${targetFieldName}: ${nestedSelectName},`);
+      
+      if (targetField.isList) {
+        // For list relations, include take/orderBy
+        const limit = cfg.perRelationLimit[`${targetModelDef.name}.${targetFieldName}`] || 50;
+        const orderBy = cfg.perRelationOrder[`${targetModelDef.name}.${targetFieldName}`];
+        
+        nestedFields.push(`  ${targetFieldName}: {`);
+        nestedFields.push(`    select: ${nestedSelectName},`);
+        nestedFields.push(`    take: ${limit},`);
+        if (orderBy) {
+          nestedFields.push(`    orderBy: ${orderBy},`);
+        }
+        nestedFields.push(`  },`);
+      } else {
+        // For single relations, just wrap with select
+        nestedFields.push(`  ${targetFieldName}: { select: ${nestedSelectName} },`);
+      }
     }
   }
 

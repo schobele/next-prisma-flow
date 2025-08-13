@@ -12,7 +12,7 @@ import {
   FlowValidationError,
 } from "../../core";
 import { canTag } from "../../policies";
-import { TagDeepSelect } from "./selects";
+import { TagSelect } from "./selects";
 import { TagCreateSchema, TagUpdateSchema } from "../types/schemas";
 import type { FlowTagCreate, FlowTagUpdate } from "../types/schemas";
 import { transformTagCreate, transformTagUpdate } from "../types/transforms";
@@ -37,7 +37,7 @@ export async function createTag(data: FlowTagCreate, ctx: FlowCtx = {}) {
   const createData = transformTagCreate(parsed.data as any);
   const item = await prisma.tag.create({
     data: { ...createData, ...policy.data },
-    select: TagDeepSelect,
+    select: TagSelect,
   });
 
   await invalidateTags([keys.m("Tag").tag()]);
@@ -61,7 +61,7 @@ export async function updateTag(
   const item = await prisma.tag.update({
     where: { id: id, ...policy.where },
     data: { ...updateData, ...policy.data },
-    select: TagDeepSelect,
+    select: TagSelect,
   });
 
   await invalidateTags([keys.m("Tag").tag(), keys.m("Tag").tag(String(id))]);

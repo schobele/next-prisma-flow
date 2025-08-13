@@ -51,7 +51,10 @@ export const AuthorPostsCommentsRepliesSelect = {
 export const AuthorPostsCommentsSelect = {
   ...AuthorCommentScalarSelect,
   author: false,
-  replies: AuthorPostsCommentsRepliesSelect,
+  replies: {
+    select: AuthorPostsCommentsRepliesSelect,
+    take: 50,
+  },
 } as Prisma.CommentSelect;
 export const AuthorPostsTagsSelect = {
   ...AuthorTagScalarSelect,
@@ -59,8 +62,14 @@ export const AuthorPostsTagsSelect = {
 export const AuthorPostsSelect = {
   ...AuthorPostScalarSelect,
   author: false,
-  comments: AuthorPostsCommentsSelect,
-  tags: AuthorPostsTagsSelect,
+  comments: {
+    select: AuthorPostsCommentsSelect,
+    take: 50,
+  },
+  tags: {
+    select: AuthorPostsTagsSelect,
+    take: 50,
+  },
 } as Prisma.PostSelect;
 export const AuthorCommentsRepliesSelect = {
   ...AuthorCommentScalarSelect,
@@ -70,7 +79,10 @@ export const AuthorCommentsRepliesSelect = {
 export const AuthorCommentsSelect = {
   ...AuthorCommentScalarSelect,
   author: false,
-  replies: AuthorCommentsRepliesSelect,
+  replies: {
+    select: AuthorCommentsRepliesSelect,
+    take: 50,
+  },
 } as Prisma.CommentSelect;
 
 // Main select

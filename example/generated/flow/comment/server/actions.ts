@@ -12,7 +12,7 @@ import {
   FlowValidationError,
 } from "../../core";
 import { canComment } from "../../policies";
-import { CommentDeepSelect } from "./selects";
+import { CommentSelect } from "./selects";
 import { CommentCreateSchema, CommentUpdateSchema } from "../types/schemas";
 import type { FlowCommentCreate, FlowCommentUpdate } from "../types/schemas";
 import {
@@ -44,7 +44,7 @@ export async function createComment(
   const createData = transformCommentCreate(parsed.data as any);
   const item = await prisma.comment.create({
     data: { ...createData, ...policy.data },
-    select: CommentDeepSelect,
+    select: CommentSelect,
   });
 
   await invalidateTags([keys.m("Comment").tag()]);
@@ -68,7 +68,7 @@ export async function updateComment(
   const item = await prisma.comment.update({
     where: { id: id, ...policy.where },
     data: { ...updateData, ...policy.data },
-    select: CommentDeepSelect,
+    select: CommentSelect,
   });
 
   await invalidateTags([

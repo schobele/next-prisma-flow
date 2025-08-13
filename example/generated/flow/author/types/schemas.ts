@@ -79,6 +79,12 @@ const AuthorCreatePostsInputSchema = z.object({
   published: z.boolean().optional(),
   views: z.number().int().optional(),
   createdAt: z.date().optional(),
+  authorId: z.string(),
+  author: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   comments: z
     .object({
       connect: z
@@ -106,7 +112,13 @@ const AuthorCreateCommentsInputSchema = z.object({
   content: z.string(),
   createdAt: z.date().optional(),
   postId: z.string(),
+  authorId: z.string(),
   parentId: z.string().optional().nullable(),
+  author: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   replies: z
     .object({
       connect: z
@@ -199,9 +211,15 @@ export const AuthorCreateManyInputSchema = z.object({
 const AuthorUpdatePostsInputSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional().nullable(),
-  published: z.boolean().optional().nullable(),
-  views: z.number().int().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  published: z.boolean().optional(),
+  views: z.number().int().optional(),
+  createdAt: z.date().optional(),
+  authorId: z.string().optional(),
+  author: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   comments: z
     .object({
       connect: z
@@ -250,9 +268,15 @@ const AuthorUpdatePostsInputSchema = z.object({
 
 const AuthorUpdateCommentsInputSchema = z.object({
   content: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   postId: z.string().optional(),
+  authorId: z.string().optional(),
   parentId: z.string().optional().nullable(),
+  author: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   replies: z
     .object({
       connect: z
@@ -281,13 +305,13 @@ export const AuthorUpdateSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional().nullable(),
   bio: z.string().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   posts: z
     .object({
       create: z
         .union([
-          AuthorUpdatePostsInputSchema,
-          z.array(AuthorUpdatePostsInputSchema),
+          AuthorCreatePostsInputSchema,
+          z.array(AuthorCreatePostsInputSchema),
         ])
         .optional(),
       connect: z
@@ -300,12 +324,12 @@ export const AuthorUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: AuthorUpdatePostsInputSchema,
+            create: AuthorCreatePostsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: AuthorUpdatePostsInputSchema,
+              create: AuthorCreatePostsInputSchema,
             }),
           ),
         ])
@@ -347,13 +371,13 @@ export const AuthorUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: AuthorUpdatePostsInputSchema,
-            create: AuthorUpdatePostsInputSchema,
+            create: AuthorCreatePostsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: AuthorUpdatePostsInputSchema,
-              create: AuthorUpdatePostsInputSchema,
+              create: AuthorCreatePostsInputSchema,
             }),
           ),
         ])
@@ -371,8 +395,8 @@ export const AuthorUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          AuthorUpdateCommentsInputSchema,
-          z.array(AuthorUpdateCommentsInputSchema),
+          AuthorCreateCommentsInputSchema,
+          z.array(AuthorCreateCommentsInputSchema),
         ])
         .optional(),
       connect: z
@@ -385,12 +409,12 @@ export const AuthorUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: AuthorUpdateCommentsInputSchema,
+            create: AuthorCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: AuthorUpdateCommentsInputSchema,
+              create: AuthorCreateCommentsInputSchema,
             }),
           ),
         ])
@@ -432,13 +456,13 @@ export const AuthorUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: AuthorUpdateCommentsInputSchema,
-            create: AuthorUpdateCommentsInputSchema,
+            create: AuthorCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: AuthorUpdateCommentsInputSchema,
-              create: AuthorUpdateCommentsInputSchema,
+              create: AuthorCreateCommentsInputSchema,
             }),
           ),
         ])

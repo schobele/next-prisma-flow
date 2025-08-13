@@ -151,13 +151,13 @@ export const OrganizationCreateManyInputSchema = z.object({
 // Input schemas for update operations
 export const OrganizationUpdateSchema = z.object({
   name: z.string().optional().nullable(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
   authors: z
     .object({
       create: z
         .union([
-          OrganizationUpdateAuthorsInputSchema,
-          z.array(OrganizationUpdateAuthorsInputSchema),
+          OrganizationCreateAuthorsInputSchema,
+          z.array(OrganizationCreateAuthorsInputSchema),
         ])
         .optional(),
       connect: z
@@ -170,12 +170,12 @@ export const OrganizationUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: OrganizationUpdateAuthorsInputSchema,
+            create: OrganizationCreateAuthorsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: OrganizationUpdateAuthorsInputSchema,
+              create: OrganizationCreateAuthorsInputSchema,
             }),
           ),
         ])
@@ -217,13 +217,13 @@ export const OrganizationUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: OrganizationUpdateAuthorsInputSchema,
-            create: OrganizationUpdateAuthorsInputSchema,
+            create: OrganizationCreateAuthorsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: OrganizationUpdateAuthorsInputSchema,
-              create: OrganizationUpdateAuthorsInputSchema,
+              create: OrganizationCreateAuthorsInputSchema,
             }),
           ),
         ])
@@ -241,8 +241,8 @@ export const OrganizationUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          OrganizationUpdatePostsInputSchema,
-          z.array(OrganizationUpdatePostsInputSchema),
+          OrganizationCreatePostsInputSchema,
+          z.array(OrganizationCreatePostsInputSchema),
         ])
         .optional(),
       connect: z
@@ -255,12 +255,12 @@ export const OrganizationUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: OrganizationUpdatePostsInputSchema,
+            create: OrganizationCreatePostsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: OrganizationUpdatePostsInputSchema,
+              create: OrganizationCreatePostsInputSchema,
             }),
           ),
         ])
@@ -302,13 +302,13 @@ export const OrganizationUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: OrganizationUpdatePostsInputSchema,
-            create: OrganizationUpdatePostsInputSchema,
+            create: OrganizationCreatePostsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: OrganizationUpdatePostsInputSchema,
-              create: OrganizationUpdatePostsInputSchema,
+              create: OrganizationCreatePostsInputSchema,
             }),
           ),
         ])
@@ -326,8 +326,8 @@ export const OrganizationUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          OrganizationUpdateCommentsInputSchema,
-          z.array(OrganizationUpdateCommentsInputSchema),
+          OrganizationCreateCommentsInputSchema,
+          z.array(OrganizationCreateCommentsInputSchema),
         ])
         .optional(),
       connect: z
@@ -340,12 +340,12 @@ export const OrganizationUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: OrganizationUpdateCommentsInputSchema,
+            create: OrganizationCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: OrganizationUpdateCommentsInputSchema,
+              create: OrganizationCreateCommentsInputSchema,
             }),
           ),
         ])
@@ -387,13 +387,13 @@ export const OrganizationUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: OrganizationUpdateCommentsInputSchema,
-            create: OrganizationUpdateCommentsInputSchema,
+            create: OrganizationCreateCommentsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: OrganizationUpdateCommentsInputSchema,
-              create: OrganizationUpdateCommentsInputSchema,
+              create: OrganizationCreateCommentsInputSchema,
             }),
           ),
         ])
@@ -411,8 +411,8 @@ export const OrganizationUpdateSchema = z.object({
     .object({
       create: z
         .union([
-          OrganizationUpdateTagsInputSchema,
-          z.array(OrganizationUpdateTagsInputSchema),
+          OrganizationCreateTagsInputSchema,
+          z.array(OrganizationCreateTagsInputSchema),
         ])
         .optional(),
       connect: z
@@ -425,12 +425,12 @@ export const OrganizationUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: OrganizationUpdateTagsInputSchema,
+            create: OrganizationCreateTagsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: OrganizationUpdateTagsInputSchema,
+              create: OrganizationCreateTagsInputSchema,
             }),
           ),
         ])
@@ -472,13 +472,13 @@ export const OrganizationUpdateSchema = z.object({
           z.object({
             where: z.object({ id: z.string() }),
             update: OrganizationUpdateTagsInputSchema,
-            create: OrganizationUpdateTagsInputSchema,
+            create: OrganizationCreateTagsInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
               update: OrganizationUpdateTagsInputSchema,
-              create: OrganizationUpdateTagsInputSchema,
+              create: OrganizationCreateTagsInputSchema,
             }),
           ),
         ])

@@ -25,7 +25,7 @@ export async function emitServerActions({
   content.push(imp("../../prisma", ["prisma"]));
   content.push(imp("../../core", ["invalidateTags", "keys", "FlowCtx", "FlowPolicyError", "FlowValidationError"]));
   content.push(imp("../../policies", [`can${model.name}`]));
-  content.push(imp(`./selects`, [`${model.name}DeepSelect`]));
+  content.push(imp(`./selects`, [`${model.name}Select`]));
   content.push(imp(`../types/schemas`, [`${model.name}CreateSchema`, `${model.name}UpdateSchema`]));
   content.push(impType(`../types/schemas`, [`Flow${model.name}Create`, `Flow${model.name}Update`]));
   content.push(imp(`../types/transforms`, [`transform${model.name}Create`, `transform${model.name}Update`]));
@@ -61,7 +61,7 @@ export async function emitServerActions({
   content.push(`  const createData = transform${model.name}Create(parsed.data as any);`);
   content.push(`  const item = await prisma.${modelLower}.create({`);
   content.push(`    data: { ...createData, ...policy.data },`);
-  content.push(`    select: ${model.name}DeepSelect`);
+  content.push(`    select: ${model.name}Select`);
   content.push(`  });`);
   content.push(``);
   content.push(`  await invalidateTags([keys.m("${model.name}").tag()]);`);
@@ -87,7 +87,7 @@ export async function emitServerActions({
   content.push(`  const item = await prisma.${modelLower}.update({`);
   content.push(`    where: { ${idField?.name || "id"}: id, ...policy.where },`);
   content.push(`    data: { ...updateData, ...policy.data },`);
-  content.push(`    select: ${model.name}DeepSelect`);
+  content.push(`    select: ${model.name}Select`);
   content.push(`  });`);
   content.push(``);
   content.push(`  await invalidateTags([`);

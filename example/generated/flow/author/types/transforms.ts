@@ -3,13 +3,11 @@
 
 import type { Prisma } from "../../prisma";
 import type { FlowAuthorCreate, FlowAuthorUpdate } from "./schemas";
-import { transformPostCreate } from "../../post/types/transforms";
-import { transformCommentCreate } from "../../comment/types/transforms";
 
 export function transformAuthorCreate(
   input: FlowAuthorCreate,
 ): Prisma.AuthorCreateInput {
-  const result: Prisma.AuthorCreateInput = {} as Prisma.AuthorCreateInput;
+  const result: any = {};
 
   result.email = input.email;
   if ("name" in input && input.name !== undefined) {
@@ -28,9 +26,12 @@ export function transformAuthorCreate(
         result.posts = { connect: postsData.connect };
       } else if ("create" in postsData && postsData.create) {
         result.posts = {
-          create: Array.isArray(postsData.create)
-            ? postsData.create.map((item) => transformPostCreate(item))
-            : transformPostCreate(postsData.create),
+          create: postsData.create as any,
+        };
+      } else if ("createMany" in postsData && postsData.createMany) {
+      } else if ("connectOrCreate" in postsData && postsData.connectOrCreate) {
+        result.posts = {
+          connectOrCreate: postsData.connectOrCreate as any,
         };
       }
     }
@@ -42,15 +43,25 @@ export function transformAuthorCreate(
         result.comments = { connect: commentsData.connect };
       } else if ("create" in commentsData && commentsData.create) {
         result.comments = {
-          create: Array.isArray(commentsData.create)
-            ? commentsData.create.map((item) => transformCommentCreate(item))
-            : transformCommentCreate(commentsData.create),
+          create: commentsData.create as any,
+        };
+      } else if ("createMany" in commentsData && commentsData.createMany) {
+      } else if (
+        "connectOrCreate" in commentsData &&
+        commentsData.connectOrCreate
+      ) {
+        result.comments = {
+          connectOrCreate: commentsData.connectOrCreate as any,
         };
       }
     }
   }
   // Handle organization foreign key when relation is not configured
-  if ("organizationId" in input && input.organizationId) {
+  if (
+    "organizationId" in input &&
+    input.organizationId !== undefined &&
+    input.organizationId !== null
+  ) {
     result.organization = { connect: { id: input.organizationId } };
   }
 
@@ -60,7 +71,7 @@ export function transformAuthorCreate(
 export function transformAuthorUpdate(
   input: FlowAuthorUpdate,
 ): Prisma.AuthorUpdateInput {
-  const result: Prisma.AuthorUpdateInput = {} as Prisma.AuthorUpdateInput;
+  const result: any = {};
 
   const emailValue = input.email;
   if (emailValue !== undefined && emailValue !== null) {
@@ -81,83 +92,13 @@ export function transformAuthorUpdate(
   if (input.posts !== undefined) {
     const postsData = input.posts;
     if (postsData) {
-      result.posts = {};
-      if ("create" in postsData && postsData.create) {
-        result.posts.create = Array.isArray(postsData.create)
-          ? postsData.create.map((item) => transformPostCreate(item))
-          : transformPostCreate(postsData.create);
-      }
-      if ("createMany" in postsData && postsData.createMany) {
-        result.posts.createMany = postsData.createMany;
-      }
-      if ("connect" in postsData && postsData.connect) {
-        result.posts.connect = postsData.connect;
-      }
-      if ("connectOrCreate" in postsData && postsData.connectOrCreate) {
-        result.posts.connectOrCreate = postsData.connectOrCreate;
-      }
-      if ("update" in postsData && postsData.update) {
-        result.posts.update = postsData.update;
-      }
-      if ("updateMany" in postsData && postsData.updateMany) {
-        result.posts.updateMany = postsData.updateMany;
-      }
-      if ("upsert" in postsData && postsData.upsert) {
-        result.posts.upsert = postsData.upsert;
-      }
-      if ("delete" in postsData && postsData.delete) {
-        result.posts.delete = postsData.delete;
-      }
-      if ("deleteMany" in postsData && postsData.deleteMany) {
-        result.posts.deleteMany = postsData.deleteMany;
-      }
-      if ("disconnect" in postsData && postsData.disconnect) {
-        result.posts.disconnect = postsData.disconnect;
-      }
-      if ("set" in postsData && postsData.set) {
-        result.posts.set = postsData.set;
-      }
+      result.posts = postsData as any;
     }
   }
   if (input.comments !== undefined) {
     const commentsData = input.comments;
     if (commentsData) {
-      result.comments = {};
-      if ("create" in commentsData && commentsData.create) {
-        result.comments.create = Array.isArray(commentsData.create)
-          ? commentsData.create.map((item) => transformCommentCreate(item))
-          : transformCommentCreate(commentsData.create);
-      }
-      if ("createMany" in commentsData && commentsData.createMany) {
-        result.comments.createMany = commentsData.createMany;
-      }
-      if ("connect" in commentsData && commentsData.connect) {
-        result.comments.connect = commentsData.connect;
-      }
-      if ("connectOrCreate" in commentsData && commentsData.connectOrCreate) {
-        result.comments.connectOrCreate = commentsData.connectOrCreate;
-      }
-      if ("update" in commentsData && commentsData.update) {
-        result.comments.update = commentsData.update;
-      }
-      if ("updateMany" in commentsData && commentsData.updateMany) {
-        result.comments.updateMany = commentsData.updateMany;
-      }
-      if ("upsert" in commentsData && commentsData.upsert) {
-        result.comments.upsert = commentsData.upsert;
-      }
-      if ("delete" in commentsData && commentsData.delete) {
-        result.comments.delete = commentsData.delete;
-      }
-      if ("deleteMany" in commentsData && commentsData.deleteMany) {
-        result.comments.deleteMany = commentsData.deleteMany;
-      }
-      if ("disconnect" in commentsData && commentsData.disconnect) {
-        result.comments.disconnect = commentsData.disconnect;
-      }
-      if ("set" in commentsData && commentsData.set) {
-        result.comments.set = commentsData.set;
-      }
+      result.comments = commentsData as any;
     }
   }
 

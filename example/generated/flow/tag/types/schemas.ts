@@ -31,7 +31,7 @@ export const TagCreateManyInputSchema = z.object({
 // Input schemas for update operations
 export const TagUpdateSchema = z.object({
   name: z.string().optional(),
-  createdAt: z.date().optional().nullable(),
+  createdAt: z.date().optional(),
 });
 
 export const TagUpdateManyInputSchema = z.object({

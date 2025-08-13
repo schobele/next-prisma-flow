@@ -7,14 +7,18 @@ import type { FlowTagCreate, FlowTagUpdate } from "./schemas";
 export function transformTagCreate(
   input: FlowTagCreate,
 ): Prisma.TagCreateInput {
-  const result: Prisma.TagCreateInput = {} as Prisma.TagCreateInput;
+  const result: any = {};
 
   result.name = input.name;
   if ("createdAt" in input && input.createdAt !== undefined) {
     result.createdAt = input.createdAt;
   }
   // Handle organization foreign key when relation is not configured
-  if ("organizationId" in input && input.organizationId) {
+  if (
+    "organizationId" in input &&
+    input.organizationId !== undefined &&
+    input.organizationId !== null
+  ) {
     result.organization = { connect: { id: input.organizationId } };
   }
 
@@ -24,7 +28,7 @@ export function transformTagCreate(
 export function transformTagUpdate(
   input: FlowTagUpdate,
 ): Prisma.TagUpdateInput {
-  const result: Prisma.TagUpdateInput = {} as Prisma.TagUpdateInput;
+  const result: any = {};
 
   const nameValue = input.name;
   if (nameValue !== undefined && nameValue !== null) {

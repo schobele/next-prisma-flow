@@ -12,7 +12,7 @@ import {
   FlowValidationError,
 } from "../../core";
 import { canPost } from "../../policies";
-import { PostDeepSelect } from "./selects";
+import { PostSelect } from "./selects";
 import { PostCreateSchema, PostUpdateSchema } from "../types/schemas";
 import type { FlowPostCreate, FlowPostUpdate } from "../types/schemas";
 import { transformPostCreate, transformPostUpdate } from "../types/transforms";
@@ -37,7 +37,7 @@ export async function createPost(data: FlowPostCreate, ctx: FlowCtx = {}) {
   const createData = transformPostCreate(parsed.data as any);
   const item = await prisma.post.create({
     data: { ...createData, ...policy.data },
-    select: PostDeepSelect,
+    select: PostSelect,
   });
 
   await invalidateTags([keys.m("Post").tag()]);
@@ -61,7 +61,7 @@ export async function updatePost(
   const item = await prisma.post.update({
     where: { id: id, ...policy.where },
     data: { ...updateData, ...policy.data },
-    select: PostDeepSelect,
+    select: PostSelect,
   });
 
   await invalidateTags([keys.m("Post").tag(), keys.m("Post").tag(String(id))]);

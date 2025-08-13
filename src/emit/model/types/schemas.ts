@@ -627,25 +627,9 @@ function generateNestedCreateSchemas(
       ? targetModelDef.fields.filter(f => targetSelectConfig.includes(f.name))
       : targetModelDef.fields;
     
-    // Find fields that should be excluded (foreign keys pointing back to parent model)
-    const excludeFields = new Set<string>();
-    
-    // Look for relation fields that point back to the parent model
-    for (const targetField of targetModelDef.fields) {
-      if (isRelation(targetField) && targetModel(targetField) === model.name) {
-        // This relation points back to parent, exclude its foreign key fields
-        if (targetField.relationFromFields && targetField.relationFromFields.length > 0) {
-          targetField.relationFromFields.forEach(fk => excludeFields.add(fk));
-        }
-      }
-    }
-    
-    // Add scalar fields (excluding back-reference foreign keys)
+    // Add all scalar fields (for better DX, include all fields and let Prisma validate)
     for (const targetField of targetFields) {
       if (isScalar(targetField) || isEnum(targetField)) {
-        // Skip if this is the foreign key pointing back to parent
-        if (excludeFields.has(targetField.name)) continue;
-        
         if (targetField.isId || targetField.isGenerated || targetField.isUpdatedAt) {
           if (!targetField.hasDefaultValue) continue;
           lines.push(`  ${targetField.name}: ${generateScalarZod(targetField, true)},`);
@@ -656,13 +640,9 @@ function generateNestedCreateSchemas(
     }
     
     // For nested relations, only allow connect (not create) to avoid deep nesting
+    // This prevents infinite recursion while still providing good DX
     for (const targetField of targetFields) {
       if (isRelation(targetField)) {
-        const nestedTargetName = targetModel(targetField);
-        
-        // Skip if it points back to parent model
-        if (nestedTargetName === model.name) continue;
-        
         lines.push(`  ${targetField.name}: z.object({`);
         
         if (targetField.isList) {
@@ -692,7 +672,14 @@ function generateUpdateSchemas(
 ): string[] {
   const lines: string[] = [];
   
-  // Generate nested update schemas for relations first
+  // Generate nested schemas for relations (both create and update variants)
+  // We need create schemas for create operations within updates
+  const nestedCreateSchemas = generateNestedCreateSchemas(model, ctx, generatedSchemas);
+  if (nestedCreateSchemas.length > 0) {
+    lines.push(...nestedCreateSchemas);
+    lines.push("");
+  }
+  
   const nestedUpdateSchemas = generateNestedUpdateSchemas(model, ctx, generatedSchemas);
   if (nestedUpdateSchemas.length > 0) {
     lines.push(...nestedUpdateSchemas);
@@ -717,9 +704,10 @@ function generateUpdateSchemas(
       if (field.isList) {
         lines.push(`  ${field.name}: z.array(${baseType}).optional().nullable(),`);
       } else {
-        // Required fields can be updated but not set to null
-        // Optional fields can be updated or set to null
-        if (field.isRequired && !field.hasDefaultValue) {
+        // In updates:
+        // - Required fields (no ?) can be updated but not set to null
+        // - Optional fields (with ?) can be updated or set to null
+        if (field.isRequired) {
           lines.push(`  ${field.name}: ${baseType}.optional(),`);
         } else {
           lines.push(`  ${field.name}: ${baseType}.optional().nullable(),`);
@@ -733,18 +721,20 @@ function generateUpdateSchemas(
     if (isRelation(field)) {
       lines.push(`  ${field.name}: z.object({`);
       
-      const nestedSchemaName = `${model.name}Update${field.name.charAt(0).toUpperCase() + field.name.slice(1)}InputSchema`;
+      // Use different schemas for create vs update operations
+      const nestedCreateSchemaName = `${model.name}Create${field.name.charAt(0).toUpperCase() + field.name.slice(1)}InputSchema`;
+      const nestedUpdateSchemaName = `${model.name}Update${field.name.charAt(0).toUpperCase() + field.name.slice(1)}InputSchema`;
       
       if (field.isList) {
-        // Create operations
+        // Create operations use the create schema
         lines.push(`    create: z.union([`);
-        lines.push(`      ${nestedSchemaName},`);
-        lines.push(`      z.array(${nestedSchemaName})`);
+        lines.push(`      ${nestedCreateSchemaName},`);
+        lines.push(`      z.array(${nestedCreateSchemaName})`);
         lines.push(`    ]).optional(),`);
         
         if (!isManyToMany(field)) {
           lines.push(`    createMany: z.object({`);
-          lines.push(`      data: z.union([${nestedSchemaName}, z.array(${nestedSchemaName})]),`);
+          lines.push(`      data: z.union([${nestedCreateSchemaName}, z.array(${nestedCreateSchemaName})]),`);
           lines.push(`      skipDuplicates: z.boolean().optional()`);
           lines.push(`    }).optional(),`);
         }
@@ -758,11 +748,11 @@ function generateUpdateSchemas(
         lines.push(`    connectOrCreate: z.union([`);
         lines.push(`      z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        create: ${nestedSchemaName}`);
+        lines.push(`        create: ${nestedCreateSchemaName}`);
         lines.push(`      }),`);
         lines.push(`      z.array(z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        create: ${nestedSchemaName}`);
+        lines.push(`        create: ${nestedCreateSchemaName}`);
         lines.push(`      }))`);
         lines.push(`    ]).optional(),`);
         
@@ -778,34 +768,34 @@ function generateUpdateSchemas(
         lines.push(`      z.array(z.object({ id: z.string() }))`);
         lines.push(`    ]).optional(),`);
         
-        // Update operations
+        // Update operations use the update schema
         lines.push(`    update: z.union([`);
         lines.push(`      z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        data: ${nestedSchemaName}`);
+        lines.push(`        data: ${nestedUpdateSchemaName}`);
         lines.push(`      }),`);
         lines.push(`      z.array(z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        data: ${nestedSchemaName}`);
+        lines.push(`        data: ${nestedUpdateSchemaName}`);
         lines.push(`      }))`);
         lines.push(`    ]).optional(),`);
         
         lines.push(`    updateMany: z.object({`);
         lines.push(`      where: z.any().optional(),`);
-        lines.push(`      data: ${nestedSchemaName}`);
+        lines.push(`      data: ${nestedUpdateSchemaName}`);
         lines.push(`    }).optional(),`);
         
-        // Upsert operations
+        // Upsert operations use both schemas
         lines.push(`    upsert: z.union([`);
         lines.push(`      z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        update: ${nestedSchemaName},`);
-        lines.push(`        create: ${nestedSchemaName}`);
+        lines.push(`        update: ${nestedUpdateSchemaName},`);
+        lines.push(`        create: ${nestedCreateSchemaName}`);
         lines.push(`      }),`);
         lines.push(`      z.array(z.object({`);
         lines.push(`        where: z.object({ id: z.string() }),`);
-        lines.push(`        update: ${nestedSchemaName},`);
-        lines.push(`        create: ${nestedSchemaName}`);
+        lines.push(`        update: ${nestedUpdateSchemaName},`);
+        lines.push(`        create: ${nestedCreateSchemaName}`);
         lines.push(`      }))`);
         lines.push(`    ]).optional(),`);
         
@@ -818,11 +808,11 @@ function generateUpdateSchemas(
         lines.push(`    deleteMany: z.any().optional(),`);
       } else {
         // Single relations
-        lines.push(`    create: ${nestedSchemaName}.optional(),`);
+        lines.push(`    create: ${nestedCreateSchemaName}.optional(),`);
         lines.push(`    connect: z.object({ id: z.string() }).optional(),`);
         lines.push(`    connectOrCreate: z.object({`);
         lines.push(`      where: z.object({ id: z.string() }),`);
-        lines.push(`      create: ${nestedSchemaName}`);
+        lines.push(`      create: ${nestedCreateSchemaName}`);
         lines.push(`    }).optional(),`);
         
         if (!field.isRequired) {
@@ -831,13 +821,13 @@ function generateUpdateSchemas(
         
         lines.push(`    update: z.object({`);
         lines.push(`      where: z.object({ id: z.string() }).optional(),`);
-        lines.push(`      data: ${nestedSchemaName}`);
+        lines.push(`      data: ${nestedUpdateSchemaName}`);
         lines.push(`    }).optional(),`);
         
         lines.push(`    upsert: z.object({`);
         lines.push(`      where: z.object({ id: z.string() }),`);
-        lines.push(`      update: ${nestedSchemaName},`);
-        lines.push(`      create: ${nestedSchemaName}`);
+        lines.push(`      update: ${nestedUpdateSchemaName},`);
+        lines.push(`      create: ${nestedCreateSchemaName}`);
         lines.push(`    }).optional(),`);
         
         if (!field.isRequired) {
@@ -863,6 +853,7 @@ function generateUpdateSchemas(
       if (field.isList) {
         lines.push(`  ${field.name}: z.array(${baseType}).optional().nullable(),`);
       } else {
+        // UpdateMany allows setting any field to null for bulk operations
         lines.push(`  ${field.name}: ${baseType}.optional().nullable(),`);
       }
     }
@@ -911,34 +902,19 @@ function generateNestedUpdateSchemas(
       ? targetModelDef.fields.filter(f => targetSelectConfig.includes(f.name))
       : targetModelDef.fields;
     
-    // Find fields that should be excluded (foreign keys pointing back to parent model)
-    const excludeFields = new Set<string>();
-    
-    // Look for relation fields that point back to the parent model
-    for (const targetField of targetModelDef.fields) {
-      if (isRelation(targetField) && targetModel(targetField) === model.name) {
-        // This relation points back to parent, exclude its foreign key fields
-        if (targetField.relationFromFields && targetField.relationFromFields.length > 0) {
-          targetField.relationFromFields.forEach(fk => excludeFields.add(fk));
-        }
-      }
-    }
-    
-    // Add scalar fields (all optional for updates, excluding back-reference foreign keys)
+    // Add all scalar fields (for better DX, include all fields and let Prisma validate)
     for (const targetField of targetFields) {
       if (isScalar(targetField) || isEnum(targetField)) {
         if (targetField.isId || targetField.isGenerated || targetField.isUpdatedAt) continue;
-        
-        // Skip if this is the foreign key pointing back to parent
-        if (excludeFields.has(targetField.name)) continue;
         
         const baseType = getBaseZodType(targetField.type as string);
         if (targetField.isList) {
           lines.push(`  ${targetField.name}: z.array(${baseType}).optional().nullable(),`);
         } else {
-          // Required fields can be updated but not set to null
-          // Optional fields can be updated or set to null
-          if (targetField.isRequired && !targetField.hasDefaultValue) {
+          // In updates:
+          // - Required fields (no ?) can be updated but not set to null
+          // - Optional fields (with ?) can be updated or set to null
+          if (targetField.isRequired) {
             lines.push(`  ${targetField.name}: ${baseType}.optional(),`);
           } else {
             lines.push(`  ${targetField.name}: ${baseType}.optional().nullable(),`);
@@ -948,13 +924,9 @@ function generateNestedUpdateSchemas(
     }
     
     // For nested relations, only allow connect/disconnect (not create/update) to avoid deep nesting
+    // This prevents infinite recursion while still providing good DX
     for (const targetField of targetFields) {
       if (isRelation(targetField)) {
-        const nestedTargetName = targetModel(targetField);
-        
-        // Skip if it points back to parent model
-        if (nestedTargetName === model.name) continue;
-        
         lines.push(`  ${targetField.name}: z.object({`);
         
         if (targetField.isList) {

@@ -40,19 +40,30 @@ export function getSelectConfig(
 // Generate Zod type for a scalar field
 export function generateScalarZod(field: DMMF.Field, forCreate: boolean = false): string {
   if (isScalar(field)) {
-    // For create operations, handle auto-generated fields
-    if (forCreate && (field.isId || field.isGenerated || field.isUpdatedAt || field.hasDefaultValue)) {
-      const baseType = getBaseZodType(field.type as string);
-      return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional()`;
+    const baseType = getBaseZodType(field.type as string);
+    
+    // For create operations
+    if (forCreate) {
+      // Auto-generated fields are always optional
+      if (field.isId || field.isGenerated || field.isUpdatedAt) {
+        return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional()`;
+      }
+      
+      // Fields with defaults are optional
+      if (field.hasDefaultValue) {
+        return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional()`;
+      }
+      
+      // Required fields stay required
+      if (field.isRequired) {
+        return field.isList ? `z.array(${baseType})` : baseType;
+      }
+      
+      // Optional fields are optional and nullable
+      return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional().nullable()`;
     }
     
-    // For required fields in create (without defaults)
-    if (forCreate && field.isRequired && !field.hasDefaultValue) {
-      const baseType = getBaseZodType(field.type as string);
-      return field.isList ? `z.array(${baseType})` : baseType;
-    }
-    
-    // Use the standard scalar zod generator for other cases
+    // For non-create operations, use the standard generator
     return scalarZodFor(field);
   }
   
