@@ -7,6 +7,7 @@ import { parseConfig } from "./config";
 import { getModels } from "./dmmf";
 import { emitModel } from "./emit/model/index";
 import { emitPoliciesScaffold } from "./emit/policies";
+import { emitPrisma } from "./emit/prisma";
 import { emitRuntime } from "./emit/runtime";
 
 const PRETTY_NAME = "next-prisma-flow-state-engine";
@@ -29,6 +30,7 @@ generatorHandler({
 				? models
 				: models.filter((m) => cfg.models.includes(m.name));
 
+		await emitPrisma({ outputDir: outDir, cfg });
 		await emitRuntime({ outDir, cfg });
 		await emitPoliciesScaffold({
 			outDir,

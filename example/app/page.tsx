@@ -1,4 +1,4 @@
-import { listPosts } from '../generated/flow/post/queries.server'
+import { listPosts } from '../generated/flow/post/server/queries'
 import PostList from './components/PostList'
 import PostForm from './components/PostForm'
 

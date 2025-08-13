@@ -6,4 +6,5 @@ export * from "./cache";
 export * from "./keys";
 export * from "./http";
 export * from "./utils";
+export * from "./errors";
 export { FlowProvider, useFlowCtx } from "./provider";

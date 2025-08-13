@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuthor } from '../../generated/flow/author/hooks'
+import { useAuthor } from '../../generated/flow/author/client/hooks'
 
 export default function AuthorModal({ 
   authorId, 
@@ -49,7 +49,7 @@ export default function AuthorModal({
             <div>
               <h4 className="font-semibold mb-3">Posts by this author</h4>
               <div className="space-y-3">
-                {author.posts.length > 0 ? (
+                {author.posts && author.posts.length > 0 ? (
                   author.posts.map((post) => (
                     <div key={post.id} className="border-l-2 border-gray-200 pl-4">
                       <h5 className="font-medium">{post.title}</h5>
@@ -59,7 +59,7 @@ export default function AuthorModal({
                         </p>
                       )}
                       <p className="text-xs text-gray-500 mt-1">
-                        {new Date(post.createdAt).toLocaleDateString()} • {post.comments.length} comments
+                        {new Date(post.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   ))
@@ -72,12 +72,12 @@ export default function AuthorModal({
             <div>
               <h4 className="font-semibold mb-3">Recent Comments</h4>
               <div className="space-y-2">
-                {author.comments.length > 0 ? (
+                {author.comments && author.comments.length > 0 ? (
                   author.comments.slice(0, 5).map((comment) => (
                     <div key={comment.id} className="bg-gray-50 rounded p-3">
                       <p className="text-sm text-gray-700">{comment.content}</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        on "{comment.post.title}"
+                        {new Date(comment.createdAt).toLocaleString()}
                       </p>
                     </div>
                   ))

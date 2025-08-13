@@ -8,7 +8,7 @@ generator client {
 generator flow {
   provider = "node /Users/leo/workspace/schobele/next-prisma-flow-next/next-prisma-flow/dist/index.js"
   output   = "../generated/flow"
-  prismaImport = "../../../lib/prisma"
+  prismaImport = "../../lib/prisma"
   models = "all"
   
   // Select configuration - explicitly include relations

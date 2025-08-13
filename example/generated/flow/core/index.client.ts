@@ -4,4 +4,5 @@
 export * from "./ctx";
 export * from "./keys";
 export * from "./utils";
+export * from "./errors";
 export { FlowProvider, useFlowCtx } from "./provider";

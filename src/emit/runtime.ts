@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { FlowConfig } from "../config";
 import { write } from "./fs";
 import { header } from "./strings";
+import { emitErrors } from "./core/errors";
 
 export async function emitRuntime({
 	outDir,
@@ -20,6 +21,12 @@ export type FlowCtx = {
 };
 export type CtxProvider = () => Promise<FlowCtx> | FlowCtx;
 `,
+	);
+
+	// Emit error classes
+	await write(
+		join(outDir, "core/errors.ts"),
+		emitErrors()
 	);
 
 	await write(
@@ -136,6 +143,7 @@ export * from "./cache";
 export * from "./keys";
 export * from "./http";
 export * from "./utils";
+export * from "./errors";
 export { FlowProvider, useFlowCtx } from "./provider";
 `,
 	);
@@ -148,6 +156,7 @@ export { FlowProvider, useFlowCtx } from "./provider";
 export * from "./ctx";
 export * from "./keys";
 export * from "./utils";
+export * from "./errors";
 export { FlowProvider, useFlowCtx } from "./provider";
 `,
 	);

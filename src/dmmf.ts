@@ -22,7 +22,7 @@ export function scalarZodFor(field: Field){
   const base = scalarZod(t);
   let z = base;
   if (field.isList) z = `z.array(${z})`;
-  if (!field.isRequired && !field.isList) z = `${z}.optional()`;
+  if (!field.isRequired && !field.isList) z = `${z}.optional().nullable()`;
   // Note: isNullable doesn't exist on DMMF.Field, handle nullability through isRequired
   return z;
 }

@@ -1,30 +1,48 @@
 "use client";
 
-import { useEffect } from "react";
-import { useAuthorList } from "../../generated/flow/author/hooks";
-import { usePostForm } from "../../generated/flow/post/forms";
-import type { FlowPost } from "../../generated/flow/post/zod";
+import { useRouter } from "next/navigation";
+import { useAuthorList } from "../../generated/flow/author/client/hooks";
+import { usePostForm } from "../../generated/flow/post/client/forms";
+import type { FlowPost } from "../../generated/flow/post/types/schemas";
 
 export default function EditPostForm({ post, onClose }: { post: FlowPost; onClose: () => void }) {
   const { data: authorsData } = useAuthorList();
-  const { form, onSubmit, isSubmitting } = usePostForm({
+  const router = useRouter();
+  
+  console.log('[EditPostForm] Initializing with post:', {
     id: post.id,
-    mode: "update",
-    defaultValues: {
-      title: post.title,
-      content: post.content ?? "",
-      author: { id: post.author?.id } as any,
+    title: post.title,
+    authorId: post.authorId,
+    published: post.published
+  });
+  
+  const { form, submit, isSubmitting, error } = usePostForm({
+    id: post.id,
+    onSuccess: (data) => {
+      console.log('[EditPostForm] Update successful:', data);
+      onClose();
+      router.refresh();
     },
-    form: { mode: "all" },
+    onError: (err) => {
+      console.error('[EditPostForm] Update failed:', err);
+    }
   });
 
-  useEffect(() => {
-    // preselect current author in UI (but don't set relation unless user changes)
-    // we keep author unset by default for update to avoid unintended relation writes
-  }, [post.id]);
-
-  const handleInvalid = (errors: any) => {
-    console.error("Edit post validation errors:", errors);
+  // Enhanced submit handler with debugging
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formValues = form.getValues();
+    console.log('[EditPostForm] Submitting form:', {
+      postId: post.id,
+      formValues,
+      formState: {
+        isDirty: form.formState.isDirty,
+        dirtyFields: form.formState.dirtyFields,
+        isValid: form.formState.isValid,
+        errors: form.formState.errors
+      }
+    });
+    submit(e);
   };
 
   return (
@@ -33,7 +51,7 @@ export default function EditPostForm({ post, onClose }: { post: FlowPost; onClos
       <div className="modal-content">
         <h2 className="text-2xl font-bold mb-4">Edit Post</h2>
 
-        <form onSubmit={form.handleSubmit(onSubmit, handleInvalid)} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Title</label>
             <input
@@ -42,7 +60,9 @@ export default function EditPostForm({ post, onClose }: { post: FlowPost; onClos
               placeholder="Enter post title"
             />
             {form.formState.errors.title && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message as any}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {form.formState.errors.title.message}
+              </p>
             )}
           </div>
 
@@ -55,30 +75,31 @@ export default function EditPostForm({ post, onClose }: { post: FlowPost; onClos
               placeholder="Write your post content..."
             />
             {form.formState.errors.content && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.content.message as any}</p>
+              <p className="text-red-500 text-sm mt-1">
+                {form.formState.errors.content.message}
+              </p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Author</label>
             <select
-              onChange={(e) => {
-                if (e.target.value) {
-                  form.setValue("author", { id: e.target.value } as any);
-                } else {
-                  form.setValue("author", undefined);
-                }
-              }}
+              {...form.register("authorId")}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              defaultValue={post.author?.id ?? ""}
-           >
-              <option value="">Keep current</option>
+              defaultValue=""
+            >
+              <option value="">Keep current author</option>
               {authorsData?.items.map((author) => (
                 <option key={author.id} value={author.id}>
                   {author.name || author.email}
                 </option>
               ))}
             </select>
+            {form.formState.errors.authorId && (
+              <p className="text-red-500 text-sm mt-1">
+                {form.formState.errors.authorId.message}
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -98,15 +119,13 @@ export default function EditPostForm({ post, onClose }: { post: FlowPost; onClos
             </button>
           </div>
 
-          {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
-            <pre className="text-red-600 text-xs bg-red-50 p-2 rounded">
-              {JSON.stringify(form.formState.errors, null, 2)}
-            </pre>
+          {error && (
+            <div className="text-red-600 text-sm bg-red-50 p-2 rounded">
+              {error.message}
+            </div>
           )}
         </form>
       </div>
     </div>
   );
 }
-
-

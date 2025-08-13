@@ -2,19 +2,58 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useAuthorList } from "../../generated/flow/author/hooks";
-import { usePostForm } from "../../generated/flow/post/forms";
-import type { FlowPostWrite } from "../../generated/flow/post/zod";
+import { useAuthorList } from "../../generated/flow/author/client/hooks";
+import { usePostForm } from "../../generated/flow/post/client/forms";
+import TagInput from "./TagInput";
 
 export default function PostForm() {
 	const [isOpen, setIsOpen] = useState(false);
-  const { form, onSubmit, isSubmitting } = usePostForm({ mode: "create", defaultValues: { published: false, views: 0 } });
-	const { data: authorsData } = useAuthorList();
 	const router = useRouter();
+	const { data: authorsData } = useAuthorList();
+	
+	console.log('[PostForm] Available authors:', authorsData?.items?.length || 0);
+	
+	const { form, submit, isSubmitting, error } = usePostForm({
+		defaultValues: { 
+			title: '',
+			content: '',
+			published: false, 
+			views: 0,
+			authorId: '',
+			tags: undefined
+		},
+		onSuccess: (data) => {
+			console.log('[PostForm] ✅ Post created successfully:', {
+				id: data.id,
+				title: data.title,
+				authorId: data.authorId,
+				tags: data.tags?.length || 0
+			});
+			setIsOpen(false);
+			router.refresh();
+		},
+		onError: (err) => {
+			console.error('[PostForm] ❌ Error creating post:', {
+				message: err.message,
+				details: err
+			});
+		}
+	});
 
-  const handleInvalid = (errors: any) => {
-    console.error("Post form validation errors:", errors);
-  };
+	// Enhanced debug logging
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault();
+		const formValues = form.getValues();
+		console.log('[PostForm] 📝 Submitting new post:', {
+			values: formValues,
+			validation: {
+				isValid: form.formState.isValid,
+				errors: form.formState.errors,
+				touchedFields: form.formState.touchedFields
+			}
+		});
+		submit(e);
+	};
 
 	if (!isOpen) {
 		return (
@@ -33,7 +72,7 @@ export default function PostForm() {
 			<div className="modal-content">
 				<h2 className="text-2xl font-bold mb-4">Create New Post</h2>
 
-        <form onSubmit={form.handleSubmit(onSubmit, handleInvalid)} className="space-y-4">
+				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>
 						<label className="block text-sm font-medium mb-1">Title</label>
 						<input
@@ -66,15 +105,7 @@ export default function PostForm() {
 					<div>
 						<label className="block text-sm font-medium mb-1">Author</label>
 						<select
-            onChange={(e) => {
-								if (e.target.value) {
-									form.setValue("author", {
-										id: e.target.value
-									});
-								} else {
-									form.setValue("author", undefined);
-								}
-							}}
+							{...form.register("authorId")}
 							className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
 						>
 							<option value="">Select an author</option>
@@ -84,23 +115,34 @@ export default function PostForm() {
 								</option>
 							))}
 						</select>
-          {form.formState.errors.author && (
-            <div className="mt-1 space-y-1">
-              <p className="text-red-500 text-sm">Author is required</p>
-              <pre className="text-xs text-red-600 bg-red-50 p-2 rounded">
-                {JSON.stringify(form.formState.errors.author, null, 2)}
-              </pre>
-            </div>
-          )}
+						{form.formState.errors.authorId && (
+							<p className="text-red-500 text-sm mt-1">
+								{form.formState.errors.authorId.message}
+							</p>
+						)}
+					</div>
+
+					{/* Tag Input */}
+					<div>
+						<TagInput 
+							value={form.watch('tags')}
+							onChange={(value) => form.setValue('tags', value)}
+							mode="create"
+						/>
+						{form.formState.errors.tags && (
+							<p className="text-red-500 text-sm mt-1">
+								{String(form.formState.errors.tags.message)}
+							</p>
+						)}
 					</div>
 
 					<div className="flex gap-3 pt-4">
-            <button
+						<button
 							type="submit"
-              disabled={isSubmitting}
+							disabled={isSubmitting}
 							className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
 						>
-              {isSubmitting ? "Creating..." : "Create Post"}
+							{isSubmitting ? "Creating..." : "Create Post"}
 						</button>
 						<button
 							type="button"
@@ -111,11 +153,11 @@ export default function PostForm() {
 						</button>
 					</div>
 
-          {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
-            <pre className="text-red-600 text-xs bg-red-50 p-2 rounded">
-              {JSON.stringify(form.formState.errors, null, 2)}
-            </pre>
-          )}
+					{error && (
+						<div className="text-red-600 text-sm bg-red-50 p-2 rounded">
+							{error.message}
+						</div>
+					)}
 				</form>
 			</div>
 		</div>

@@ -45,21 +45,38 @@ cd example && bun run test.ts
 ### Code Generation Flow
 1. **Schema Analysis**: Generator reads Prisma schema via DMMF (Data Model Meta Format)
 2. **Configuration Parsing**: Reads generator config from schema.prisma `generator flow` block
-3. **Code Emission**: Generates type-safe operations for each model:
-   - `actions.server.ts` - Server actions for mutations
-   - `hooks.ts` - React Query hooks
-   - `queries.server.ts` - Server-side queries
-   - `selects.ts` - Prisma select objects with circular reference prevention
-   - `writes.ts` - Write/mutation schemas
-   - `zod.ts` - Zod validation schemas
-   - `forms.ts` - React Hook Form components
+3. **Code Emission**: Generates type-safe operations for each model in organized structure:
+
+#### Generated Directory Structure (per model)
+```
+/post/
+  ├── /server/           # Server-only code
+  │   ├── methods.ts     # All Prisma methods (findUnique, create, etc.)
+  │   ├── actions.ts     # High-level CRUD actions with validation
+  │   ├── queries.ts     # Read queries with caching
+  │   ├── selects.ts     # Server-only Prisma select objects
+  │   └── index.ts       # Server barrel export
+  ├── /client/           # Client-side code
+  │   ├── hooks.ts       # React Query hooks with error handling
+  │   ├── forms.ts       # Simplified form hooks
+  │   └── index.ts       # Client barrel export
+  ├── /types/            # Shared types and schemas
+  │   ├── schemas.ts     # Zod schemas (create/update/filter)
+  │   ├── transforms.ts  # Data transformation utilities
+  │   ├── types.ts       # TypeScript type exports
+  │   └── index.ts       # Types barrel export
+  └── index.ts           # Main barrel with tree-shakeable exports
+```
 
 ### Key Generator Files
 - `src/index.ts` - Main generator entry point
 - `src/config.ts` - Configuration parsing from generator block
 - `src/dmmf.ts` - DMMF utilities for schema analysis
-- `src/emit/runtime.ts` - Core runtime generation (FlowCtx, cache, policies)
-- `src/emit/model/*.ts` - Per-model code generators
+- `src/emit/runtime.ts` - Core runtime generation (FlowCtx, cache, policies, errors)
+- `src/emit/model/index.ts` - Main model emitter orchestrator
+- `src/emit/model/server/*.ts` - Server-side generators
+- `src/emit/model/client/*.ts` - Client-side generators
+- `src/emit/model/types/*.ts` - Type and schema generators
 
 ### Generator Configuration
 Configure in `schema.prisma`:
@@ -96,14 +113,16 @@ The example includes `test.ts` that validates:
 ## Code Conventions
 
 ### File Organization
-- Server-only code: `.server.ts` extension
-- Client components: Regular `.ts`/`.tsx`
-- Generated code: Always in `generated/flow/` directory
+- Server-only code: In `server/` directory with `"server-only"` directive
+- Client components: In `client/` directory
+- Types and schemas: In `types/` directory
+- Generated code: Always in `generated/flow/` directory with organized subdirectories
 
 ### Type Safety Patterns
-- Use generated types from `selects.ts` for Prisma queries
-- Use Zod schemas from `zod.ts` for validation
-- Never bypass the generated policy layer for mutations
+- Import from main barrel exports for tree-shaking: `import { usePost } from '@/generated/flow/post'`
+- Use server methods for direct Prisma access: `import { PostServer } from '@/generated/flow/post'`
+- Types are separated from runtime code for optimal bundle size
+- Error handling uses standard exceptions that React Query handles naturally
 
 ### Caching Strategy
 - Server: Next.js cache tags with automatic invalidation
@@ -111,6 +130,54 @@ The example includes `test.ts` that validates:
 - Cache keys follow pattern: `['model', filters]`
 
 ## Common Tasks
+
+### Using Generated Code
+
+#### Basic Usage
+```typescript
+// Import from main barrel for tree-shaking
+import { usePost, useCreatePost, PostCreateSchema } from '@/generated/flow/post';
+
+// Or import namespaced for clarity
+import { PostServer, PostClient, PostTypes } from '@/generated/flow/post';
+
+// Server-side: Use methods for all Prisma operations
+const posts = await PostServer.findMany({ where: { published: true } });
+const post = await PostServer.findUnique({ where: { id } });
+
+// Client-side: Use hooks for data fetching and mutations
+const { data: post } = usePost(id);
+const createMutation = useCreatePost();
+```
+
+#### Form Handling
+```typescript
+import { usePostForm } from '@/generated/flow/post';
+
+function EditPost({ id }: { id: string }) {
+  const { form, submit, isSubmitting } = usePostForm({ id });
+  
+  return (
+    <form onSubmit={submit}>
+      {/* Form fields using form.register() */}
+    </form>
+  );
+}
+```
+
+#### Error Handling
+```typescript
+// Errors are thrown as standard exceptions
+try {
+  const post = await PostServer.create({ data });
+} catch (error) {
+  if (error instanceof FlowPolicyError) {
+    // Handle permission denied
+  } else if (error instanceof FlowValidationError) {
+    // Handle validation errors
+  }
+}
+```
 
 ### Adding a New Model
 1. Add model to `prisma/schema.prisma`
@@ -140,9 +207,11 @@ The generator automatically prevents circular references in selects by:
 - Configurable depth limits per relation
 
 ### Performance Optimization
+- Server-only selects marked with `"server-only"` to prevent client bundle bloat
+- Tree-shakeable exports allow importing only what you need
 - Generated selects are optimized to prevent N+1 queries
 - Relation limits prevent over-fetching
-- Use `[Model]ListSelect` for lists, `[Model]DeepSelect` for single items
+- Optimistic updates built into mutation hooks
 
 ### Authorization
 All mutations go through the policy layer (`policies.ts`):
