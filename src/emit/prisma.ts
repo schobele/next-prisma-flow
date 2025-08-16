@@ -13,14 +13,27 @@ export async function emitPrisma({
   const content = [];
   content.push(header("prisma.ts"));
   
-  // Handle both @prisma/client and relative paths
-  if (cfg.prismaImport.startsWith("@")) {
-    // For package imports like "@prisma/client"
-    content.push(`export * from "${cfg.prismaImport}";`);
+  const isDirectClient = !cfg.prismaImport || cfg.prismaImport === "@prisma/client";
+  
+  if (isDirectClient) {
+    // Scenario 2: No custom path, create default instance
+    content.push(`import { PrismaClient } from "@prisma/client";`);
+    content.push(`export * from "@prisma/client";`);
+    content.push(``);
+    content.push(`const globalForPrisma = global as unknown as { prisma: PrismaClient };`);
+    content.push(``);
+    content.push(`export const prisma =`);
+    content.push(`  globalForPrisma.prisma ||`);
+    content.push(`  new PrismaClient({`);
+    content.push(`    log: process.env.NODE_ENV === 'development' ? ['error'] : ['error'],`);
+    content.push(`  });`);
+    content.push(``);
+    content.push(`if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;`);
   } else {
-    // For relative paths like "../../../lib/prisma"
+    // Scenario 1: Custom path provided
+    content.push(`import { prisma } from "${cfg.prismaImport}";`);
+    content.push(`export { prisma };`);
     content.push(`export * from "${cfg.prismaImport}";`);
-    content.push(`export { Prisma } from "@prisma/client";`);
   }
 
   await write(join(outputDir, "prisma.ts"), content.join("\n"));

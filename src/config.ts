@@ -60,7 +60,7 @@ export function parseConfig(opts: GeneratorOptions): FlowConfig {
     : "all";
 
   const parsed: FlowConfig = {
-    prismaImport: getString(c.prismaImport) || "@/lib/prisma",
+    prismaImport: getString(c.prismaImport) || "@prisma/client",
     zodPrismaImport: getString(c.zodPrismaImport),
     models: modelsField,
     perModelSelect,

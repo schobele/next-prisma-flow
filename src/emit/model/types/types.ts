@@ -15,7 +15,7 @@ export async function emitTypesTypes({
 }) {
   const content = [];
   content.push(header("types/types.ts"));
-  content.push(impType("@prisma/client", ["Prisma"]));
+  content.push(impType("../../prisma", ["Prisma"]));
   content.push(impType("../server/selects", [
     `${model.name}DeepSelect`,
     `${model.name}ListSelect`,

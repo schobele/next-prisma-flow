@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+generator flow {
+  provider = "node ../../dist/index.js"
+  output   = "../lib/flow"
+  models   = "all"
+  prismaImport = "../prisma"
+  
+  // Select configurations
+  userSelect = ["id", "email", "name", "avatar", "createdAt", "lists", "todos"]
+  listSelect = ["id", "name", "description", "color", "icon", "orderIndex", "isDefault", "createdAt", "todos", "user"]
+  todoSelect = ["id", "title", "description", "status", "priority", "dueDate", "completedAt", "orderIndex", "isArchived", "createdAt", "updatedAt", "list", "tags", "subtasks", "parent", "user"]
+  tagSelect = ["id", "name", "color", "createdAt", "todos"]
+  
+  // Relation configurations
+  listTodosLimit = 100
+  listTodosOrder = "{ orderIndex: 'asc' }"
+  todoSubtasksLimit = 50
+  todoSubtasksOrder = "{ orderIndex: 'asc' }"
+  todoTagsLimit = 10
+  userTodosLimit = 100
+  userTodosOrder = "{ createdAt: 'desc' }"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Note: SQLite doesn't support enums, so we use String with @db.Text
+// We'll enforce these values through validation in the application layer
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  lists     List[]
+  todos     Todo[]
+  
+  @@index([email])
+}
+
+model List {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6") // Default blue color
+  icon        String   @default("📋")
+  orderIndex  Int      @default(0)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  todos       Todo[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+  @@index([orderIndex])
+}
+
+model Todo {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  status      String       @default("TODO") // TODO, IN_PROGRESS, COMPLETED, CANCELLED
+  priority    String       @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dueDate     DateTime?
+  completedAt DateTime?
+  orderIndex  Int          @default(0)
+  isArchived  Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  listId      String
+  list        List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  parentId    String?
+  parent      Todo?        @relation("TodoSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
+  subtasks    Todo[]       @relation("TodoSubtasks")
+  
+  tags        Tag[]
+  
+  @@index([listId])
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([isArchived])
+  @@index([orderIndex])
+  @@index([dueDate])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String   @default("#6b7280") // Default gray color
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  todos     Todo[]
+  
+  @@index([name])
+}

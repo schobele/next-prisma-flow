@@ -22,7 +22,7 @@ export async function emitServerMethods({
   content.push(`"use server";`);
   content.push(``);
   content.push(imp("../../prisma", ["prisma"]));
-  content.push(impType("@prisma/client", ["Prisma"]));
+  content.push(impType("../../prisma", ["Prisma"]));
   content.push(imp("../../core", ["FlowCtx", "FlowPolicyError"]));
   content.push(imp("../../policies", [`can${model.name}`]));
   

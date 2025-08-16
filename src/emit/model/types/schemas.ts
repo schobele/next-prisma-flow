@@ -524,6 +524,20 @@ function generateCreateSchemas(
     }
   }
   
+  // Add foreign key fields for relations (even if not in selectConfig)
+  // This allows passing scalar IDs instead of relation objects
+  for (const field of model.fields) {
+    if (isRelation(field) && !field.isList && field.relationFromFields?.length) {
+      const foreignKeyField = field.relationFromFields[0];
+      const scalarField = model.fields.find(f => f.name === foreignKeyField);
+      
+      // Only add if not already added above
+      if (scalarField && !fields.includes(scalarField)) {
+        lines.push(`  ${foreignKeyField}: ${generateScalarZod(scalarField, true)},`);
+      }
+    }
+  }
+  
   // Add relation fields
   for (const field of fields) {
     if (isRelation(field)) {
@@ -711,6 +725,25 @@ function generateUpdateSchemas(
           lines.push(`  ${field.name}: ${baseType}.optional(),`);
         } else {
           lines.push(`  ${field.name}: ${baseType}.optional().nullable(),`);
+        }
+      }
+    }
+  }
+  
+  // Add foreign key fields for relations (even if not in selectConfig)
+  // This allows passing scalar IDs instead of relation objects
+  for (const field of model.fields) {
+    if (isRelation(field) && !field.isList && field.relationFromFields?.length) {
+      const foreignKeyField = field.relationFromFields[0];
+      const scalarField = model.fields.find(f => f.name === foreignKeyField);
+      
+      // Only add if not already added above
+      if (scalarField && !fields.includes(scalarField)) {
+        const baseType = getBaseZodType(scalarField.type as string);
+        if (scalarField.isRequired) {
+          lines.push(`  ${foreignKeyField}: ${baseType}.optional(),`);
+        } else {
+          lines.push(`  ${foreignKeyField}: ${baseType}.optional().nullable(),`);
         }
       }
     }

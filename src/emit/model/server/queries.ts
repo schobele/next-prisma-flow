@@ -31,7 +31,7 @@ export async function emitServerQueries({
     content.push(imp(`./selects`, [`${model.name}Select`]));
   }
   
-  content.push(impType("@prisma/client", ["Prisma"]));
+  content.push(impType("../../prisma", ["Prisma"]));
   content.push(``);
   
   // Helper to transform Prisma response to match schema types
