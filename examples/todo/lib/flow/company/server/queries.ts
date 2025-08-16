@@ -5,11 +5,11 @@
 
 import { prisma } from "../../prisma";
 import { cacheTagged, FlowCtx, FlowPolicyError } from "../../core";
-import { canUser } from "../../policies";
-import { UserSelect } from "./selects";
+import { canCompany } from "../../policies";
+import { CompanySelect } from "./selects";
 import type { Prisma } from "../../prisma";
 
-// Transform Prisma response to match FlowUser schema (null -> undefined for relations)
+// Transform Prisma response to match FlowCompany schema (null -> undefined for relations)
 function transformResponse(item: any): any {
   if (!item) return item;
   const result = { ...item };
@@ -20,61 +20,61 @@ function transformResponseList(items: any[]): any[] {
   return items.map(transformResponse);
 }
 
-export const getUserById = cacheTagged(async function (
+export const getCompanyById = cacheTagged(async function (
   id: string,
   ctx: FlowCtx = {},
 ) {
-  const policy = await canUser("read", ctx || {});
+  const policy = await canCompany("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const item = await prisma.user.findUnique({
+  const item = await prisma.company.findUnique({
     where: { id: id, ...policy.where },
-    select: UserSelect,
+    select: CompanySelect,
   });
 
   return transformResponse(item);
 });
 
-export type UserListParams = {
-  where?: Prisma.UserWhereInput;
+export type CompanyListParams = {
+  where?: Prisma.CompanyWhereInput;
   orderBy?:
-    | Prisma.UserOrderByWithRelationInput
-    | Prisma.UserOrderByWithRelationInput[];
+    | Prisma.CompanyOrderByWithRelationInput
+    | Prisma.CompanyOrderByWithRelationInput[];
   skip?: number;
   take?: number;
-  cursor?: Prisma.UserWhereUniqueInput;
+  cursor?: Prisma.CompanyWhereUniqueInput;
 };
 
-export const listUsers = cacheTagged(async function (
-  params: UserListParams = {},
+export const listCompanys = cacheTagged(async function (
+  params: CompanyListParams = {},
   ctx: FlowCtx = {},
 ) {
-  const policy = await canUser("list", ctx || {});
+  const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
   const where = { ...params.where, ...policy.where };
 
   const [items, total] = await Promise.all([
-    prisma.user.findMany({
+    prisma.company.findMany({
       where,
       orderBy: params.orderBy,
       skip: params.skip,
       take: params.take || 50,
       cursor: params.cursor,
-      select: UserSelect,
+      select: CompanySelect,
     }),
-    prisma.user.count({ where }),
+    prisma.company.count({ where }),
   ]);
 
   return { items: transformResponseList(items), total };
 });
 
-export const searchUsers = cacheTagged(async function (
+export const searchCompanys = cacheTagged(async function (
   query: string,
-  params: Omit<UserListParams, "where"> = {},
+  params: Omit<CompanyListParams, "where"> = {},
   ctx: FlowCtx = {},
 ) {
-  const policy = await canUser("list", ctx || {});
+  const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
   const where = {
@@ -82,26 +82,25 @@ export const searchUsers = cacheTagged(async function (
       policy.where,
       {
         OR: [
-          { email: { contains: query, mode: "insensitive" as const } },
           { name: { contains: query, mode: "insensitive" as const } },
-          { avatar: { contains: query, mode: "insensitive" as const } },
-          { role: { contains: query, mode: "insensitive" as const } },
-          { companyId: { contains: query, mode: "insensitive" as const } },
+          { slug: { contains: query, mode: "insensitive" as const } },
+          { logo: { contains: query, mode: "insensitive" as const } },
+          { plan: { contains: query, mode: "insensitive" as const } },
         ],
       },
     ],
   };
 
   const [items, total] = await Promise.all([
-    prisma.user.findMany({
+    prisma.company.findMany({
       where,
       orderBy: params.orderBy,
       skip: params.skip,
       take: params.take || 50,
       cursor: params.cursor,
-      select: UserSelect,
+      select: CompanySelect,
     }),
-    prisma.user.count({ where }),
+    prisma.company.count({ where }),
   ]);
 
   return { items: transformResponseList(items), total };

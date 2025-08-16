@@ -29,6 +29,9 @@ export type TodoWhereUniqueInput = Prisma.TodoWhereUniqueInput;
 export type TodoOrderByInput = Prisma.TodoOrderByWithRelationInput;
 
 // Relation type helpers
+export type TodoWithCompany = TodoWithRelations & {
+  company: NonNullable<TodoWithRelations["company"]>;
+};
 export type TodoWithList = TodoWithRelations & {
   list: NonNullable<TodoWithRelations["list"]>;
 };

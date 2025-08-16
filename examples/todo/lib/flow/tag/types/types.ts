@@ -29,6 +29,9 @@ export type TagWhereUniqueInput = Prisma.TagWhereUniqueInput;
 export type TagOrderByInput = Prisma.TagOrderByWithRelationInput;
 
 // Relation type helpers
+export type TagWithCompany = TagWithRelations & {
+  company: NonNullable<TagWithRelations["company"]>;
+};
 export type TagWithTodos = TagWithRelations & {
   todos: NonNullable<TagWithRelations["todos"]>;
 };

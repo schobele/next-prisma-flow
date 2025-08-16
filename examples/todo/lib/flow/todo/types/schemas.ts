@@ -14,6 +14,7 @@ export const TodoScalarSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
   listId: z.string(),
@@ -22,11 +23,76 @@ export const TodoScalarSchema = z.object({
 });
 
 // Relation schemas
+export const TodoCompanyUsersSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoCompanyListsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  color: z.string(),
+  icon: z.string(),
+  orderIndex: z.number().int(),
+  isDefault: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoCompanyTagsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoListCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+});
+
 export const TodoListUserSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoTagsCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+});
+
+export const TodoSubtasksCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
   createdAt: z.date(),
 });
 
@@ -38,6 +104,7 @@ export const TodoSubtasksListSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
 });
 
@@ -46,6 +113,8 @@ export const TodoSubtasksUserSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
 });
 
@@ -53,6 +122,18 @@ export const TodoSubtasksTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoParentCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
   createdAt: z.date(),
 });
 
@@ -64,6 +145,7 @@ export const TodoParentListSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
 });
 
@@ -72,6 +154,8 @@ export const TodoParentUserSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
 });
 
@@ -79,6 +163,18 @@ export const TodoParentTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const TodoUserCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
   createdAt: z.date(),
 });
 
@@ -90,7 +186,22 @@ export const TodoUserListsSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
+});
+
+export const TodoCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+  users: z.array(TodoCompanyUsersSchema).optional(),
+  lists: z.array(TodoCompanyListsSchema).optional(),
+  tags: z.array(TodoCompanyTagsSchema).optional(),
 });
 
 export const TodoListSchema = z.object({
@@ -101,7 +212,9 @@ export const TodoListSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
+  company: TodoListCompanySchema.optional(),
   user: TodoListUserSchema.optional(),
 });
 
@@ -109,7 +222,9 @@ export const TodoTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
+  company: TodoTagsCompanySchema.optional(),
 });
 
 export const TodoSubtasksSchema = z.object({
@@ -122,8 +237,10 @@ export const TodoSubtasksSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  company: TodoSubtasksCompanySchema.optional(),
   list: TodoSubtasksListSchema.optional(),
   user: TodoSubtasksUserSchema.optional(),
   tags: z.array(TodoSubtasksTagsSchema).optional(),
@@ -139,8 +256,10 @@ export const TodoParentSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  company: TodoParentCompanySchema.optional(),
   list: TodoParentListSchema.optional(),
   user: TodoParentUserSchema.optional(),
   tags: z.array(TodoParentTagsSchema).optional(),
@@ -151,12 +270,16 @@ export const TodoUserSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
+  company: TodoUserCompanySchema.optional(),
   lists: z.array(TodoUserListsSchema).optional(),
 });
 
 // Main schema with relations
 export const TodoSchema = TodoScalarSchema.extend({
+  company: TodoCompanySchema.optional(),
   list: TodoListSchema.optional(),
   tags: z.array(TodoTagsSchema).optional(),
   subtasks: z.array(TodoSubtasksSchema).optional(),
@@ -165,6 +288,57 @@ export const TodoSchema = TodoScalarSchema.extend({
 });
 
 // Input schemas for create operations
+const TodoCreateCompanyInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
+  createdAt: z.date().optional(),
+  users: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+});
+
 const TodoCreateListInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -173,7 +347,13 @@ const TodoCreateListInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   user: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -195,7 +375,13 @@ const TodoCreateTagsInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   color: z.string().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   todos: z
     .object({
       connect: z
@@ -218,7 +404,13 @@ const TodoCreateSubtasksInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -266,7 +458,13 @@ const TodoCreateParentInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -309,7 +507,14 @@ const TodoCreateUserInputSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   lists: z
     .object({
       connect: z
@@ -342,10 +547,23 @@ export const TodoCreateSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
   listId: z.string(),
   userId: z.string(),
   parentId: z.string().optional().nullable(),
+  company: z
+    .object({
+      create: TodoCreateCompanyInputSchema.optional(),
+      connect: z.object({ id: z.string() }).optional(),
+      connectOrCreate: z
+        .object({
+          where: z.object({ id: z.string() }),
+          create: TodoCreateCompanyInputSchema,
+        })
+        .optional(),
+    })
+    .optional(),
   list: z
     .object({
       create: TodoCreateListInputSchema.optional(),
@@ -451,10 +669,109 @@ export const TodoCreateManyInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
 });
 
 // Input schemas for update operations
+const TodoUpdateCompanyInputSchema = z.object({
+  name: z.string().optional(),
+  slug: z.string().optional(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
+  createdAt: z.date().optional(),
+  users: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+});
+
 const TodoUpdateListInputSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional().nullable(),
@@ -462,7 +779,13 @@ const TodoUpdateListInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   user: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -495,7 +818,13 @@ const TodoUpdateListInputSchema = z.object({
 const TodoUpdateTagsInputSchema = z.object({
   name: z.string().optional(),
   color: z.string().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   todos: z
     .object({
       connect: z
@@ -529,7 +858,13 @@ const TodoUpdateSubtasksInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -601,7 +936,13 @@ const TodoUpdateParentInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -668,7 +1009,14 @@ const TodoUpdateUserInputSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   lists: z
     .object({
       connect: z
@@ -724,10 +1072,36 @@ export const TodoUpdateSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   listId: z.string().optional(),
   userId: z.string().optional(),
   parentId: z.string().optional().nullable(),
+  company: z
+    .object({
+      create: TodoCreateCompanyInputSchema.optional(),
+      connect: z.object({ id: z.string() }).optional(),
+      connectOrCreate: z
+        .object({
+          where: z.object({ id: z.string() }),
+          create: TodoCreateCompanyInputSchema,
+        })
+        .optional(),
+      update: z
+        .object({
+          where: z.object({ id: z.string() }).optional(),
+          data: TodoUpdateCompanyInputSchema,
+        })
+        .optional(),
+      upsert: z
+        .object({
+          where: z.object({ id: z.string() }),
+          update: TodoUpdateCompanyInputSchema,
+          create: TodoCreateCompanyInputSchema,
+        })
+        .optional(),
+    })
+    .optional(),
   list: z
     .object({
       create: TodoCreateListInputSchema.optional(),
@@ -983,6 +1357,7 @@ export const TodoUpdateManyInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional().nullable(),
   isArchived: z.boolean().optional().nullable(),
+  companyId: z.string().optional().nullable(),
   createdAt: z.date().optional().nullable(),
 });
 
@@ -993,6 +1368,127 @@ export const TodoUpsertInputSchema = z.object({
 
 // Filter and where schemas
 // Relation where schemas
+export const TodoCompanyFilterSchema = z.object({
+  id: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  name: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  slug: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  logo: z
+    .union([
+      z.string().optional().nullable(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  plan: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  maxUsers: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  maxStorage: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  createdAt: z
+    .union([
+      z.date(),
+      z.object({
+        equals: z.date().optional(),
+        lt: z.date().optional(),
+        lte: z.date().optional(),
+        gt: z.date().optional(),
+        gte: z.date().optional(),
+        in: z.array(z.date()).optional(),
+        notIn: z.array(z.date()).optional(),
+        not: z.date().optional(),
+      }),
+    ])
+    .optional(),
+  AND: z.array(z.any()).optional(),
+  OR: z.array(z.any()).optional(),
+  NOT: z.any().optional(),
+});
+
 export const TodoListFilterSchema = z.object({
   id: z
     .union([
@@ -1088,6 +1584,20 @@ export const TodoListFilterSchema = z.object({
       }),
     ])
     .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
   createdAt: z
     .union([
       z.date(),
@@ -1154,6 +1664,34 @@ export const TodoUserFilterSchema = z.object({
   avatar: z
     .union([
       z.string().optional().nullable(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  role: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
+    .union([
+      z.string(),
       z.object({
         equals: z.string().optional(),
         contains: z.string().optional(),
@@ -1307,6 +1845,20 @@ export const TodoParentFilterSchema = z.object({
       z.object({
         equals: z.boolean().optional(),
         not: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
       }),
     ])
     .optional(),
@@ -1470,6 +2022,20 @@ export const TodoSubtasksFilterSchema = z.object({
       }),
     ])
     .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
   createdAt: z
     .union([
       z.date(),
@@ -1535,6 +2101,20 @@ export const TodoTagsFilterSchema = z.object({
     ])
     .optional(),
   color: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
     .union([
       z.string(),
       z.object({
@@ -1694,6 +2274,20 @@ export const TodoFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
   createdAt: z
     .union([
       z.date(),
@@ -1724,6 +2318,7 @@ export const TodoFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
+  company: z.union([TodoCompanyFilterSchema, z.null()]).optional(),
   list: z.union([TodoListFilterSchema, z.null()]).optional(),
   user: z.union([TodoUserFilterSchema, z.null()]).optional(),
   parent: z.union([TodoParentFilterSchema, z.null()]).optional(),

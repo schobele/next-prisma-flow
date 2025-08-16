@@ -28,6 +28,27 @@ export function transformListCreate(
   if ("createdAt" in input && input.createdAt !== undefined) {
     result.createdAt = input.createdAt;
   }
+  if (input.company !== undefined) {
+    const companyData = input.company;
+    if (companyData) {
+      if ("connect" in companyData && companyData.connect) {
+        result.company = { connect: companyData.connect };
+      } else if ("create" in companyData && companyData.create) {
+        result.company = { create: companyData.create as any };
+      } else if (
+        "connectOrCreate" in companyData &&
+        companyData.connectOrCreate
+      ) {
+        result.company = {
+          connectOrCreate: companyData.connectOrCreate as any,
+        };
+      }
+    }
+  }
+  // Handle foreign key field when relation is not provided
+  if (input.company === undefined && "companyId" in input && input.companyId) {
+    result.company = { connect: { id: input.companyId } };
+  }
   if (input.user !== undefined) {
     const userData = input.user;
     if (userData) {
@@ -99,6 +120,12 @@ export function transformListUpdate(
   const createdAtValue = input.createdAt;
   if (createdAtValue !== undefined && createdAtValue !== null) {
     result.createdAt = createdAtValue;
+  }
+  if (input.company !== undefined) {
+    const companyData = input.company;
+    if (companyData) {
+      result.company = companyData as any;
+    }
   }
   if (input.user !== undefined) {
     const userData = input.user;

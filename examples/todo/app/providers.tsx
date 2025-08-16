@@ -1,22 +1,13 @@
 "use client";
 
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ThemeProvider } from "next-themes";
-import { FlowProvider } from "../lib/flow/core/provider";
+import { AuthProvider } from "../lib/auth-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  // For now, we'll use a default user context
-  // In a real app, this would come from authentication
-  const flowContext = {
-    user: {
-      id: "cmeaduj0n000010rqb31su595", // John Doe from seed data
-      roles: ["user"],
-    },
-    tenantId: null, // Not using multi-tenancy in this example
-  };
-
+  // Let FlowProvider manage its own QueryClient as designed
+  // AuthProvider will conditionally wrap with FlowProvider when user is authenticated
   return (
-    <FlowProvider ctx={flowContext}>
+    <AuthProvider>
       <ThemeProvider
         attribute="class"
         defaultTheme="system"
@@ -24,8 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         disableTransitionOnChange
       >
         {children}
-        <ReactQueryDevtools initialIsOpen={false} />
       </ThemeProvider>
-    </FlowProvider>
+    </AuthProvider>
   );
 }

@@ -12,7 +12,7 @@ type PolicyResult = {
 
 type PolicyAction = "list" | "read" | "create" | "update" | "delete";
 
-export async function canUser(
+export async function canCompany(
   action: PolicyAction,
   ctx: FlowCtx,
   id?: string,
@@ -35,6 +35,44 @@ export async function canUser(
     case "delete":
       // Ownership check could be added here
       return { ok: true, where: {} };
+
+    default:
+      return { ok: false, message: "Unknown action" };
+  }
+}
+
+export async function canUser(
+  action: PolicyAction,
+  ctx: FlowCtx,
+  id?: string,
+): Promise<PolicyResult> {
+  // Default: allow all for authenticated users
+  if (!ctx.user) {
+    return { ok: false, message: "Authentication required" };
+  }
+
+  switch (action) {
+    case "list":
+    case "read":
+      // Tenant filtering if model has tenant field
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
+
+    case "create":
+      return {
+        ok: true,
+        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
+
+    case "update":
+    case "delete":
+      // Ownership check could be added here
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     default:
       return { ok: false, message: "Unknown action" };
@@ -55,15 +93,24 @@ export async function canList(
     case "list":
     case "read":
       // Tenant filtering if model has tenant field
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     case "create":
-      return { ok: true, data: {} };
+      return {
+        ok: true,
+        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     case "update":
     case "delete":
       // Ownership check could be added here
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     default:
       return { ok: false, message: "Unknown action" };
@@ -84,15 +131,25 @@ export async function canTodo(
     case "list":
     case "read":
       // Tenant filtering if model has tenant field
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     case "create":
-      return { ok: true, data: {} };
+      // For creates, let transform handle relation and policy handle where filtering for now
+      return {
+        ok: true,
+        data: {},
+      };
 
     case "update":
     case "delete":
       // Ownership check could be added here
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     default:
       return { ok: false, message: "Unknown action" };
@@ -113,15 +170,24 @@ export async function canTag(
     case "list":
     case "read":
       // Tenant filtering if model has tenant field
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     case "create":
-      return { ok: true, data: {} };
+      return {
+        ok: true,
+        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     case "update":
     case "delete":
       // Ownership check could be added here
-      return { ok: true, where: {} };
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+      };
 
     default:
       return { ok: false, message: "Unknown action" };

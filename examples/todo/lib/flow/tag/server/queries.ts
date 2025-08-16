@@ -84,6 +84,7 @@ export const searchTags = cacheTagged(async function (
         OR: [
           { name: { contains: query, mode: "insensitive" as const } },
           { color: { contains: query, mode: "insensitive" as const } },
+          { companyId: { contains: query, mode: "insensitive" as const } },
         ],
       },
     ],

@@ -9,11 +9,59 @@ export const UserScalarSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
 
 // Relation schemas
+export const UserCompanyListsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  color: z.string(),
+  icon: z.string(),
+  orderIndex: z.number().int(),
+  isDefault: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const UserCompanyTodosSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional().nullable(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.date().optional().nullable(),
+  completedAt: z.date().optional().nullable(),
+  orderIndex: z.number().int(),
+  isArchived: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const UserCompanyTagsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  color: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const UserListsCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+});
+
 export const UserListsTodosSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -24,8 +72,20 @@ export const UserListsTodosSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
+});
+
+export const UserTodosCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
 });
 
 export const UserTodosListSchema = z.object({
@@ -36,6 +96,7 @@ export const UserTodosListSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
 });
 
@@ -49,6 +110,7 @@ export const UserTodosParentSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -63,6 +125,7 @@ export const UserTodosSubtasksSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -71,7 +134,22 @@ export const UserTodosTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
+  companyId: z.string(),
   createdAt: z.date(),
+});
+
+export const UserCompanySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+  lists: z.array(UserCompanyListsSchema).optional(),
+  todos: z.array(UserCompanyTodosSchema).optional(),
+  tags: z.array(UserCompanyTagsSchema).optional(),
 });
 
 export const UserListsSchema = z.object({
@@ -82,7 +160,9 @@ export const UserListsSchema = z.object({
   icon: z.string(),
   orderIndex: z.number().int(),
   isDefault: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
+  company: UserListsCompanySchema.optional(),
   todos: z.array(UserListsTodosSchema).optional(),
 });
 
@@ -96,8 +176,10 @@ export const UserTodosSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int(),
   isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  company: UserTodosCompanySchema.optional(),
   list: UserTodosListSchema.optional(),
   parent: UserTodosParentSchema.optional(),
   subtasks: z.array(UserTodosSubtasksSchema).optional(),
@@ -106,11 +188,63 @@ export const UserTodosSchema = z.object({
 
 // Main schema with relations
 export const UserSchema = UserScalarSchema.extend({
+  company: UserCompanySchema.optional(),
   lists: z.array(UserListsSchema).optional(),
   todos: z.array(UserTodosSchema).optional(),
 });
 
 // Input schemas for create operations
+const UserCreateCompanyInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
+  createdAt: z.date().optional(),
+  users: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+});
+
 const UserCreateListsInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -119,7 +253,13 @@ const UserCreateListsInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   user: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -147,7 +287,13 @@ const UserCreateTodosInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -190,7 +336,21 @@ export const UserCreateSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      create: UserCreateCompanyInputSchema.optional(),
+      connect: z.object({ id: z.string() }).optional(),
+      connectOrCreate: z
+        .object({
+          where: z.object({ id: z.string() }),
+          create: UserCreateCompanyInputSchema,
+        })
+        .optional(),
+    })
+    .optional(),
   lists: z
     .object({
       create: z
@@ -258,10 +418,110 @@ export const UserCreateManyInputSchema = z.object({
   email: z.string(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
 });
 
 // Input schemas for update operations
+const UserUpdateCompanyInputSchema = z.object({
+  name: z.string().optional(),
+  slug: z.string().optional(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
+  createdAt: z.date().optional(),
+  users: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+    })
+    .optional(),
+});
+
 const UserUpdateListsInputSchema = z.object({
   name: z.string().optional(),
   description: z.string().optional().nullable(),
@@ -269,7 +529,13 @@ const UserUpdateListsInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   user: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -308,7 +574,13 @@ const UserUpdateTodosInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
   list: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
@@ -375,7 +647,34 @@ export const UserUpdateSchema = z.object({
   email: z.string().optional(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
+  company: z
+    .object({
+      create: UserCreateCompanyInputSchema.optional(),
+      connect: z.object({ id: z.string() }).optional(),
+      connectOrCreate: z
+        .object({
+          where: z.object({ id: z.string() }),
+          create: UserCreateCompanyInputSchema,
+        })
+        .optional(),
+      update: z
+        .object({
+          where: z.object({ id: z.string() }).optional(),
+          data: UserUpdateCompanyInputSchema,
+        })
+        .optional(),
+      upsert: z
+        .object({
+          where: z.object({ id: z.string() }),
+          update: UserUpdateCompanyInputSchema,
+          create: UserCreateCompanyInputSchema,
+        })
+        .optional(),
+    })
+    .optional(),
   lists: z
     .object({
       create: z
@@ -552,6 +851,8 @@ export const UserUpdateManyInputSchema = z.object({
   email: z.string().optional().nullable(),
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  companyId: z.string().optional().nullable(),
   createdAt: z.date().optional().nullable(),
 });
 
@@ -562,6 +863,127 @@ export const UserUpsertInputSchema = z.object({
 
 // Filter and where schemas
 // Relation where schemas
+export const UserCompanyFilterSchema = z.object({
+  id: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  name: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  slug: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  logo: z
+    .union([
+      z.string().optional().nullable(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  plan: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  maxUsers: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  maxStorage: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  createdAt: z
+    .union([
+      z.date(),
+      z.object({
+        equals: z.date().optional(),
+        lt: z.date().optional(),
+        lte: z.date().optional(),
+        gt: z.date().optional(),
+        gte: z.date().optional(),
+        in: z.array(z.date()).optional(),
+        notIn: z.array(z.date()).optional(),
+        not: z.date().optional(),
+      }),
+    ])
+    .optional(),
+  AND: z.array(z.any()).optional(),
+  OR: z.array(z.any()).optional(),
+  NOT: z.any().optional(),
+});
+
 export const UserListsFilterSchema = z.object({
   id: z
     .union([
@@ -654,6 +1076,20 @@ export const UserListsFilterSchema = z.object({
       z.object({
         equals: z.boolean().optional(),
         not: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
       }),
     ])
     .optional(),
@@ -802,6 +1238,20 @@ export const UserTodosFilterSchema = z.object({
       }),
     ])
     .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
   createdAt: z
     .union([
       z.date(),
@@ -895,6 +1345,34 @@ export const UserFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
+  role: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
   createdAt: z
     .union([
       z.date(),
@@ -910,6 +1388,7 @@ export const UserFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
+  company: z.union([UserCompanyFilterSchema, z.null()]).optional(),
   lists: z
     .object({
       every: UserListsFilterSchema.optional(),

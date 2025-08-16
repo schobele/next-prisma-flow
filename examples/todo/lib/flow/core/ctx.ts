@@ -3,6 +3,6 @@
 
 export type FlowCtx = {
   user?: { id: string; roles?: string[] } | null;
-  tenantId?: string | null; // value that should match the DB's tenantId column on your models
+  tenantId?: string | null; // value that should match the DB's companyId column on your models
 };
 export type CtxProvider = () => Promise<FlowCtx> | FlowCtx;

@@ -56,6 +56,7 @@ import {
 import type { TodoListParams } from "@/lib/flow/todo/server/queries";
 import type { FlowTodo } from "@/lib/flow/todo/types/schemas";
 import { cn } from "@/lib/utils";
+import { useTenant, useUser } from "@/lib/auth-context";
 
 // Constants for status and priority
 const TodoStatus = {
@@ -97,6 +98,8 @@ export default function TodoApp() {
 	// Get user context
 	const flowCtx = useFlowCtx();
 	const userId = flowCtx.user?.id || "";
+	const tenant = useTenant();
+	const user = useUser();
 
 	// Debounce search query
 	useEffect(() => {
@@ -157,7 +160,7 @@ export default function TodoApp() {
 	// Auto-refresh when filters change
 	useEffect(() => {
 		refetchTodos();
-	}, [selectedListId, statusFilter, debouncedSearchQuery, refetchTodos]);
+	}, [selectedListId, statusFilter, debouncedSearchQuery]);
 
 	// Mutations
 	const createTodoMutation = useCreateTodo({
@@ -257,10 +260,17 @@ export default function TodoApp() {
 			todo.status === TodoStatus.COMPLETED
 				? TodoStatus.TODO
 				: TodoStatus.COMPLETED;
-		await updateTodoMutation.mutateAsync({
+		
+		// Create a temporary update mutation for this specific todo
+		const { updateTodo } = await import("@/lib/flow/todo/server/actions");
+		
+		await updateTodo(todo.id, {
 			status: newStatus,
 			completedAt: newStatus === TodoStatus.COMPLETED ? new Date() : null,
-		});
+		}, flowCtx);
+		
+		toast.success("Task updated successfully");
+		refetchTodos();
 	};
 
 	const handleCreateTodo = async (e: React.FormEvent) => {
@@ -277,6 +287,7 @@ export default function TodoApp() {
 			description: formData.description || undefined,
 			priority: formData.priority || TodoPriority.MEDIUM,
 			status: TodoStatus.TODO,
+			companyId: tenant?.tenantId || "",
 			listId: activeListId || defaultList?.id || "",
 			userId: userId,
 		});
@@ -298,10 +309,26 @@ export default function TodoApp() {
 		<div className="container mx-auto p-6 max-w-7xl">
 			{/* Header */}
 			<div className="mb-8">
-				<h1 className="text-4xl font-bold mb-2">Todo App</h1>
-				<p className="text-muted-foreground">
-					Built with Next.js, Prisma, and next-prisma-flow generator
-				</p>
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-4xl font-bold mb-2">
+							{tenant?.company.name} Dashboard
+						</h1>
+						<p className="text-muted-foreground">
+							Multi-tenant todo app powered by next-prisma-flow
+						</p>
+					</div>
+					{tenant && (
+						<div className="text-right">
+							<Badge variant="outline" className="text-sm">
+								{tenant.plan} Plan
+							</Badge>
+							<p className="text-xs text-muted-foreground mt-1">
+								Tenant: {tenant.tenantId.slice(0, 8)}...
+							</p>
+						</div>
+					)}
+				</div>
 			</div>
 
 			{/* Stats Cards */}

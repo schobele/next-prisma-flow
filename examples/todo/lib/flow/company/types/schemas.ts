@@ -4,7 +4,20 @@
 import { z } from "zod";
 
 // Scalar fields only
-export const ListScalarSchema = z.object({
+export const CompanyScalarSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string(),
+  maxUsers: z.number().int(),
+  maxStorage: z.number().int(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Relation schemas
+export const CompanyUsersListsSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().optional().nullable(),
@@ -14,22 +27,9 @@ export const ListScalarSchema = z.object({
   isDefault: z.boolean(),
   companyId: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date(),
-  userId: z.string(),
 });
 
-// Relation schemas
-export const ListCompanyUsersSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  name: z.string().optional().nullable(),
-  avatar: z.string().optional().nullable(),
-  role: z.string(),
-  companyId: z.string(),
-  createdAt: z.date(),
-});
-
-export const ListCompanyTodosSchema = z.object({
+export const CompanyUsersTodosSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().optional().nullable(),
@@ -44,7 +44,84 @@ export const ListCompanyTodosSchema = z.object({
   updatedAt: z.date(),
 });
 
-export const ListCompanyTagsSchema = z.object({
+export const CompanyListsUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const CompanyListsTodosSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional().nullable(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.date().optional().nullable(),
+  completedAt: z.date().optional().nullable(),
+  orderIndex: z.number().int(),
+  isArchived: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CompanyTodosListSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  color: z.string(),
+  icon: z.string(),
+  orderIndex: z.number().int(),
+  isDefault: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const CompanyTodosUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+  role: z.string(),
+  companyId: z.string(),
+  createdAt: z.date(),
+});
+
+export const CompanyTodosParentSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional().nullable(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.date().optional().nullable(),
+  completedAt: z.date().optional().nullable(),
+  orderIndex: z.number().int(),
+  isArchived: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CompanyTodosSubtasksSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional().nullable(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.date().optional().nullable(),
+  completedAt: z.date().optional().nullable(),
+  orderIndex: z.number().int(),
+  isArchived: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CompanyTodosTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
@@ -52,18 +129,22 @@ export const ListCompanyTagsSchema = z.object({
   createdAt: z.date(),
 });
 
-export const ListTodosCompanySchema = z.object({
+export const CompanyTagsTodosSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  logo: z.string().optional().nullable(),
-  plan: z.string(),
-  maxUsers: z.number().int(),
-  maxStorage: z.number().int(),
+  title: z.string(),
+  description: z.string().optional().nullable(),
+  status: z.string(),
+  priority: z.string(),
+  dueDate: z.date().optional().nullable(),
+  completedAt: z.date().optional().nullable(),
+  orderIndex: z.number().int(),
+  isArchived: z.boolean(),
+  companyId: z.string(),
   createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
-export const ListTodosUserSchema = z.object({
+export const CompanyUsersSchema = z.object({
   id: z.string(),
   email: z.string(),
   name: z.string().optional().nullable(),
@@ -71,9 +152,25 @@ export const ListTodosUserSchema = z.object({
   role: z.string(),
   companyId: z.string(),
   createdAt: z.date(),
+  lists: z.array(CompanyUsersListsSchema).optional(),
+  todos: z.array(CompanyUsersTodosSchema).optional(),
 });
 
-export const ListTodosParentSchema = z.object({
+export const CompanyListsSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  color: z.string(),
+  icon: z.string(),
+  orderIndex: z.number().int(),
+  isDefault: z.boolean(),
+  companyId: z.string(),
+  createdAt: z.date(),
+  user: CompanyListsUserSchema.optional(),
+  todos: z.array(CompanyListsTodosSchema).optional(),
+});
+
+export const CompanyTodosSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().optional().nullable(),
@@ -86,128 +183,42 @@ export const ListTodosParentSchema = z.object({
   companyId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date(),
+  list: CompanyTodosListSchema.optional(),
+  user: CompanyTodosUserSchema.optional(),
+  parent: CompanyTodosParentSchema.optional(),
+  subtasks: z.array(CompanyTodosSubtasksSchema).optional(),
+  tags: z.array(CompanyTodosTagsSchema).optional(),
 });
 
-export const ListTodosSubtasksSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional().nullable(),
-  status: z.string(),
-  priority: z.string(),
-  dueDate: z.date().optional().nullable(),
-  completedAt: z.date().optional().nullable(),
-  orderIndex: z.number().int(),
-  isArchived: z.boolean(),
-  companyId: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export const ListTodosTagsSchema = z.object({
+export const CompanyTagsSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
   companyId: z.string(),
   createdAt: z.date(),
-});
-
-export const ListUserCompanySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  logo: z.string().optional().nullable(),
-  plan: z.string(),
-  maxUsers: z.number().int(),
-  maxStorage: z.number().int(),
-  createdAt: z.date(),
-});
-
-export const ListUserTodosSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional().nullable(),
-  status: z.string(),
-  priority: z.string(),
-  dueDate: z.date().optional().nullable(),
-  completedAt: z.date().optional().nullable(),
-  orderIndex: z.number().int(),
-  isArchived: z.boolean(),
-  companyId: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-});
-
-export const ListCompanySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  logo: z.string().optional().nullable(),
-  plan: z.string(),
-  maxUsers: z.number().int(),
-  maxStorage: z.number().int(),
-  createdAt: z.date(),
-  users: z.array(ListCompanyUsersSchema).optional(),
-  todos: z.array(ListCompanyTodosSchema).optional(),
-  tags: z.array(ListCompanyTagsSchema).optional(),
-});
-
-export const ListTodosSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  description: z.string().optional().nullable(),
-  status: z.string(),
-  priority: z.string(),
-  dueDate: z.date().optional().nullable(),
-  completedAt: z.date().optional().nullable(),
-  orderIndex: z.number().int(),
-  isArchived: z.boolean(),
-  companyId: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
-  company: ListTodosCompanySchema.optional(),
-  user: ListTodosUserSchema.optional(),
-  parent: ListTodosParentSchema.optional(),
-  subtasks: z.array(ListTodosSubtasksSchema).optional(),
-  tags: z.array(ListTodosTagsSchema).optional(),
-});
-
-export const ListUserSchema = z.object({
-  id: z.string(),
-  email: z.string(),
-  name: z.string().optional().nullable(),
-  avatar: z.string().optional().nullable(),
-  role: z.string(),
-  companyId: z.string(),
-  createdAt: z.date(),
-  company: ListUserCompanySchema.optional(),
-  todos: z.array(ListUserTodosSchema).optional(),
+  todos: z.array(CompanyTagsTodosSchema).optional(),
 });
 
 // Main schema with relations
-export const ListSchema = ListScalarSchema.extend({
-  company: ListCompanySchema.optional(),
-  todos: z.array(ListTodosSchema).optional(),
-  user: ListUserSchema.optional(),
+export const CompanySchema = CompanyScalarSchema.extend({
+  users: z.array(CompanyUsersSchema).optional(),
+  lists: z.array(CompanyListsSchema).optional(),
+  todos: z.array(CompanyTodosSchema).optional(),
+  tags: z.array(CompanyTagsSchema).optional(),
 });
 
 // Input schemas for create operations
-const ListCreateCompanyInputSchema = z.object({
+const CompanyCreateUsersInputSchema = z.object({
   id: z.string().optional(),
-  name: z.string(),
-  slug: z.string(),
-  logo: z.string().optional().nullable(),
-  plan: z.string().optional(),
-  maxUsers: z.number().int().optional(),
-  maxStorage: z.number().int().optional(),
+  email: z.string(),
+  name: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string(),
   createdAt: z.date().optional(),
-  users: z
+  company: z
     .object({
-      connect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
+      connect: z.object({ id: z.string() }).optional(),
     })
     .optional(),
   lists: z
@@ -230,7 +241,29 @@ const ListCreateCompanyInputSchema = z.object({
         .optional(),
     })
     .optional(),
-  tags: z
+});
+
+const CompanyCreateListsInputSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  description: z.string().optional().nullable(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+  orderIndex: z.number().int().optional(),
+  isDefault: z.boolean().optional(),
+  companyId: z.string(),
+  createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  user: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  todos: z
     .object({
       connect: z
         .union([
@@ -242,7 +275,7 @@ const ListCreateCompanyInputSchema = z.object({
     .optional(),
 });
 
-const ListCreateTodosInputSchema = z.object({
+const CompanyCreateTodosInputSchema = z.object({
   id: z.string().optional(),
   title: z.string(),
   description: z.string().optional().nullable(),
@@ -296,27 +329,15 @@ const ListCreateTodosInputSchema = z.object({
     .optional(),
 });
 
-const ListCreateUserInputSchema = z.object({
+const CompanyCreateTagsInputSchema = z.object({
   id: z.string().optional(),
-  email: z.string(),
-  name: z.string().optional().nullable(),
-  avatar: z.string().optional().nullable(),
-  role: z.string().optional(),
+  name: z.string(),
+  color: z.string().optional(),
   companyId: z.string(),
   createdAt: z.date().optional(),
   company: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
-  lists: z
-    .object({
-      connect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
     })
     .optional(),
   todos: z
@@ -331,47 +352,21 @@ const ListCreateUserInputSchema = z.object({
     .optional(),
 });
 
-export const ListCreateSchema = z.object({
+export const CompanyCreateSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
-  description: z.string().optional().nullable(),
-  color: z.string().optional(),
-  icon: z.string().optional(),
-  orderIndex: z.number().int().optional(),
-  isDefault: z.boolean().optional(),
-  companyId: z.string(),
+  slug: z.string(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
   createdAt: z.date().optional(),
-  userId: z.string(),
-  company: z
-    .object({
-      create: ListCreateCompanyInputSchema.optional(),
-      connect: z.object({ id: z.string() }).optional(),
-      connectOrCreate: z
-        .object({
-          where: z.object({ id: z.string() }),
-          create: ListCreateCompanyInputSchema,
-        })
-        .optional(),
-    })
-    .optional(),
-  user: z
-    .object({
-      create: ListCreateUserInputSchema.optional(),
-      connect: z.object({ id: z.string() }).optional(),
-      connectOrCreate: z
-        .object({
-          where: z.object({ id: z.string() }),
-          create: ListCreateUserInputSchema,
-        })
-        .optional(),
-    })
-    .optional(),
-  todos: z
+  users: z
     .object({
       create: z
         .union([
-          ListCreateTodosInputSchema,
-          z.array(ListCreateTodosInputSchema),
+          CompanyCreateUsersInputSchema,
+          z.array(CompanyCreateUsersInputSchema),
         ])
         .optional(),
       connect: z
@@ -384,12 +379,102 @@ export const ListCreateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: ListCreateTodosInputSchema,
+            create: CompanyCreateUsersInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: ListCreateTodosInputSchema,
+              create: CompanyCreateUsersInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateListsInputSchema,
+          z.array(CompanyCreateListsInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateListsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateListsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateTodosInputSchema,
+          z.array(CompanyCreateTodosInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateTodosInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateTodosInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateTagsInputSchema,
+          z.array(CompanyCreateTagsInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateTagsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateTagsInputSchema,
             }),
           ),
         ])
@@ -398,47 +483,28 @@ export const ListCreateSchema = z.object({
     .optional(),
 });
 
-export const ListCreateManyInputSchema = z.object({
+export const CompanyCreateManyInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
-  description: z.string().optional().nullable(),
-  color: z.string().optional(),
-  icon: z.string().optional(),
-  orderIndex: z.number().int().optional(),
-  isDefault: z.boolean().optional(),
-  companyId: z.string(),
-  createdAt: z.date().optional(),
-});
-
-// Input schemas for update operations
-const ListUpdateCompanyInputSchema = z.object({
-  name: z.string().optional(),
-  slug: z.string().optional(),
+  slug: z.string(),
   logo: z.string().optional().nullable(),
   plan: z.string().optional(),
   maxUsers: z.number().int().optional(),
   maxStorage: z.number().int().optional(),
   createdAt: z.date().optional(),
-  users: z
+});
+
+// Input schemas for update operations
+const CompanyUpdateUsersInputSchema = z.object({
+  email: z.string().optional(),
+  name: z.string().optional().nullable(),
+  avatar: z.string().optional().nullable(),
+  role: z.string().optional(),
+  companyId: z.string().optional(),
+  createdAt: z.date().optional(),
+  company: z
     .object({
-      connect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
-      disconnect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
-      set: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
+      connect: z.object({ id: z.string() }).optional(),
     })
     .optional(),
   lists: z
@@ -485,7 +551,28 @@ const ListUpdateCompanyInputSchema = z.object({
         .optional(),
     })
     .optional(),
-  tags: z
+});
+
+const CompanyUpdateListsInputSchema = z.object({
+  name: z.string().optional(),
+  description: z.string().optional().nullable(),
+  color: z.string().optional(),
+  icon: z.string().optional(),
+  orderIndex: z.number().int().optional(),
+  isDefault: z.boolean().optional(),
+  companyId: z.string().optional(),
+  createdAt: z.date().optional(),
+  company: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  user: z
+    .object({
+      connect: z.object({ id: z.string() }).optional(),
+    })
+    .optional(),
+  todos: z
     .object({
       connect: z
         .union([
@@ -509,7 +596,7 @@ const ListUpdateCompanyInputSchema = z.object({
     .optional(),
 });
 
-const ListUpdateTodosInputSchema = z.object({
+const CompanyUpdateTodosInputSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional().nullable(),
   status: z.string().optional(),
@@ -587,38 +674,14 @@ const ListUpdateTodosInputSchema = z.object({
     .optional(),
 });
 
-const ListUpdateUserInputSchema = z.object({
-  email: z.string().optional(),
-  name: z.string().optional().nullable(),
-  avatar: z.string().optional().nullable(),
-  role: z.string().optional(),
+const CompanyUpdateTagsInputSchema = z.object({
+  name: z.string().optional(),
+  color: z.string().optional(),
   companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
       connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
-  lists: z
-    .object({
-      connect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
-      disconnect: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
-      set: z
-        .union([
-          z.object({ id: z.string() }),
-          z.array(z.object({ id: z.string() })),
-        ])
-        .optional(),
     })
     .optional(),
   todos: z
@@ -645,72 +708,20 @@ const ListUpdateUserInputSchema = z.object({
     .optional(),
 });
 
-export const ListUpdateSchema = z.object({
+export const CompanyUpdateSchema = z.object({
   name: z.string().optional(),
-  description: z.string().optional().nullable(),
-  color: z.string().optional(),
-  icon: z.string().optional(),
-  orderIndex: z.number().int().optional(),
-  isDefault: z.boolean().optional(),
-  companyId: z.string().optional(),
+  slug: z.string().optional(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional(),
+  maxUsers: z.number().int().optional(),
+  maxStorage: z.number().int().optional(),
   createdAt: z.date().optional(),
-  userId: z.string().optional(),
-  company: z
-    .object({
-      create: ListCreateCompanyInputSchema.optional(),
-      connect: z.object({ id: z.string() }).optional(),
-      connectOrCreate: z
-        .object({
-          where: z.object({ id: z.string() }),
-          create: ListCreateCompanyInputSchema,
-        })
-        .optional(),
-      update: z
-        .object({
-          where: z.object({ id: z.string() }).optional(),
-          data: ListUpdateCompanyInputSchema,
-        })
-        .optional(),
-      upsert: z
-        .object({
-          where: z.object({ id: z.string() }),
-          update: ListUpdateCompanyInputSchema,
-          create: ListCreateCompanyInputSchema,
-        })
-        .optional(),
-    })
-    .optional(),
-  user: z
-    .object({
-      create: ListCreateUserInputSchema.optional(),
-      connect: z.object({ id: z.string() }).optional(),
-      connectOrCreate: z
-        .object({
-          where: z.object({ id: z.string() }),
-          create: ListCreateUserInputSchema,
-        })
-        .optional(),
-      update: z
-        .object({
-          where: z.object({ id: z.string() }).optional(),
-          data: ListUpdateUserInputSchema,
-        })
-        .optional(),
-      upsert: z
-        .object({
-          where: z.object({ id: z.string() }),
-          update: ListUpdateUserInputSchema,
-          create: ListCreateUserInputSchema,
-        })
-        .optional(),
-    })
-    .optional(),
-  todos: z
+  users: z
     .object({
       create: z
         .union([
-          ListCreateTodosInputSchema,
-          z.array(ListCreateTodosInputSchema),
+          CompanyCreateUsersInputSchema,
+          z.array(CompanyCreateUsersInputSchema),
         ])
         .optional(),
       connect: z
@@ -723,12 +734,12 @@ export const ListUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            create: ListCreateTodosInputSchema,
+            create: CompanyCreateUsersInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              create: ListCreateTodosInputSchema,
+              create: CompanyCreateUsersInputSchema,
             }),
           ),
         ])
@@ -749,12 +760,12 @@ export const ListUpdateSchema = z.object({
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            data: ListUpdateTodosInputSchema,
+            data: CompanyUpdateUsersInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              data: ListUpdateTodosInputSchema,
+              data: CompanyUpdateUsersInputSchema,
             }),
           ),
         ])
@@ -762,21 +773,276 @@ export const ListUpdateSchema = z.object({
       updateMany: z
         .object({
           where: z.any().optional(),
-          data: ListUpdateTodosInputSchema,
+          data: CompanyUpdateUsersInputSchema,
         })
         .optional(),
       upsert: z
         .union([
           z.object({
             where: z.object({ id: z.string() }),
-            update: ListUpdateTodosInputSchema,
-            create: ListCreateTodosInputSchema,
+            update: CompanyUpdateUsersInputSchema,
+            create: CompanyCreateUsersInputSchema,
           }),
           z.array(
             z.object({
               where: z.object({ id: z.string() }),
-              update: ListUpdateTodosInputSchema,
-              create: ListCreateTodosInputSchema,
+              update: CompanyUpdateUsersInputSchema,
+              create: CompanyCreateUsersInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      delete: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      deleteMany: z.any().optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateListsInputSchema,
+          z.array(CompanyCreateListsInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateListsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateListsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      update: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            data: CompanyUpdateListsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              data: CompanyUpdateListsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      updateMany: z
+        .object({
+          where: z.any().optional(),
+          data: CompanyUpdateListsInputSchema,
+        })
+        .optional(),
+      upsert: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            update: CompanyUpdateListsInputSchema,
+            create: CompanyCreateListsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              update: CompanyUpdateListsInputSchema,
+              create: CompanyCreateListsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      delete: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      deleteMany: z.any().optional(),
+    })
+    .optional(),
+  todos: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateTodosInputSchema,
+          z.array(CompanyCreateTodosInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateTodosInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateTodosInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      update: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            data: CompanyUpdateTodosInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              data: CompanyUpdateTodosInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      updateMany: z
+        .object({
+          where: z.any().optional(),
+          data: CompanyUpdateTodosInputSchema,
+        })
+        .optional(),
+      upsert: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            update: CompanyUpdateTodosInputSchema,
+            create: CompanyCreateTodosInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              update: CompanyUpdateTodosInputSchema,
+              create: CompanyCreateTodosInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      delete: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      deleteMany: z.any().optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      create: z
+        .union([
+          CompanyCreateTagsInputSchema,
+          z.array(CompanyCreateTagsInputSchema),
+        ])
+        .optional(),
+      connect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      connectOrCreate: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            create: CompanyCreateTagsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              create: CompanyCreateTagsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      set: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      disconnect: z
+        .union([
+          z.object({ id: z.string() }),
+          z.array(z.object({ id: z.string() })),
+        ])
+        .optional(),
+      update: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            data: CompanyUpdateTagsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              data: CompanyUpdateTagsInputSchema,
+            }),
+          ),
+        ])
+        .optional(),
+      updateMany: z
+        .object({
+          where: z.any().optional(),
+          data: CompanyUpdateTagsInputSchema,
+        })
+        .optional(),
+      upsert: z
+        .union([
+          z.object({
+            where: z.object({ id: z.string() }),
+            update: CompanyUpdateTagsInputSchema,
+            create: CompanyCreateTagsInputSchema,
+          }),
+          z.array(
+            z.object({
+              where: z.object({ id: z.string() }),
+              update: CompanyUpdateTagsInputSchema,
+              create: CompanyCreateTagsInputSchema,
             }),
           ),
         ])
@@ -792,146 +1058,24 @@ export const ListUpdateSchema = z.object({
     .optional(),
 });
 
-export const ListUpdateManyInputSchema = z.object({
+export const CompanyUpdateManyInputSchema = z.object({
   name: z.string().optional().nullable(),
-  description: z.string().optional().nullable(),
-  color: z.string().optional().nullable(),
-  icon: z.string().optional().nullable(),
-  orderIndex: z.number().int().optional().nullable(),
-  isDefault: z.boolean().optional().nullable(),
-  companyId: z.string().optional().nullable(),
+  slug: z.string().optional().nullable(),
+  logo: z.string().optional().nullable(),
+  plan: z.string().optional().nullable(),
+  maxUsers: z.number().int().optional().nullable(),
+  maxStorage: z.number().int().optional().nullable(),
   createdAt: z.date().optional().nullable(),
 });
 
-export const ListUpsertInputSchema = z.object({
-  create: ListCreateSchema,
-  update: ListUpdateSchema,
+export const CompanyUpsertInputSchema = z.object({
+  create: CompanyCreateSchema,
+  update: CompanyUpdateSchema,
 });
 
 // Filter and where schemas
 // Relation where schemas
-export const ListCompanyFilterSchema = z.object({
-  id: z
-    .union([
-      z.string(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  name: z
-    .union([
-      z.string(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  slug: z
-    .union([
-      z.string(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  logo: z
-    .union([
-      z.string().optional().nullable(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  plan: z
-    .union([
-      z.string(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  maxUsers: z
-    .union([
-      z.number().int(),
-      z.object({
-        equals: z.number().int().optional(),
-        lt: z.number().int().optional(),
-        lte: z.number().int().optional(),
-        gt: z.number().int().optional(),
-        gte: z.number().int().optional(),
-        in: z.array(z.number().int()).optional(),
-        notIn: z.array(z.number().int()).optional(),
-        not: z.number().int().optional(),
-      }),
-    ])
-    .optional(),
-  maxStorage: z
-    .union([
-      z.number().int(),
-      z.object({
-        equals: z.number().int().optional(),
-        lt: z.number().int().optional(),
-        lte: z.number().int().optional(),
-        gt: z.number().int().optional(),
-        gte: z.number().int().optional(),
-        in: z.array(z.number().int()).optional(),
-        notIn: z.array(z.number().int()).optional(),
-        not: z.number().int().optional(),
-      }),
-    ])
-    .optional(),
-  createdAt: z
-    .union([
-      z.date(),
-      z.object({
-        equals: z.date().optional(),
-        lt: z.date().optional(),
-        lte: z.date().optional(),
-        gt: z.date().optional(),
-        gte: z.date().optional(),
-        in: z.array(z.date()).optional(),
-        notIn: z.array(z.date()).optional(),
-        not: z.date().optional(),
-      }),
-    ])
-    .optional(),
-  AND: z.array(z.any()).optional(),
-  OR: z.array(z.any()).optional(),
-  NOT: z.any().optional(),
-});
-
-export const ListUserFilterSchema = z.object({
+export const CompanyUsersFilterSchema = z.object({
   id: z
     .union([
       z.string(),
@@ -1036,7 +1180,136 @@ export const ListUserFilterSchema = z.object({
   NOT: z.any().optional(),
 });
 
-export const ListTodosFilterSchema = z.object({
+export const CompanyListsFilterSchema = z.object({
+  id: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  name: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  description: z
+    .union([
+      z.string().optional().nullable(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  color: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  icon: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  orderIndex: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  isDefault: z
+    .union([
+      z.boolean(),
+      z.object({
+        equals: z.boolean().optional(),
+        not: z.boolean().optional(),
+      }),
+    ])
+    .optional(),
+  companyId: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  createdAt: z
+    .union([
+      z.date(),
+      z.object({
+        equals: z.date().optional(),
+        lt: z.date().optional(),
+        lte: z.date().optional(),
+        gt: z.date().optional(),
+        gte: z.date().optional(),
+        in: z.array(z.date()).optional(),
+        notIn: z.array(z.date()).optional(),
+        not: z.date().optional(),
+      }),
+    ])
+    .optional(),
+  AND: z.array(z.any()).optional(),
+  OR: z.array(z.any()).optional(),
+  NOT: z.any().optional(),
+});
+
+export const CompanyTodosFilterSchema = z.object({
   id: z
     .union([
       z.string(),
@@ -1210,8 +1483,7 @@ export const ListTodosFilterSchema = z.object({
   NOT: z.any().optional(),
 });
 
-// Base filter schema
-export const ListFilterBaseSchema = z.object({
+export const CompanyTagsFilterSchema = z.object({
   id: z
     .union([
       z.string(),
@@ -1240,20 +1512,6 @@ export const ListFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
-  description: z
-    .union([
-      z.string().optional().nullable(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
   color: z
     .union([
       z.string(),
@@ -1265,44 +1523,6 @@ export const ListFilterBaseSchema = z.object({
         in: z.array(z.string()).optional(),
         notIn: z.array(z.string()).optional(),
         not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  icon: z
-    .union([
-      z.string(),
-      z.object({
-        equals: z.string().optional(),
-        contains: z.string().optional(),
-        startsWith: z.string().optional(),
-        endsWith: z.string().optional(),
-        in: z.array(z.string()).optional(),
-        notIn: z.array(z.string()).optional(),
-        not: z.string().optional(),
-      }),
-    ])
-    .optional(),
-  orderIndex: z
-    .union([
-      z.number().int(),
-      z.object({
-        equals: z.number().int().optional(),
-        lt: z.number().int().optional(),
-        lte: z.number().int().optional(),
-        gt: z.number().int().optional(),
-        gte: z.number().int().optional(),
-        in: z.array(z.number().int()).optional(),
-        notIn: z.array(z.number().int()).optional(),
-        not: z.number().int().optional(),
-      }),
-    ])
-    .optional(),
-  isDefault: z
-    .union([
-      z.boolean(),
-      z.object({
-        equals: z.boolean().optional(),
-        not: z.boolean().optional(),
       }),
     ])
     .optional(),
@@ -1335,13 +1555,154 @@ export const ListFilterBaseSchema = z.object({
       }),
     ])
     .optional(),
-  company: z.union([ListCompanyFilterSchema, z.null()]).optional(),
-  user: z.union([ListUserFilterSchema, z.null()]).optional(),
+  AND: z.array(z.any()).optional(),
+  OR: z.array(z.any()).optional(),
+  NOT: z.any().optional(),
+});
+
+// Base filter schema
+export const CompanyFilterBaseSchema = z.object({
+  id: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  name: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  slug: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  logo: z
+    .union([
+      z.string().optional().nullable(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  plan: z
+    .union([
+      z.string(),
+      z.object({
+        equals: z.string().optional(),
+        contains: z.string().optional(),
+        startsWith: z.string().optional(),
+        endsWith: z.string().optional(),
+        in: z.array(z.string()).optional(),
+        notIn: z.array(z.string()).optional(),
+        not: z.string().optional(),
+      }),
+    ])
+    .optional(),
+  maxUsers: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  maxStorage: z
+    .union([
+      z.number().int(),
+      z.object({
+        equals: z.number().int().optional(),
+        lt: z.number().int().optional(),
+        lte: z.number().int().optional(),
+        gt: z.number().int().optional(),
+        gte: z.number().int().optional(),
+        in: z.array(z.number().int()).optional(),
+        notIn: z.array(z.number().int()).optional(),
+        not: z.number().int().optional(),
+      }),
+    ])
+    .optional(),
+  createdAt: z
+    .union([
+      z.date(),
+      z.object({
+        equals: z.date().optional(),
+        lt: z.date().optional(),
+        lte: z.date().optional(),
+        gt: z.date().optional(),
+        gte: z.date().optional(),
+        in: z.array(z.date()).optional(),
+        notIn: z.array(z.date()).optional(),
+        not: z.date().optional(),
+      }),
+    ])
+    .optional(),
+  users: z
+    .object({
+      every: CompanyUsersFilterSchema.optional(),
+      some: CompanyUsersFilterSchema.optional(),
+      none: CompanyUsersFilterSchema.optional(),
+    })
+    .optional(),
+  lists: z
+    .object({
+      every: CompanyListsFilterSchema.optional(),
+      some: CompanyListsFilterSchema.optional(),
+      none: CompanyListsFilterSchema.optional(),
+    })
+    .optional(),
   todos: z
     .object({
-      every: ListTodosFilterSchema.optional(),
-      some: ListTodosFilterSchema.optional(),
-      none: ListTodosFilterSchema.optional(),
+      every: CompanyTodosFilterSchema.optional(),
+      some: CompanyTodosFilterSchema.optional(),
+      none: CompanyTodosFilterSchema.optional(),
+    })
+    .optional(),
+  tags: z
+    .object({
+      every: CompanyTagsFilterSchema.optional(),
+      some: CompanyTagsFilterSchema.optional(),
+      none: CompanyTagsFilterSchema.optional(),
     })
     .optional(),
   AND: z.union([z.any(), z.array(z.any())]).optional(),
@@ -1350,23 +1711,26 @@ export const ListFilterBaseSchema = z.object({
 });
 
 // Extended filter schema with self-references
-export const ListFilterSchema = ListFilterBaseSchema.extend({
-  AND: z.array(ListFilterBaseSchema).optional(),
-  OR: z.array(ListFilterBaseSchema).optional(),
-  NOT: ListFilterBaseSchema.optional(),
+export const CompanyFilterSchema = CompanyFilterBaseSchema.extend({
+  AND: z.array(CompanyFilterBaseSchema).optional(),
+  OR: z.array(CompanyFilterBaseSchema).optional(),
+  NOT: CompanyFilterBaseSchema.optional(),
 });
 
 // Alias for Prisma compatibility
-export const ListWhereInputSchema = ListFilterSchema;
+export const CompanyWhereInputSchema = CompanyFilterSchema;
 
-export const ListWhereUniqueInputSchema = z.object({
+export const CompanyWhereUniqueInputSchema = z.object({
   id: z.string().optional(),
+  slug: z.string().optional(),
 });
 
 // Type exports
-export type FlowList = z.infer<typeof ListSchema>;
-export type FlowListCreate = z.infer<typeof ListCreateSchema>;
-export type FlowListUpdate = z.infer<typeof ListUpdateSchema>;
-export type FlowListFilter = z.infer<typeof ListFilterSchema>;
-export type FlowListWhere = z.infer<typeof ListWhereInputSchema>;
-export type FlowListWhereUnique = z.infer<typeof ListWhereUniqueInputSchema>;
+export type FlowCompany = z.infer<typeof CompanySchema>;
+export type FlowCompanyCreate = z.infer<typeof CompanyCreateSchema>;
+export type FlowCompanyUpdate = z.infer<typeof CompanyUpdateSchema>;
+export type FlowCompanyFilter = z.infer<typeof CompanyFilterSchema>;
+export type FlowCompanyWhere = z.infer<typeof CompanyWhereInputSchema>;
+export type FlowCompanyWhereUnique = z.infer<
+  typeof CompanyWhereUniqueInputSchema
+>;

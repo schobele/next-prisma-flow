@@ -20,44 +20,129 @@ const TodoPriority = {
 async function main() {
   console.log('🌱 Starting seed...');
 
-  // Clean up existing data
-  await prisma.tag.deleteMany();
+  // Clean up existing data in proper order
   await prisma.todo.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.list.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.company.deleteMany();
 
-  // Create users
+  // Create companies with predictable IDs for auth system
+  const company1 = await prisma.company.create({
+    data: {
+      id: 'cm5a8z9b1c2d3e4f5g6h7i8j', // Acme Corp ID
+      name: 'Acme Corporation',
+      slug: 'acme-corp',
+      logo: '🏢',
+      plan: 'pro',
+      maxUsers: 25,
+      maxStorage: 10000, // 10GB
+    },
+  });
+
+  const company2 = await prisma.company.create({
+    data: {
+      id: 'cm5b8z9b1c2d3e4f5g6h7i8j', // StartupFlow ID
+      name: 'StartupFlow',
+      slug: 'startupflow',
+      logo: '🚀',
+      plan: 'free',
+      maxUsers: 5,
+      maxStorage: 1000, // 1GB
+    },
+  });
+
+  const company3 = await prisma.company.create({
+    data: {
+      id: 'cm5c8z9b1c2d3e4f5g6h7i8j', // TechSolutions ID
+      name: 'TechSolutions Inc',
+      slug: 'techsolutions',
+      logo: '💻',
+      plan: 'enterprise',
+      maxUsers: 100,
+      maxStorage: 50000, // 50GB
+    },
+  });
+
+  console.log('✅ Created companies');
+
+  // Create users with company associations and predictable IDs
   const user1 = await prisma.user.create({
     data: {
-      email: 'john@example.com',
+      id: 'cm5u8z9b1c2d3e4f5g6h7i8j', // John Doe ID
+      email: 'john@acme.com',
       name: 'John Doe',
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=john',
+      role: 'admin',
+      companyId: company1.id,
     },
   });
 
   const user2 = await prisma.user.create({
     data: {
-      email: 'jane@example.com',
+      id: 'cm5v8z9b1c2d3e4f5g6h7i8j', // Jane Smith ID
+      email: 'jane@acme.com',
       name: 'Jane Smith',
       avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=jane',
+      role: 'member',
+      companyId: company1.id,
     },
   });
 
-  console.log('✅ Created users');
+  // User in different company
+  const user3 = await prisma.user.create({
+    data: {
+      id: 'cm5w8z9b1c2d3e4f5g6h7i8j', // Alice Johnson ID
+      email: 'alice@startupflow.com',
+      name: 'Alice Johnson',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice',
+      role: 'admin',
+      companyId: company2.id,
+    },
+  });
 
-  // Create tags
-  const tags = await Promise.all([
-    prisma.tag.create({ data: { name: 'work', color: '#3b82f6' } }),
-    prisma.tag.create({ data: { name: 'personal', color: '#10b981' } }),
-    prisma.tag.create({ data: { name: 'urgent', color: '#ef4444' } }),
-    prisma.tag.create({ data: { name: 'ideas', color: '#8b5cf6' } }),
-    prisma.tag.create({ data: { name: 'shopping', color: '#f59e0b' } }),
-    prisma.tag.create({ data: { name: 'health', color: '#ec4899' } }),
+  // User in third company
+  const user4 = await prisma.user.create({
+    data: {
+      id: 'cm5x8z9b1c2d3e4f5g6h7i8j', // Bob Wilson ID
+      email: 'bob@techsolutions.com',
+      name: 'Bob Wilson',
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob',
+      role: 'viewer',
+      companyId: company3.id,
+    },
+  });
+
+  console.log('✅ Created users across companies');
+
+  // Create tags for company1 (Acme Corp)
+  const tagsCompany1 = await Promise.all([
+    prisma.tag.create({ data: { name: 'work', color: '#3b82f6', companyId: company1.id } }),
+    prisma.tag.create({ data: { name: 'personal', color: '#10b981', companyId: company1.id } }),
+    prisma.tag.create({ data: { name: 'urgent', color: '#ef4444', companyId: company1.id } }),
+    prisma.tag.create({ data: { name: 'ideas', color: '#8b5cf6', companyId: company1.id } }),
+    prisma.tag.create({ data: { name: 'shopping', color: '#f59e0b', companyId: company1.id } }),
+    prisma.tag.create({ data: { name: 'health', color: '#ec4899', companyId: company1.id } }),
   ]);
 
-  console.log('✅ Created tags');
+  // Create tags for company2 (StartupFlow) - some overlapping, some unique
+  const tagsCompany2 = await Promise.all([
+    prisma.tag.create({ data: { name: 'startup', color: '#06b6d4', companyId: company2.id } }),
+    prisma.tag.create({ data: { name: 'mvp', color: '#f59e0b', companyId: company2.id } }),
+    prisma.tag.create({ data: { name: 'growth', color: '#10b981', companyId: company2.id } }),
+    prisma.tag.create({ data: { name: 'urgent', color: '#ef4444', companyId: company2.id } }),
+  ]);
 
-  // Create lists for user1
+  // Create tags for company3 (TechSolutions)
+  const tagsCompany3 = await Promise.all([
+    prisma.tag.create({ data: { name: 'enterprise', color: '#1f2937', companyId: company3.id } }),
+    prisma.tag.create({ data: { name: 'security', color: '#dc2626', companyId: company3.id } }),
+    prisma.tag.create({ data: { name: 'architecture', color: '#7c3aed', companyId: company3.id } }),
+  ]);
+
+  console.log('✅ Created tags for all companies');
+
+  // Create lists for user1 (Acme Corp)
   const inbox = await prisma.list.create({
     data: {
       name: 'Inbox',
@@ -66,6 +151,7 @@ async function main() {
       color: '#6b7280',
       isDefault: true,
       orderIndex: 0,
+      companyId: company1.id,
       userId: user1.id,
     },
   });
@@ -77,6 +163,7 @@ async function main() {
       icon: '💼',
       color: '#3b82f6',
       orderIndex: 1,
+      companyId: company1.id,
       userId: user1.id,
     },
   });
@@ -88,6 +175,7 @@ async function main() {
       icon: '🏠',
       color: '#10b981',
       orderIndex: 2,
+      companyId: company1.id,
       userId: user1.id,
     },
   });
@@ -99,13 +187,14 @@ async function main() {
       icon: '🚀',
       color: '#8b5cf6',
       orderIndex: 3,
+      companyId: company1.id,
       userId: user1.id,
     },
   });
 
-  console.log('✅ Created lists');
+  console.log('✅ Created lists for Acme Corp');
 
-  // Create todos with various states
+  // Create todos with various states for Acme Corp
   const todo1 = await prisma.todo.create({
     data: {
       title: 'Review quarterly report',
@@ -114,10 +203,11 @@ async function main() {
       priority: TodoPriority.HIGH,
       dueDate: new Date('2024-08-15'),
       orderIndex: 0,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       tags: {
-        connect: [{ id: tags[0].id }, { id: tags[2].id }],
+        connect: [{ id: tagsCompany1[0].id }, { id: tagsCompany1[2].id }],
       },
     },
   });
@@ -130,10 +220,11 @@ async function main() {
       priority: TodoPriority.MEDIUM,
       dueDate: new Date('2024-08-14'),
       orderIndex: 1,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       tags: {
-        connect: [{ id: tags[0].id }],
+        connect: [{ id: tagsCompany1[0].id }],
       },
     },
   });
@@ -147,10 +238,11 @@ async function main() {
       priority: TodoPriority.URGENT,
       dueDate: new Date('2024-08-20'),
       orderIndex: 2,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       tags: {
-        connect: [{ id: tags[0].id }, { id: tags[2].id }],
+        connect: [{ id: tagsCompany1[0].id }, { id: tagsCompany1[2].id }],
       },
     },
   });
@@ -164,6 +256,7 @@ async function main() {
       priority: TodoPriority.MEDIUM,
       completedAt: new Date('2024-08-10'),
       orderIndex: 0,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       parentId: mainTodo.id,
@@ -177,6 +270,7 @@ async function main() {
       status: TodoStatus.IN_PROGRESS,
       priority: TodoPriority.HIGH,
       orderIndex: 1,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       parentId: mainTodo.id,
@@ -190,186 +284,56 @@ async function main() {
       status: TodoStatus.TODO,
       priority: TodoPriority.HIGH,
       orderIndex: 2,
+      companyId: company1.id,
       listId: workList.id,
       userId: user1.id,
       parentId: mainTodo.id,
     },
   });
 
-  // Personal todos
-  await prisma.todo.create({
-    data: {
-      title: 'Grocery shopping',
-      description: 'Buy groceries for the week',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.MEDIUM,
-      dueDate: new Date('2024-08-13'),
-      orderIndex: 0,
-      listId: personalList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[1].id }, { id: tags[4].id }],
+  // More todos for Acme Corp (company1)
+  await Promise.all([
+    // Personal todos for user1
+    prisma.todo.create({
+      data: {
+        title: 'Grocery shopping',
+        description: 'Buy groceries for the week',
+        status: TodoStatus.TODO,
+        priority: TodoPriority.MEDIUM,
+        dueDate: new Date('2024-08-13'),
+        orderIndex: 0,
+        companyId: company1.id,
+        listId: personalList.id,
+        userId: user1.id,
+        tags: { connect: [{ id: tagsCompany1[1].id }, { id: tagsCompany1[4].id }] },
       },
-    },
-  });
-
-  await prisma.todo.create({
-    data: {
-      title: 'Doctor appointment',
-      description: 'Annual checkup at 2 PM',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.HIGH,
-      dueDate: new Date('2024-08-18'),
-      orderIndex: 1,
-      listId: personalList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[1].id }, { id: tags[5].id }],
+    }),
+    
+    // Inbox item
+    prisma.todo.create({
+      data: {
+        title: 'Review new proposal',
+        description: 'Check the new project proposal from client',
+        status: TodoStatus.TODO,
+        priority: TodoPriority.MEDIUM,
+        orderIndex: 0,
+        companyId: company1.id,
+        listId: inbox.id,
+        userId: user1.id,
       },
-    },
-  });
+    }),
+  ]);
 
-  await prisma.todo.create({
-    data: {
-      title: 'Call mom',
-      description: "It's her birthday!",
-      status: TodoStatus.TODO,
-      priority: TodoPriority.URGENT,
-      dueDate: new Date('2024-08-14'),
-      orderIndex: 2,
-      listId: personalList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[1].id }],
-      },
-    },
-  });
-
-  // Completed todos
-  await prisma.todo.create({
-    data: {
-      title: 'Submit expense report',
-      description: 'Submit Q3 expense report',
-      status: TodoStatus.COMPLETED,
-      priority: TodoPriority.MEDIUM,
-      completedAt: new Date('2024-08-05'),
-      orderIndex: 3,
-      listId: workList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[0].id }],
-      },
-    },
-  });
-
-  await prisma.todo.create({
-    data: {
-      title: 'Book flight tickets',
-      description: 'Book tickets for conference',
-      status: TodoStatus.COMPLETED,
-      priority: TodoPriority.HIGH,
-      completedAt: new Date('2024-08-08'),
-      orderIndex: 3,
-      listId: personalList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[1].id }],
-      },
-    },
-  });
-
-  // Archived todos
-  await prisma.todo.create({
-    data: {
-      title: 'Old project cleanup',
-      description: 'Archive old project files',
-      status: TodoStatus.CANCELLED,
-      priority: TodoPriority.LOW,
-      orderIndex: 99,
-      isArchived: true,
-      listId: workList.id,
-      userId: user1.id,
-    },
-  });
-
-  // Inbox items
-  await prisma.todo.create({
-    data: {
-      title: 'Review new proposal',
-      description: 'Check the new project proposal from client',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.MEDIUM,
-      orderIndex: 0,
-      listId: inbox.id,
-      userId: user1.id,
-    },
-  });
-
-  await prisma.todo.create({
-    data: {
-      title: 'Research new framework',
-      description: 'Look into the new React features',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.LOW,
-      orderIndex: 1,
-      listId: inbox.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[3].id }],
-      },
-    },
-  });
-
-  // Project todos
-  await prisma.todo.create({
-    data: {
-      title: 'Setup CI/CD pipeline',
-      description: 'Configure GitHub Actions for automated deployment',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.HIGH,
-      orderIndex: 0,
-      listId: projectList.id,
-      userId: user1.id,
-      tags: {
-        connect: [{ id: tags[0].id }],
-      },
-    },
-  });
-
-  await prisma.todo.create({
-    data: {
-      title: 'Design database schema',
-      description: 'Create Prisma schema for the new features',
-      status: TodoStatus.COMPLETED,
-      priority: TodoPriority.HIGH,
-      completedAt: new Date('2024-08-09'),
-      orderIndex: 1,
-      listId: projectList.id,
-      userId: user1.id,
-    },
-  });
-
-  await prisma.todo.create({
-    data: {
-      title: 'Implement authentication',
-      description: 'Add user authentication with NextAuth',
-      status: TodoStatus.IN_PROGRESS,
-      priority: TodoPriority.URGENT,
-      orderIndex: 2,
-      listId: projectList.id,
-      userId: user1.id,
-    },
-  });
-
-  // Create a few todos for user2
+  // Create list and todos for user2 (also in Acme Corp)
   const user2List = await prisma.list.create({
     data: {
-      name: 'My Tasks',
-      description: 'Personal task list',
-      icon: '📝',
+      name: 'Marketing Tasks',
+      description: 'Marketing and outreach tasks',
+      icon: '📢',
       color: '#06b6d4',
       isDefault: true,
       orderIndex: 0,
+      companyId: company1.id,
       userId: user2.id,
     },
   });
@@ -382,31 +346,129 @@ async function main() {
       priority: TodoPriority.HIGH,
       dueDate: new Date('2024-08-16'),
       orderIndex: 0,
+      companyId: company1.id,
       listId: user2List.id,
       userId: user2.id,
-      tags: {
-        connect: [{ id: tags[0].id }],
-      },
+      tags: { connect: [{ id: tagsCompany1[0].id }] },
     },
   });
 
-  await prisma.todo.create({
+  console.log('✅ Created todos for Acme Corp users');
+
+  // Create data for StartupFlow (company2)
+  const startupList = await prisma.list.create({
     data: {
-      title: 'Code review',
-      description: 'Review PRs from the team',
-      status: TodoStatus.TODO,
-      priority: TodoPriority.MEDIUM,
-      orderIndex: 1,
-      listId: user2List.id,
-      userId: user2.id,
-      tags: {
-        connect: [{ id: tags[0].id }],
-      },
+      name: 'MVP Development',
+      description: 'Tasks for building our MVP',
+      icon: '🚀',
+      color: '#f59e0b',
+      isDefault: true,
+      orderIndex: 0,
+      companyId: company2.id,
+      userId: user3.id,
     },
   });
 
-  console.log('✅ Created todos with subtasks and tags');
-  console.log('🎉 Seed completed successfully!');
+  await Promise.all([
+    prisma.todo.create({
+      data: {
+        title: 'Define product requirements',
+        description: 'Create detailed PRD for MVP features',
+        status: TodoStatus.COMPLETED,
+        priority: TodoPriority.HIGH,
+        completedAt: new Date('2024-08-05'),
+        orderIndex: 0,
+        companyId: company2.id,
+        listId: startupList.id,
+        userId: user3.id,
+        tags: { connect: [{ id: tagsCompany2[1].id }] },
+      },
+    }),
+    prisma.todo.create({
+      data: {
+        title: 'Setup development environment',
+        description: 'Configure Next.js, database, and deployment',
+        status: TodoStatus.IN_PROGRESS,
+        priority: TodoPriority.URGENT,
+        orderIndex: 1,
+        companyId: company2.id,
+        listId: startupList.id,
+        userId: user3.id,
+        tags: { connect: [{ id: tagsCompany2[0].id }, { id: tagsCompany2[3].id }] },
+      },
+    }),
+    prisma.todo.create({
+      data: {
+        title: 'User research interviews',
+        description: 'Conduct 10 user interviews for validation',
+        status: TodoStatus.TODO,
+        priority: TodoPriority.MEDIUM,
+        orderIndex: 2,
+        companyId: company2.id,
+        listId: startupList.id,
+        userId: user3.id,
+        tags: { connect: [{ id: tagsCompany2[2].id }] },
+      },
+    }),
+  ]);
+
+  console.log('✅ Created todos for StartupFlow');
+
+  // Create data for TechSolutions (company3) 
+  const enterpriseList = await prisma.list.create({
+    data: {
+      name: 'Security Audit',
+      description: 'Annual security compliance tasks',
+      icon: '🔒',
+      color: '#dc2626',
+      isDefault: true,
+      orderIndex: 0,
+      companyId: company3.id,
+      userId: user4.id,
+    },
+  });
+
+  await Promise.all([
+    prisma.todo.create({
+      data: {
+        title: 'Review access controls',
+        description: 'Audit user permissions and access levels',
+        status: TodoStatus.TODO,
+        priority: TodoPriority.HIGH,
+        orderIndex: 0,
+        companyId: company3.id,
+        listId: enterpriseList.id,
+        userId: user4.id,
+        tags: { connect: [{ id: tagsCompany3[1].id }] },
+      },
+    }),
+    prisma.todo.create({
+      data: {
+        title: 'Update system architecture docs',
+        description: 'Document current microservices architecture',
+        status: TodoStatus.IN_PROGRESS,
+        priority: TodoPriority.MEDIUM,
+        orderIndex: 1,
+        companyId: company3.id,
+        listId: enterpriseList.id,
+        userId: user4.id,
+        tags: { connect: [{ id: tagsCompany3[2].id }] },
+      },
+    }),
+  ]);
+
+  console.log('✅ Created todos for TechSolutions');
+  console.log('🎉 Multi-tenant seed completed successfully!');
+  
+  // Log summary of created data
+  const stats = {
+    companies: await prisma.company.count(),
+    users: await prisma.user.count(), 
+    lists: await prisma.list.count(),
+    todos: await prisma.todo.count(),
+    tags: await prisma.tag.count(),
+  };
+  console.log('📊 Created:', stats);
 }
 
 main()

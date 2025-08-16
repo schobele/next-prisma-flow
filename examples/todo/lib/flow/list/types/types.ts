@@ -29,6 +29,9 @@ export type ListWhereUniqueInput = Prisma.ListWhereUniqueInput;
 export type ListOrderByInput = Prisma.ListOrderByWithRelationInput;
 
 // Relation type helpers
+export type ListWithCompany = ListWithRelations & {
+  company: NonNullable<ListWithRelations["company"]>;
+};
 export type ListWithUser = ListWithRelations & {
   user: NonNullable<ListWithRelations["user"]>;
 };

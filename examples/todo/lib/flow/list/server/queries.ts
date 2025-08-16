@@ -86,6 +86,7 @@ export const searchLists = cacheTagged(async function (
           { description: { contains: query, mode: "insensitive" as const } },
           { color: { contains: query, mode: "insensitive" as const } },
           { icon: { contains: query, mode: "insensitive" as const } },
+          { companyId: { contains: query, mode: "insensitive" as const } },
           { userId: { contains: query, mode: "insensitive" as const } },
         ],
       },

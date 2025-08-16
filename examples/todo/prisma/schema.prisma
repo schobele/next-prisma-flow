@@ -11,14 +11,22 @@ generator flow {
   output   = "../lib/flow"
   models   = "all"
   prismaImport = "../prisma"
+  tenantField = "companyId"
   
-  // Select configurations
-  userSelect = ["id", "email", "name", "avatar", "createdAt", "lists", "todos"]
-  listSelect = ["id", "name", "description", "color", "icon", "orderIndex", "isDefault", "createdAt", "todos", "user"]
-  todoSelect = ["id", "title", "description", "status", "priority", "dueDate", "completedAt", "orderIndex", "isArchived", "createdAt", "updatedAt", "list", "tags", "subtasks", "parent", "user"]
-  tagSelect = ["id", "name", "color", "createdAt", "todos"]
+  // Select configurations with company relations
+  companySelect = ["id", "name", "slug", "logo", "plan", "maxUsers", "maxStorage", "createdAt", "users", "lists", "todos", "tags"]
+  userSelect = ["id", "email", "name", "avatar", "role", "companyId", "createdAt", "company", "lists", "todos"]
+  listSelect = ["id", "name", "description", "color", "icon", "orderIndex", "isDefault", "companyId", "createdAt", "company", "todos", "user"]
+  todoSelect = ["id", "title", "description", "status", "priority", "dueDate", "completedAt", "orderIndex", "isArchived", "companyId", "createdAt", "updatedAt", "company", "list", "tags", "subtasks", "parent", "user"]
+  tagSelect = ["id", "name", "color", "companyId", "createdAt", "company", "todos"]
   
   // Relation configurations
+  companyUsersLimit = 100
+  companyUsersOrder = "{ createdAt: 'desc' }"
+  companyListsLimit = 100
+  companyListsOrder = "{ createdAt: 'desc' }"
+  companyTodosLimit = 1000
+  companyTodosOrder = "{ createdAt: 'desc' }"
   listTodosLimit = 100
   listTodosOrder = "{ orderIndex: 'asc' }"
   todoSubtasksLimit = 50
@@ -37,11 +45,33 @@ datasource db {
 // We'll enforce these values through validation in the application layer
 
 // Models
+model Company {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logo        String?
+  plan        String   @default("free") // free, pro, enterprise
+  maxUsers    Int      @default(5)
+  maxStorage  Int      @default(1000) // MB
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users       User[]
+  lists       List[]
+  todos       Todo[]
+  tags        Tag[]
+  
+  @@index([slug])
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
   avatar    String?
+  role      String   @default("member") // admin, member, viewer
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -49,6 +79,8 @@ model User {
   todos     Todo[]
   
   @@index([email])
+  @@index([companyId])
+  @@unique([companyId, email])
 }
 
 model List {
@@ -59,6 +91,8 @@ model List {
   icon        String   @default("📋")
   orderIndex  Int      @default(0)
   isDefault   Boolean  @default(false)
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
@@ -67,7 +101,8 @@ model List {
   
   todos       Todo[]
   
-  @@unique([userId, name])
+  @@unique([companyId, name])
+  @@index([companyId])
   @@index([userId])
   @@index([orderIndex])
 }
@@ -82,6 +117,8 @@ model Todo {
   completedAt DateTime?
   orderIndex  Int          @default(0)
   isArchived  Boolean      @default(false)
+  companyId   String
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   
@@ -97,6 +134,7 @@ model Todo {
   
   tags        Tag[]
   
+  @@index([companyId])
   @@index([listId])
   @@index([userId])
   @@index([status])
@@ -108,12 +146,16 @@ model Todo {
 
 model Tag {
   id        String   @id @default(cuid())
-  name      String   @unique
+  name      String
   color     String   @default("#6b7280") // Default gray color
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
   todos     Todo[]
   
+  @@unique([companyId, name])
+  @@index([companyId])
   @@index([name])
 }
