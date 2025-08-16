@@ -2,23 +2,19 @@
 // file: types/types.ts
 
 import type { Prisma } from "../../prisma";
-import type {
-  CompanyDeepSelect,
-  CompanyListSelect,
-  CompanyShallowSelect,
-} from "../server/selects";
+import type { CompanySelect, CompanyScalarSelect } from "../server/selects";
 
 // Type aliases for Company with different select levels
 export type CompanyWithRelations = Prisma.CompanyGetPayload<{
-  select: typeof CompanyDeepSelect;
+  select: typeof CompanySelect;
 }>;
 
 export type CompanyListItem = Prisma.CompanyGetPayload<{
-  select: typeof CompanyListSelect;
+  select: typeof CompanySelect;
 }>;
 
 export type CompanyShallow = Prisma.CompanyGetPayload<{
-  select: typeof CompanyShallowSelect;
+  select: typeof CompanyScalarSelect;
 }>;
 
 // Input type helpers

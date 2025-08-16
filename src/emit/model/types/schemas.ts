@@ -517,9 +517,9 @@ function generateCreateSchemas(
       // Skip auto-generated fields
       if (field.isId || field.isGenerated || field.isUpdatedAt) {
         if (!field.hasDefaultValue) continue;
-        lines.push(`  ${field.name}: ${generateScalarZod(field, true)},`);
+        lines.push(`  ${field.name}: ${generateScalarZod(field, true, ctx.cfg.tenantField)},`);
       } else {
-        lines.push(`  ${field.name}: ${generateScalarZod(field, true)},`);
+        lines.push(`  ${field.name}: ${generateScalarZod(field, true, ctx.cfg.tenantField)},`);
       }
     }
   }
@@ -533,7 +533,7 @@ function generateCreateSchemas(
       
       // Only add if not already added above
       if (scalarField && !fields.includes(scalarField)) {
-        lines.push(`  ${foreignKeyField}: ${generateScalarZod(scalarField, true)},`);
+        lines.push(`  ${foreignKeyField}: ${generateScalarZod(scalarField, true, ctx.cfg.tenantField)},`);
       }
     }
   }
@@ -598,9 +598,9 @@ function generateCreateSchemas(
     if (isScalar(field) || isEnum(field)) {
       if (field.isId || field.isGenerated || field.isUpdatedAt) {
         if (!field.hasDefaultValue) continue;
-        lines.push(`  ${field.name}: ${generateScalarZod(field, true)},`);
+        lines.push(`  ${field.name}: ${generateScalarZod(field, true, ctx.cfg.tenantField)},`);
       } else {
-        lines.push(`  ${field.name}: ${generateScalarZod(field, true)},`);
+        lines.push(`  ${field.name}: ${generateScalarZod(field, true, ctx.cfg.tenantField)},`);
       }
     }
   }
@@ -646,9 +646,9 @@ function generateNestedCreateSchemas(
       if (isScalar(targetField) || isEnum(targetField)) {
         if (targetField.isId || targetField.isGenerated || targetField.isUpdatedAt) {
           if (!targetField.hasDefaultValue) continue;
-          lines.push(`  ${targetField.name}: ${generateScalarZod(targetField, true)},`);
+          lines.push(`  ${targetField.name}: ${generateScalarZod(targetField, true, ctx.cfg.tenantField)},`);
         } else {
-          lines.push(`  ${targetField.name}: ${generateScalarZod(targetField, true)},`);
+          lines.push(`  ${targetField.name}: ${generateScalarZod(targetField, true, ctx.cfg.tenantField)},`);
         }
       }
     }

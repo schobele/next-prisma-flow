@@ -137,10 +137,9 @@ export async function canTodo(
       };
 
     case "create":
-      // For creates, let transform handle relation and policy handle where filtering for now
       return {
         ok: true,
-        data: {},
+        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
       };
 
     case "update":

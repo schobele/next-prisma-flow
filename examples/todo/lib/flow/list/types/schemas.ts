@@ -252,7 +252,7 @@ const ListCreateTodosInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -302,7 +302,7 @@ const ListCreateUserInputSchema = z.object({
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
   role: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -339,7 +339,7 @@ export const ListCreateSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   userId: z.string(),
   company: z
@@ -406,7 +406,7 @@ export const ListCreateManyInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
 });
 

@@ -2,23 +2,19 @@
 // file: types/types.ts
 
 import type { Prisma } from "../../prisma";
-import type {
-  TagDeepSelect,
-  TagListSelect,
-  TagShallowSelect,
-} from "../server/selects";
+import type { TagSelect, TagScalarSelect } from "../server/selects";
 
 // Type aliases for Tag with different select levels
 export type TagWithRelations = Prisma.TagGetPayload<{
-  select: typeof TagDeepSelect;
+  select: typeof TagSelect;
 }>;
 
 export type TagListItem = Prisma.TagGetPayload<{
-  select: typeof TagListSelect;
+  select: typeof TagSelect;
 }>;
 
 export type TagShallow = Prisma.TagGetPayload<{
-  select: typeof TagShallowSelect;
+  select: typeof TagScalarSelect;
 }>;
 
 // Input type helpers

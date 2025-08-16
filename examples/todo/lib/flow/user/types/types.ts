@@ -2,23 +2,19 @@
 // file: types/types.ts
 
 import type { Prisma } from "../../prisma";
-import type {
-  UserDeepSelect,
-  UserListSelect,
-  UserShallowSelect,
-} from "../server/selects";
+import type { UserSelect, UserScalarSelect } from "../server/selects";
 
 // Type aliases for User with different select levels
 export type UserWithRelations = Prisma.UserGetPayload<{
-  select: typeof UserDeepSelect;
+  select: typeof UserSelect;
 }>;
 
 export type UserListItem = Prisma.UserGetPayload<{
-  select: typeof UserListSelect;
+  select: typeof UserSelect;
 }>;
 
 export type UserShallow = Prisma.UserGetPayload<{
-  select: typeof UserShallowSelect;
+  select: typeof UserScalarSelect;
 }>;
 
 // Input type helpers

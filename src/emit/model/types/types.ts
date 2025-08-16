@@ -17,26 +17,25 @@ export async function emitTypesTypes({
   content.push(header("types/types.ts"));
   content.push(impType("../../prisma", ["Prisma"]));
   content.push(impType("../server/selects", [
-    `${model.name}DeepSelect`,
-    `${model.name}ListSelect`,
-    `${model.name}ShallowSelect`,
+    `${model.name}Select`,
+    `${model.name}ScalarSelect`,
   ]));
   content.push("");
 
   // Type aliases for Prisma payloads
   content.push(`// Type aliases for ${model.name} with different select levels`);
   content.push(`export type ${model.name}WithRelations = Prisma.${model.name}GetPayload<{`);
-  content.push(`  select: typeof ${model.name}DeepSelect;`);
+  content.push(`  select: typeof ${model.name}Select;`);
   content.push(`}>;`);
   content.push("");
 
   content.push(`export type ${model.name}ListItem = Prisma.${model.name}GetPayload<{`);
-  content.push(`  select: typeof ${model.name}ListSelect;`);
+  content.push(`  select: typeof ${model.name}Select;`);
   content.push(`}>;`);
   content.push("");
 
   content.push(`export type ${model.name}Shallow = Prisma.${model.name}GetPayload<{`);
-  content.push(`  select: typeof ${model.name}ShallowSelect;`);
+  content.push(`  select: typeof ${model.name}ScalarSelect;`);
   content.push(`}>;`);
   content.push("");
 

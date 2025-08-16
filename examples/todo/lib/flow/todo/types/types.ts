@@ -2,23 +2,19 @@
 // file: types/types.ts
 
 import type { Prisma } from "../../prisma";
-import type {
-  TodoDeepSelect,
-  TodoListSelect,
-  TodoShallowSelect,
-} from "../server/selects";
+import type { TodoSelect, TodoScalarSelect } from "../server/selects";
 
 // Type aliases for Todo with different select levels
 export type TodoWithRelations = Prisma.TodoGetPayload<{
-  select: typeof TodoDeepSelect;
+  select: typeof TodoSelect;
 }>;
 
 export type TodoListItem = Prisma.TodoGetPayload<{
-  select: typeof TodoListSelect;
+  select: typeof TodoSelect;
 }>;
 
 export type TodoShallow = Prisma.TodoGetPayload<{
-  select: typeof TodoShallowSelect;
+  select: typeof TodoScalarSelect;
 }>;
 
 // Input type helpers

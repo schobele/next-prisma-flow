@@ -214,7 +214,7 @@ const CompanyCreateUsersInputSchema = z.object({
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
   role: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -251,7 +251,7 @@ const CompanyCreateListsInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -285,7 +285,7 @@ const CompanyCreateTodosInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -333,7 +333,7 @@ const CompanyCreateTagsInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   color: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({

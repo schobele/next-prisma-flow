@@ -13,7 +13,9 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "prepublishOnly": "npm run build"
+    "build:bundle": "bun build ./src/index.ts --outfile=dist/generator.min.js --target=node --minify --external=@prisma/generator-helper --external=@prisma/internals",
+    "build:all": "npm run build && npm run build:bundle",
+    "prepublishOnly": "npm run build:all"
   },
   "dependencies": {
     "@prisma/generator-helper": "^5.15.0",

@@ -11,7 +11,7 @@ import {
 	Trash2Icon,
 	XIcon,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useTenant, useUser } from "@/lib/auth-context";
 import { useFlowCtx } from "@/lib/flow/core/provider";
 import { useListList } from "@/lib/flow/list/client/hooks";
 import { useTagList } from "@/lib/flow/tag/client/hooks";
@@ -56,7 +57,6 @@ import {
 import type { TodoListParams } from "@/lib/flow/todo/server/queries";
 import type { FlowTodo } from "@/lib/flow/todo/types/schemas";
 import { cn } from "@/lib/utils";
-import { useTenant, useUser } from "@/lib/auth-context";
 
 // Constants for status and priority
 const TodoStatus = {
@@ -222,30 +222,32 @@ export default function TodoApp() {
 
 	// Only create edit form when we have a todo to edit
 	const { form: editForm, reset: resetEditForm } = useTodoForm(
-		editingTodo ? {
-			id: editingTodo.id,
-			autosave: {
-				enabled: true,
-				debounceMs: 1000,
-				fields: ["title", "description", "status", "priority"],
-				onFieldSave: (field) => {
-					toast.success(`${field} saved`);
-					refetchTodos();
+		editingTodo
+			? {
+					id: editingTodo.id,
+					autosave: {
+						enabled: true,
+						debounceMs: 1000,
+						fields: ["title", "description", "status", "priority"],
+						onFieldSave: (field) => {
+							toast.success(`${field} saved`);
+							refetchTodos();
+						},
+						onFieldError: (field, error) => {
+							if (error.message?.includes("not found")) {
+								toast.error("Task no longer exists");
+								setEditingTodo(null);
+							} else {
+								toast.error(`Failed to save ${field}`);
+							}
+						},
+					},
+				}
+			: {
+					// Provide a dummy config when not editing to avoid hook issues
+					id: undefined,
+					autosave: undefined,
 				},
-				onFieldError: (field, error) => {
-					if (error.message?.includes("not found")) {
-						toast.error("Task no longer exists");
-						setEditingTodo(null);
-					} else {
-						toast.error(`Failed to save ${field}`);
-					}
-				},
-			},
-		} : {
-			// Provide a dummy config when not editing to avoid hook issues
-			id: undefined,
-			autosave: undefined,
-		}
 	);
 
 	// Reset edit form when switching to a different todo
@@ -260,15 +262,19 @@ export default function TodoApp() {
 			todo.status === TodoStatus.COMPLETED
 				? TodoStatus.TODO
 				: TodoStatus.COMPLETED;
-		
+
 		// Create a temporary update mutation for this specific todo
 		const { updateTodo } = await import("@/lib/flow/todo/server/actions");
-		
-		await updateTodo(todo.id, {
-			status: newStatus,
-			completedAt: newStatus === TodoStatus.COMPLETED ? new Date() : null,
-		}, flowCtx);
-		
+
+		await updateTodo(
+			todo.id,
+			{
+				status: newStatus,
+				completedAt: newStatus === TodoStatus.COMPLETED ? new Date() : null,
+			},
+			flowCtx,
+		);
+
 		toast.success("Task updated successfully");
 		refetchTodos();
 	};
@@ -287,7 +293,6 @@ export default function TodoApp() {
 			description: formData.description || undefined,
 			priority: formData.priority || TodoPriority.MEDIUM,
 			status: TodoStatus.TODO,
-			companyId: tenant?.tenantId || "",
 			listId: activeListId || defaultList?.id || "",
 			userId: userId,
 		});
@@ -648,8 +653,8 @@ export default function TodoApp() {
 			</div>
 
 			{/* Edit Dialog with Autosave */}
-			<Dialog 
-				open={!!editingTodo} 
+			<Dialog
+				open={!!editingTodo}
 				onOpenChange={(open) => {
 					if (!open) {
 						setEditingTodo(null);

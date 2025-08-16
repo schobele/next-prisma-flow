@@ -347,7 +347,7 @@ const TodoCreateListInputSchema = z.object({
   icon: z.string().optional(),
   orderIndex: z.number().int().optional(),
   isDefault: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -375,7 +375,7 @@ const TodoCreateTagsInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   color: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -404,7 +404,7 @@ const TodoCreateSubtasksInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -458,7 +458,7 @@ const TodoCreateParentInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -508,7 +508,7 @@ const TodoCreateUserInputSchema = z.object({
   name: z.string().optional().nullable(),
   avatar: z.string().optional().nullable(),
   role: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -547,7 +547,7 @@ export const TodoCreateSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   listId: z.string(),
   userId: z.string(),
@@ -669,7 +669,7 @@ export const TodoCreateManyInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
 });
 

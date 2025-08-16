@@ -216,7 +216,7 @@ const TagCreateTodosInputSchema = z.object({
   completedAt: z.date().optional().nullable(),
   orderIndex: z.number().int().optional(),
   isArchived: z.boolean().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -264,7 +264,7 @@ export const TagCreateSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   color: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
   company: z
     .object({
@@ -311,7 +311,7 @@ export const TagCreateManyInputSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   color: z.string().optional(),
-  companyId: z.string(),
+  companyId: z.string().optional(),
   createdAt: z.date().optional(),
 });
 

@@ -38,12 +38,18 @@ export function getSelectConfig(
 }
 
 // Generate Zod type for a scalar field
-export function generateScalarZod(field: DMMF.Field, forCreate: boolean = false): string {
+export function generateScalarZod(field: DMMF.Field, forCreate: boolean = false, tenantField?: string): string {
   if (isScalar(field)) {
     const baseType = getBaseZodType(field.type as string);
     
     // For create operations
     if (forCreate) {
+      // Tenant field is always optional in create/update schemas
+      // since it's injected by the policy layer
+      if (tenantField && field.name === tenantField) {
+        return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional()`;
+      }
+      
       // Auto-generated fields are always optional
       if (field.isId || field.isGenerated || field.isUpdatedAt) {
         return field.isList ? `z.array(${baseType}).optional()` : `${baseType}.optional()`;
