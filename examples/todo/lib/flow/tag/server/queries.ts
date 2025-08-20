@@ -8,6 +8,7 @@ import { cacheTagged, FlowCtx, FlowPolicyError } from "../../core";
 import { canTag } from "../../policies";
 import { TagSelect } from "./selects";
 import type { Prisma } from "../../prisma";
+import type { FlowTag } from "../types/schemas";
 
 // Transform Prisma response to match FlowTag schema (null -> undefined for relations)
 function transformResponse(item: any): any {
@@ -23,16 +24,16 @@ function transformResponseList(items: any[]): any[] {
 export const getTagById = cacheTagged(async function (
   id: string,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag | null> {
   const policy = await canTag("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const item = await prisma.tag.findUnique({
+  const item = (await prisma.tag.findUnique({
     where: { id: id, ...policy.where },
     select: TagSelect,
-  });
+  })) as FlowTag | null;
 
-  return transformResponse(item);
+  return transformResponse(item) as FlowTag | null;
 });
 
 export type TagListParams = {
@@ -48,7 +49,7 @@ export type TagListParams = {
 export const listTags = cacheTagged(async function (
   params: TagListParams = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowTag[]; total: number }> {
   const policy = await canTag("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,18 +63,18 @@ export const listTags = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: TagSelect,
-    }),
+    }) as Promise<FlowTag[]>,
     prisma.tag.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowTag[], total };
 });
 
 export const searchTags = cacheTagged(async function (
   query: string,
   params: Omit<TagListParams, "where"> = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowTag[]; total: number }> {
   const policy = await canTag("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -98,9 +99,9 @@ export const searchTags = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: TagSelect,
-    }),
+    }) as Promise<FlowTag[]>,
     prisma.tag.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowTag[], total };
 });

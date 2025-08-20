@@ -8,6 +8,7 @@ import { cacheTagged, FlowCtx, FlowPolicyError } from "../../core";
 import { canTodo } from "../../policies";
 import { TodoSelect } from "./selects";
 import type { Prisma } from "../../prisma";
+import type { FlowTodo } from "../types/schemas";
 
 // Transform Prisma response to match FlowTodo schema (null -> undefined for relations)
 function transformResponse(item: any): any {
@@ -24,16 +25,16 @@ function transformResponseList(items: any[]): any[] {
 export const getTodoById = cacheTagged(async function (
   id: string,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo | null> {
   const policy = await canTodo("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const item = await prisma.todo.findUnique({
+  const item = (await prisma.todo.findUnique({
     where: { id: id, ...policy.where },
     select: TodoSelect,
-  });
+  })) as FlowTodo | null;
 
-  return transformResponse(item);
+  return transformResponse(item) as FlowTodo | null;
 });
 
 export type TodoListParams = {
@@ -49,7 +50,7 @@ export type TodoListParams = {
 export const listTodos = cacheTagged(async function (
   params: TodoListParams = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowTodo[]; total: number }> {
   const policy = await canTodo("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -63,18 +64,18 @@ export const listTodos = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: TodoSelect,
-    }),
+    }) as Promise<FlowTodo[]>,
     prisma.todo.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowTodo[], total };
 });
 
 export const searchTodos = cacheTagged(async function (
   query: string,
   params: Omit<TodoListParams, "where"> = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowTodo[]; total: number }> {
   const policy = await canTodo("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -104,9 +105,9 @@ export const searchTodos = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: TodoSelect,
-    }),
+    }) as Promise<FlowTodo[]>,
     prisma.todo.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowTodo[], total };
 });

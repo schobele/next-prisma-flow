@@ -2,7 +2,9 @@
 // file: core/ctx.ts
 
 export type FlowCtx = {
-  user?: { id: string; roles?: string[] } | null;
-  tenantId?: string | null; // value that should match the DB's companyId column on your models
+  userId?: string | null;
+  tenantId?: string | null; // ID of the Company for tenant isolation (matches companyId in DB)
+  role?: string | null;
+  roles?: string[] | null; // For multi-role support
 };
 export type CtxProvider = () => Promise<FlowCtx> | FlowCtx;

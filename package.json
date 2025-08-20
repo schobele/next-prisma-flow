@@ -13,15 +13,17 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "build:bundle": "bun build ./src/index.ts --outfile=dist/generator.min.js --target=node --minify --external=@prisma/generator-helper --external=@prisma/internals",
+    "build:bundle": "bun build --target=node --outfile=dist/generator.min.js dist/index.js",
     "build:all": "npm run build && npm run build:bundle",
     "prepublishOnly": "npm run build:all"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.1",
     "@prisma/generator-helper": "^5.15.0",
     "@prisma/internals": "^5.15.0",
     "@types/node": "^24.2.1",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "react-hook-form": "^7.62.0"
   },
   "peerDependencies": {
     "@prisma/client": ">=5.0.0"

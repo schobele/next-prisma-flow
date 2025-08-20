@@ -7,7 +7,8 @@ export type FlowConfig = {
   perModelSelect: Record<string, string[]>; 
   perRelationLimit: Record<string, number>; 
   perRelationOrder: Record<string, string>; 
-  tenantField?: string; // DB field name used for tenancy scoping (e.g., tenantId, orgId, companyId)
+  tenantField?: string; // DB field name used for tenancy scoping (e.g., tenantId, orgId, companyId, company_id)
+  tenantModel?: string; // Model name that represents the tenant (e.g., Company, Organization, Tenant)
 };
 
 const DEFAULT_LIMIT = 50;
@@ -67,6 +68,7 @@ export function parseConfig(opts: GeneratorOptions): FlowConfig {
     perRelationLimit,
     perRelationOrder,
     tenantField: getString(c.tenantField) || "tenantId",
+    tenantModel: getString(c.tenantModel),
   };
   return parsed;
 }

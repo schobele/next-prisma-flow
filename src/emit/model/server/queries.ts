@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { DMMF } from "@prisma/generator-helper";
 import type { FlowConfig } from "../../../config";
 import { write } from "../../fs";
-import { header, imp, impType } from "../../strings";
+import { header, imp, impType, toCamelCase } from "../../strings";
 import { isRelation } from "../../../dmmf";
 
 export async function emitServerQueries({
@@ -14,7 +14,7 @@ export async function emitServerQueries({
   model: DMMF.Model;
   cfg: FlowConfig;
 }) {
-  const modelLower = model.name.toLowerCase();
+  const modelCamel = toCamelCase(model.name);
   const idField = model.fields.find((f) => f.isId);
   const idType = idField?.type === "String" ? "string" : "number";
 
@@ -32,6 +32,7 @@ export async function emitServerQueries({
   }
   
   content.push(impType("../../prisma", ["Prisma"]));
+  content.push(impType("../types/schemas", [`Flow${model.name}`]));
   content.push(``);
   
   // Helper to transform Prisma response to match schema types
@@ -59,20 +60,20 @@ export async function emitServerQueries({
   content.push(`export const get${model.name}ById = cacheTagged(async function (`);
   content.push(`  id: ${idType},`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name} | null> {`);
   content.push(`  const policy = await can${model.name}("read", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  const item = await prisma.${modelLower}.findUnique({`);
+  content.push(`  const item = await prisma.${modelCamel}.findUnique({`);
   content.push(`    where: { ${idField?.name || "id"}: id, ...policy.where },`);
   
   if (cfg.perModelSelect[model.name]) {
     content.push(`    select: ${model.name}Select`);
   }
   
-  content.push(`  });`);
+  content.push(`  }) as Flow${model.name} | null;`);
   content.push(``);
-  content.push(`  return transformResponse(item);`);
+  content.push(`  return transformResponse(item) as Flow${model.name} | null;`);
   content.push(`});`);
   content.push(``);
 
@@ -90,14 +91,14 @@ export async function emitServerQueries({
   content.push(`export const list${model.name}s = cacheTagged(async function (`);
   content.push(`  params: ${model.name}ListParams = {},`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<{ items: Flow${model.name}[]; total: number }> {`);
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   content.push(`  const where = { ...params.where, ...policy.where };`);
   content.push(``);
   content.push(`  const [items, total] = await Promise.all([`);
-  content.push(`    prisma.${modelLower}.findMany({`);
+  content.push(`    prisma.${modelCamel}.findMany({`);
   content.push(`      where,`);
   content.push(`      orderBy: params.orderBy,`);
   content.push(`      skip: params.skip,`);
@@ -108,11 +109,11 @@ export async function emitServerQueries({
     content.push(`      select: ${model.name}Select`);
   }
   
-  content.push(`    }),`);
-  content.push(`    prisma.${modelLower}.count({ where })`);
+  content.push(`    }) as Promise<Flow${model.name}[]>,`);
+  content.push(`    prisma.${modelCamel}.count({ where })`);
   content.push(`  ]);`);
   content.push(``);
-  content.push(`  return { items: transformResponseList(items), total };`);
+  content.push(`  return { items: transformResponseList(items) as Flow${model.name}[], total };`);
   content.push(`});`);
   content.push(``);
 
@@ -126,7 +127,7 @@ export async function emitServerQueries({
     content.push(`  query: string,`);
     content.push(`  params: Omit<${model.name}ListParams, 'where'> = {},`);
     content.push(`  ctx: FlowCtx = {}`);
-    content.push(`) {`);
+    content.push(`): Promise<{ items: Flow${model.name}[]; total: number }> {`);
     content.push(`  const policy = await can${model.name}("list", ctx || {});`);
     content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
     content.push(``);
@@ -144,7 +145,7 @@ export async function emitServerQueries({
     content.push(`  };`);
     content.push(``);
     content.push(`  const [items, total] = await Promise.all([`);
-    content.push(`    prisma.${modelLower}.findMany({`);
+    content.push(`    prisma.${modelCamel}.findMany({`);
     content.push(`      where,`);
     content.push(`      orderBy: params.orderBy,`);
     content.push(`      skip: params.skip,`);
@@ -155,11 +156,11 @@ export async function emitServerQueries({
       content.push(`      select: ${model.name}Select`);
     }
     
-    content.push(`    }),`);
-    content.push(`    prisma.${modelLower}.count({ where })`);
+    content.push(`    }) as Promise<Flow${model.name}[]>,`);
+    content.push(`    prisma.${modelCamel}.count({ where })`);
     content.push(`  ]);`);
     content.push(``);
-    content.push(`  return { items: transformResponseList(items), total };`);
+    content.push(`  return { items: transformResponseList(items) as Flow${model.name}[], total };`);
     content.push(`});`);
   }
 

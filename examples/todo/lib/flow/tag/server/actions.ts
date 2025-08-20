@@ -10,11 +10,12 @@ import {
   FlowCtx,
   FlowPolicyError,
   FlowValidationError,
+  deepMergePrismaData,
 } from "../../core";
 import { canTag } from "../../policies";
 import { TagSelect } from "./selects";
 import { TagCreateSchema, TagUpdateSchema } from "../types/schemas";
-import type { FlowTagCreate, FlowTagUpdate } from "../types/schemas";
+import type { FlowTag, FlowTagCreate, FlowTagUpdate } from "../types/schemas";
 import { transformTagCreate, transformTagUpdate } from "../types/transforms";
 
 // Transform Prisma response to match FlowPost schema (null -> undefined for relations)
@@ -24,7 +25,10 @@ function transformResponse(item: any): any {
   return result;
 }
 
-export async function createTag(data: FlowTagCreate, ctx: FlowCtx = {}) {
+export async function createTag(
+  data: FlowTagCreate,
+  ctx: FlowCtx = {},
+): Promise<FlowTag> {
   const policy = await canTag("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -34,20 +38,20 @@ export async function createTag(data: FlowTagCreate, ctx: FlowCtx = {}) {
   }
 
   const createData = transformTagCreate(parsed.data as any);
-  const item = await prisma.tag.create({
-    data: { ...createData, ...policy.data },
+  const item = (await prisma.tag.create({
+    data: deepMergePrismaData(createData, policy.data || {}, "Tag"),
     select: TagSelect,
-  });
+  })) as FlowTag;
 
   await invalidateTags([keys.m("Tag").tag()]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowTag;
 }
 
 export async function updateTag(
   id: string,
   data: FlowTagUpdate,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag> {
   const policy = await canTag("update", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -57,17 +61,17 @@ export async function updateTag(
   }
 
   const updateData = transformTagUpdate(parsed.data as any);
-  const item = await prisma.tag.update({
+  const item = (await prisma.tag.update({
     where: { id: id, ...policy.where },
-    data: { ...updateData, ...policy.data },
+    data: deepMergePrismaData(updateData, policy.data || {}, "Tag"),
     select: TagSelect,
-  });
+  })) as FlowTag;
 
   await invalidateTags([keys.m("Tag").tag(), keys.m("Tag").tag(String(id))]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowTag;
 }
 
-export async function deleteTag(id: string, ctx?: FlowCtx) {
+export async function deleteTag(id: string, ctx?: FlowCtx): Promise<void> {
   const policy = await canTag("delete", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 

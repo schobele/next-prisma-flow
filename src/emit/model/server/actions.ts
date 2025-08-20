@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { DMMF } from "@prisma/generator-helper";
 import type { FlowConfig } from "../../../config";
 import { write } from "../../fs";
-import { header, imp, impType } from "../../strings";
+import { header, imp, impType, toCamelCase } from "../../strings";
 import { isRelation } from "../../../dmmf";
 
 export async function emitServerActions({
@@ -14,7 +14,7 @@ export async function emitServerActions({
   model: DMMF.Model;
   cfg: FlowConfig;
 }) {
-  const modelLower = model.name.toLowerCase();
+  const modelCamel = toCamelCase(model.name);
   const idField = model.fields.find((f) => f.isId);
   const idType = idField?.type === "String" ? "string" : "number";
 
@@ -23,11 +23,11 @@ export async function emitServerActions({
   content.push(`"use server";`);
   content.push(``);
   content.push(imp("../../prisma", ["prisma"]));
-  content.push(imp("../../core", ["invalidateTags", "keys", "FlowCtx", "FlowPolicyError", "FlowValidationError"]));
+  content.push(imp("../../core", ["invalidateTags", "keys", "FlowCtx", "FlowPolicyError", "FlowValidationError", "deepMergePrismaData"]));
   content.push(imp("../../policies", [`can${model.name}`]));
   content.push(imp(`./selects`, [`${model.name}Select`]));
   content.push(imp(`../types/schemas`, [`${model.name}CreateSchema`, `${model.name}UpdateSchema`]));
-  content.push(impType(`../types/schemas`, [`Flow${model.name}Create`, `Flow${model.name}Update`]));
+  content.push(impType(`../types/schemas`, [`Flow${model.name}`, `Flow${model.name}Create`, `Flow${model.name}Update`]));
   content.push(imp(`../types/transforms`, [`transform${model.name}Create`, `transform${model.name}Update`]));
   content.push(``);
   
@@ -49,7 +49,7 @@ export async function emitServerActions({
   content.push(``);
 
   // Create action
-  content.push(`export async function create${model.name}(data: Flow${model.name}Create, ctx: FlowCtx = {}) {`);
+  content.push(`export async function create${model.name}(data: Flow${model.name}Create, ctx: FlowCtx = {}): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("create", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
@@ -59,13 +59,13 @@ export async function emitServerActions({
   content.push(`  }`);
   content.push(``);
   content.push(`  const createData = transform${model.name}Create(parsed.data as any);`);
-  content.push(`  const item = await prisma.${modelLower}.create({`);
-  content.push(`    data: { ...createData, ...policy.data },`);
+  content.push(`  const item = await prisma.${modelCamel}.create({`);
+  content.push(`    data: deepMergePrismaData(createData, policy.data || {}, "${model.name}"),`);
   content.push(`    select: ${model.name}Select`);
-  content.push(`  });`);
+  content.push(`  }) as Flow${model.name};`);
   content.push(``);
   content.push(`  await invalidateTags([keys.m("${model.name}").tag()]);`);
-  content.push(`  return transformResponse(item);`);
+  content.push(`  return transformResponse(item) as Flow${model.name};`);
   content.push(`}`);
   content.push(``);
 
@@ -74,7 +74,7 @@ export async function emitServerActions({
   content.push(`  id: ${idType},`);
   content.push(`  data: Flow${model.name}Update,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("update", ctx || {}, id);`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
@@ -84,26 +84,26 @@ export async function emitServerActions({
   content.push(`  }`);
   content.push(``);
   content.push(`  const updateData = transform${model.name}Update(parsed.data as any);`);
-  content.push(`  const item = await prisma.${modelLower}.update({`);
+  content.push(`  const item = await prisma.${modelCamel}.update({`);
   content.push(`    where: { ${idField?.name || "id"}: id, ...policy.where },`);
-  content.push(`    data: { ...updateData, ...policy.data },`);
+  content.push(`    data: deepMergePrismaData(updateData, policy.data || {}, "${model.name}"),`);
   content.push(`    select: ${model.name}Select`);
-  content.push(`  });`);
+  content.push(`  }) as Flow${model.name};`);
   content.push(``);
   content.push(`  await invalidateTags([`);
   content.push(`    keys.m("${model.name}").tag(),`);
   content.push(`    keys.m("${model.name}").tag(String(id))`);
   content.push(`  ]);`);
-  content.push(`  return transformResponse(item);`);
+  content.push(`  return transformResponse(item) as Flow${model.name};`);
   content.push(`}`);
   content.push(``);
 
   // Delete action
-  content.push(`export async function delete${model.name}(id: ${idType}, ctx?: FlowCtx) {`);
+  content.push(`export async function delete${model.name}(id: ${idType}, ctx?: FlowCtx): Promise<void> {`);
   content.push(`  const policy = await can${model.name}("delete", ctx || {}, id);`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  await prisma.${modelLower}.delete({`);
+  content.push(`  await prisma.${modelCamel}.delete({`);
   content.push(`    where: { ${idField?.name || "id"}: id, ...policy.where }`);
   content.push(`  });`);
   content.push(``);

@@ -17,3 +17,7 @@ export function exp(names: string[]){
 export function expAll(mod: string){
   return `export * from "${mod}";`;
 }
+
+export function toCamelCase(str: string): string {
+  return str.charAt(0).toLowerCase() + str.slice(1);
+}

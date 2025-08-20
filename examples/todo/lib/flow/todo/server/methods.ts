@@ -5,14 +5,15 @@
 
 import { prisma } from "../../prisma";
 import type { Prisma } from "../../prisma";
-import { FlowCtx, FlowPolicyError } from "../../core";
+import { FlowCtx, FlowPolicyError, deepMergePrismaData } from "../../core";
 import { canTodo } from "../../policies";
 import { TodoSelect } from "./selects";
+import type { FlowTodo } from "../types/schemas";
 
 export async function findUnique(
   args: Prisma.TodoFindUniqueArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo | null> {
   const policy = await canTodo("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -20,13 +21,13 @@ export async function findUnique(
     select: TodoSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowTodo | null>;
 }
 
 export async function findUniqueOrThrow(
   args: Prisma.TodoFindUniqueOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo> {
   const policy = await canTodo("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -34,13 +35,13 @@ export async function findUniqueOrThrow(
     select: TodoSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowTodo>;
 }
 
 export async function findFirst(
   args?: Prisma.TodoFindFirstArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo | null> {
   const policy = await canTodo("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -48,13 +49,13 @@ export async function findFirst(
     select: TodoSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTodo | null>;
 }
 
 export async function findFirstOrThrow(
   args?: Prisma.TodoFindFirstOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo> {
   const policy = await canTodo("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,13 +63,13 @@ export async function findFirstOrThrow(
     select: TodoSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTodo>;
 }
 
 export async function findMany(
   args?: Prisma.TodoFindManyArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo[]> {
   const policy = await canTodo("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -76,18 +77,21 @@ export async function findMany(
     select: TodoSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTodo[]>;
 }
 
-export async function create(args: Prisma.TodoCreateArgs, ctx: FlowCtx = {}) {
+export async function create(
+  args: Prisma.TodoCreateArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTodo> {
   const policy = await canTodo("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.todo.create({
+  const result = (await prisma.todo.create({
     select: TodoSelect,
     ...args,
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Todo"),
+  })) as FlowTodo;
 
   return result;
 }
@@ -99,10 +103,12 @@ export async function createMany(
   const policy = await canTodo("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  // Apply policy data to each item
+  // Apply policy data to each item using deep merge
   const data = Array.isArray(args.data)
-    ? args.data.map((item) => ({ ...item, ...policy.data }))
-    : { ...args.data, ...policy.data };
+    ? args.data.map((item) =>
+        deepMergePrismaData(item, policy.data || {}, "Todo"),
+      )
+    : deepMergePrismaData(args.data, policy.data || {});
 
   return prisma.todo.createMany({
     ...args,
@@ -110,16 +116,19 @@ export async function createMany(
   });
 }
 
-export async function update(args: Prisma.TodoUpdateArgs, ctx: FlowCtx = {}) {
+export async function update(
+  args: Prisma.TodoUpdateArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTodo> {
   const policy = await canTodo("update", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.todo.update({
+  const result = (await prisma.todo.update({
     select: TodoSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Todo"),
+  })) as FlowTodo;
 
   return result;
 }
@@ -134,11 +143,14 @@ export async function updateMany(
   return prisma.todo.updateMany({
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
+    data: deepMergePrismaData(args.data, policy.data || {}, "Todo"),
   });
 }
 
-export async function upsert(args: Prisma.TodoUpsertArgs, ctx: FlowCtx = {}) {
+export async function upsert(
+  args: Prisma.TodoUpsertArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTodo> {
   // Check both create and update policies
   const createPolicy = await canTodo("create", ctx);
   const updatePolicy = await canTodo("update", ctx);
@@ -152,9 +164,9 @@ export async function upsert(args: Prisma.TodoUpsertArgs, ctx: FlowCtx = {}) {
     select: TodoSelect,
     ...args,
     where: { ...args.where, ...updatePolicy.where },
-    create: { ...args.create, ...createPolicy.data },
-    update: { ...args.update, ...updatePolicy.data },
-  });
+    create: deepMergePrismaData(args.create, createPolicy.data || {}, "Todo"),
+    update: deepMergePrismaData(args.update, updatePolicy.data || {}, "Todo"),
+  }) as Promise<FlowTodo>;
 }
 
 export async function deleteOne(

@@ -5,14 +5,15 @@
 
 import { prisma } from "../../prisma";
 import type { Prisma } from "../../prisma";
-import { FlowCtx, FlowPolicyError } from "../../core";
+import { FlowCtx, FlowPolicyError, deepMergePrismaData } from "../../core";
 import { canCompany } from "../../policies";
 import { CompanySelect } from "./selects";
+import type { FlowCompany } from "../types/schemas";
 
 export async function findUnique(
   args: Prisma.CompanyFindUniqueArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany | null> {
   const policy = await canCompany("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -20,13 +21,13 @@ export async function findUnique(
     select: CompanySelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowCompany | null>;
 }
 
 export async function findUniqueOrThrow(
   args: Prisma.CompanyFindUniqueOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -34,13 +35,13 @@ export async function findUniqueOrThrow(
     select: CompanySelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowCompany>;
 }
 
 export async function findFirst(
   args?: Prisma.CompanyFindFirstArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany | null> {
   const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -48,13 +49,13 @@ export async function findFirst(
     select: CompanySelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowCompany | null>;
 }
 
 export async function findFirstOrThrow(
   args?: Prisma.CompanyFindFirstOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,13 +63,13 @@ export async function findFirstOrThrow(
     select: CompanySelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowCompany>;
 }
 
 export async function findMany(
   args?: Prisma.CompanyFindManyArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany[]> {
   const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -76,21 +77,21 @@ export async function findMany(
     select: CompanySelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowCompany[]>;
 }
 
 export async function create(
   args: Prisma.CompanyCreateArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.company.create({
+  const result = (await prisma.company.create({
     select: CompanySelect,
     ...args,
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Company"),
+  })) as FlowCompany;
 
   return result;
 }
@@ -102,10 +103,12 @@ export async function createMany(
   const policy = await canCompany("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  // Apply policy data to each item
+  // Apply policy data to each item using deep merge
   const data = Array.isArray(args.data)
-    ? args.data.map((item) => ({ ...item, ...policy.data }))
-    : { ...args.data, ...policy.data };
+    ? args.data.map((item) =>
+        deepMergePrismaData(item, policy.data || {}, "Company"),
+      )
+    : deepMergePrismaData(args.data, policy.data || {});
 
   return prisma.company.createMany({
     ...args,
@@ -116,16 +119,16 @@ export async function createMany(
 export async function update(
   args: Prisma.CompanyUpdateArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("update", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.company.update({
+  const result = (await prisma.company.update({
     select: CompanySelect,
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Company"),
+  })) as FlowCompany;
 
   return result;
 }
@@ -140,14 +143,14 @@ export async function updateMany(
   return prisma.company.updateMany({
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
+    data: deepMergePrismaData(args.data, policy.data || {}, "Company"),
   });
 }
 
 export async function upsert(
   args: Prisma.CompanyUpsertArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   // Check both create and update policies
   const createPolicy = await canCompany("create", ctx);
   const updatePolicy = await canCompany("update", ctx);
@@ -161,9 +164,17 @@ export async function upsert(
     select: CompanySelect,
     ...args,
     where: { ...args.where, ...updatePolicy.where },
-    create: { ...args.create, ...createPolicy.data },
-    update: { ...args.update, ...updatePolicy.data },
-  });
+    create: deepMergePrismaData(
+      args.create,
+      createPolicy.data || {},
+      "Company",
+    ),
+    update: deepMergePrismaData(
+      args.update,
+      updatePolicy.data || {},
+      "Company",
+    ),
+  }) as Promise<FlowCompany>;
 }
 
 export async function deleteOne(

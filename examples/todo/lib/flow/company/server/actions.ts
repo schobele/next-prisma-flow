@@ -10,11 +10,16 @@ import {
   FlowCtx,
   FlowPolicyError,
   FlowValidationError,
+  deepMergePrismaData,
 } from "../../core";
 import { canCompany } from "../../policies";
 import { CompanySelect } from "./selects";
 import { CompanyCreateSchema, CompanyUpdateSchema } from "../types/schemas";
-import type { FlowCompanyCreate, FlowCompanyUpdate } from "../types/schemas";
+import type {
+  FlowCompany,
+  FlowCompanyCreate,
+  FlowCompanyUpdate,
+} from "../types/schemas";
 import {
   transformCompanyCreate,
   transformCompanyUpdate,
@@ -30,7 +35,7 @@ function transformResponse(item: any): any {
 export async function createCompany(
   data: FlowCompanyCreate,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -40,20 +45,20 @@ export async function createCompany(
   }
 
   const createData = transformCompanyCreate(parsed.data as any);
-  const item = await prisma.company.create({
-    data: { ...createData, ...policy.data },
+  const item = (await prisma.company.create({
+    data: deepMergePrismaData(createData, policy.data || {}, "Company"),
     select: CompanySelect,
-  });
+  })) as FlowCompany;
 
   await invalidateTags([keys.m("Company").tag()]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowCompany;
 }
 
 export async function updateCompany(
   id: string,
   data: FlowCompanyUpdate,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany> {
   const policy = await canCompany("update", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -63,20 +68,20 @@ export async function updateCompany(
   }
 
   const updateData = transformCompanyUpdate(parsed.data as any);
-  const item = await prisma.company.update({
+  const item = (await prisma.company.update({
     where: { id: id, ...policy.where },
-    data: { ...updateData, ...policy.data },
+    data: deepMergePrismaData(updateData, policy.data || {}, "Company"),
     select: CompanySelect,
-  });
+  })) as FlowCompany;
 
   await invalidateTags([
     keys.m("Company").tag(),
     keys.m("Company").tag(String(id)),
   ]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowCompany;
 }
 
-export async function deleteCompany(id: string, ctx?: FlowCtx) {
+export async function deleteCompany(id: string, ctx?: FlowCtx): Promise<void> {
   const policy = await canCompany("delete", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 

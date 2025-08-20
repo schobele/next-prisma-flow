@@ -10,11 +10,16 @@ import {
   FlowCtx,
   FlowPolicyError,
   FlowValidationError,
+  deepMergePrismaData,
 } from "../../core";
 import { canTodo } from "../../policies";
 import { TodoSelect } from "./selects";
 import { TodoCreateSchema, TodoUpdateSchema } from "../types/schemas";
-import type { FlowTodoCreate, FlowTodoUpdate } from "../types/schemas";
+import type {
+  FlowTodo,
+  FlowTodoCreate,
+  FlowTodoUpdate,
+} from "../types/schemas";
 import { transformTodoCreate, transformTodoUpdate } from "../types/transforms";
 
 // Transform Prisma response to match FlowPost schema (null -> undefined for relations)
@@ -25,7 +30,10 @@ function transformResponse(item: any): any {
   return result;
 }
 
-export async function createTodo(data: FlowTodoCreate, ctx: FlowCtx = {}) {
+export async function createTodo(
+  data: FlowTodoCreate,
+  ctx: FlowCtx = {},
+): Promise<FlowTodo> {
   const policy = await canTodo("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -35,20 +43,20 @@ export async function createTodo(data: FlowTodoCreate, ctx: FlowCtx = {}) {
   }
 
   const createData = transformTodoCreate(parsed.data as any);
-  const item = await prisma.todo.create({
-    data: { ...createData, ...policy.data },
+  const item = (await prisma.todo.create({
+    data: deepMergePrismaData(createData, policy.data || {}, "Todo"),
     select: TodoSelect,
-  });
+  })) as FlowTodo;
 
   await invalidateTags([keys.m("Todo").tag()]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowTodo;
 }
 
 export async function updateTodo(
   id: string,
   data: FlowTodoUpdate,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTodo> {
   const policy = await canTodo("update", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -58,17 +66,17 @@ export async function updateTodo(
   }
 
   const updateData = transformTodoUpdate(parsed.data as any);
-  const item = await prisma.todo.update({
+  const item = (await prisma.todo.update({
     where: { id: id, ...policy.where },
-    data: { ...updateData, ...policy.data },
+    data: deepMergePrismaData(updateData, policy.data || {}, "Todo"),
     select: TodoSelect,
-  });
+  })) as FlowTodo;
 
   await invalidateTags([keys.m("Todo").tag(), keys.m("Todo").tag(String(id))]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowTodo;
 }
 
-export async function deleteTodo(id: string, ctx?: FlowCtx) {
+export async function deleteTodo(id: string, ctx?: FlowCtx): Promise<void> {
   const policy = await canTodo("delete", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 

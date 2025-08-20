@@ -8,6 +8,9 @@ import {
   useForm,
   type UseFormReturn,
   type UseFormProps,
+  type Path,
+  type PathValue,
+  type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TodoCreateSchema, TodoUpdateSchema } from "../types/schemas";
@@ -17,6 +20,26 @@ import type {
   FlowTodoUpdate,
 } from "../types/schemas";
 import { useTodo, useCreateTodo, useUpdateTodo } from "./hooks";
+import {
+  useTodoFormAutosave,
+  useTodoFormFieldTracking,
+  useTodoFormHistory,
+} from "./composables";
+
+export type TodoFieldState = {
+  isDirty: boolean;
+  isTouched: boolean;
+  error?: any;
+  current: any;
+  original?: any;
+  hasChanged?: boolean;
+};
+
+export type TodoDirtyField = {
+  field: string;
+  original?: any;
+  current: any;
+};
 
 export type TodoAutosaveConfig = {
   enabled: boolean;
@@ -26,80 +49,65 @@ export type TodoAutosaveConfig = {
   onFieldError?: (field: string, error: Error) => void;
 };
 
-export type TodoFormOptions = {
-  id?: string;
-  defaultValues?: Partial<FlowTodoCreate> | Partial<FlowTodoUpdate>;
+export type TodoFormFeatures = {
+  autosave?: TodoAutosaveConfig | boolean;
+  tracking?: boolean;
+  history?:
+    | {
+        enabled: boolean;
+        maxHistorySize?: number;
+      }
+    | boolean;
+};
+
+// Create form options
+export type TodoCreateFormOptions = {
+  defaultValues?: Partial<FlowTodoCreate>;
   onSuccess?: (data: FlowTodo) => void;
   onError?: (error: Error) => void;
   formOptions?: Omit<
-    UseFormProps<FlowTodoCreate | FlowTodoUpdate>,
+    UseFormProps<FlowTodoCreate>,
     "resolver" | "defaultValues"
   >;
-  autosave?: TodoAutosaveConfig;
+  features?: TodoFormFeatures;
 };
 
-export function useTodoForm(options?: TodoFormOptions) {
-  const { id, defaultValues, onSuccess, onError, formOptions, autosave } =
+export type TodoUpdateFormOptions = {
+  defaultValues?: Partial<FlowTodoUpdate>;
+  onSuccess?: (data: FlowTodo) => void;
+  onError?: (error: Error) => void;
+  formOptions?: Omit<
+    UseFormProps<FlowTodoUpdate>,
+    "resolver" | "defaultValues"
+  >;
+  features?: TodoFormFeatures;
+};
+
+function extractScalarFields(data: any): any {
+  const result: any = {};
+  Object.keys(data).forEach((key) => {
+    const value = data[key];
+    if (
+      value === null ||
+      (typeof value !== "object" && !Array.isArray(value))
+    ) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+export function useCreateTodoForm(options?: TodoCreateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
     options || {};
 
-  // Smart mode detection
-  const mode = id ? "update" : "create";
-
-  // Autosave state
-  const [fieldSaveStates, setFieldSaveStates] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
-  >({});
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Fetch existing data if updating
-  const { data: existingData } = useTodo(id || "", {
-    enabled: !!id,
-  });
-
-  // Choose appropriate schema
-  const schema = mode === "create" ? TodoCreateSchema : TodoUpdateSchema;
-
-  // Initialize form with proper defaults
-  const form = useForm<FlowTodoCreate | FlowTodoUpdate>({
+  const form = useForm<FlowTodoCreate>({
     ...formOptions,
-    resolver: zodResolver(schema),
-    defaultValues: {
-      ...defaultValues,
-      ...(existingData || {}),
-    } as FlowTodoCreate | FlowTodoUpdate,
+    resolver: zodResolver(TodoCreateSchema),
+    defaultValues: defaultValues as FlowTodoCreate,
   });
 
-  // Update form when existing data loads, preserving user changes
-  useEffect(() => {
-    if (existingData && mode === "update") {
-      // Extract only scalar fields for update forms
-      const updateData: any = {};
-
-      // Copy scalar fields only, skip relations (arrays and objects)
-      Object.keys(existingData).forEach((key) => {
-        const value = (existingData as any)[key];
-        // Include scalar values and nulls, skip arrays and objects (relations)
-        if (
-          value === null ||
-          (typeof value !== "object" && !Array.isArray(value))
-        ) {
-          updateData[key] = value;
-        }
-      });
-
-      console.log(
-        "[TodoForm] Resetting form with scalar data only:",
-        updateData,
-      );
-      form.reset(updateData as FlowTodoUpdate, {
-        keepDirtyValues: true, // Preserve user-modified fields
-        keepErrors: true, // Keep validation errors for dirty fields
-      });
-    }
-  }, [existingData, mode, form]);
-
-  // Get appropriate mutation
-  const createMutation = useCreateTodo({
+  const mutation = useCreateTodo({
     onSuccess: (data) => {
       form.reset();
       onSuccess?.(data);
@@ -107,120 +115,327 @@ export function useTodoForm(options?: TodoFormOptions) {
     onError,
   });
 
-  // Only create update mutation if we have a valid ID
-  const updateMutation = useUpdateTodo(id || "dummy-id-never-used", {
-    onSuccess: (data) => {
-      onSuccess?.(data);
+  // Field operations
+  const getFieldState = useCallback(
+    (name: Path<FlowTodoCreate>): TodoFieldState => {
+      const fieldState = form.getFieldState(name);
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: form.getValues(name),
+        original: (form.formState.defaultValues as any)?.[name],
+      };
     },
-    onError,
-    enabled: !!id, // Only enable if we have a real ID
-  });
-
-  const mutation = mode === "update" ? updateMutation : createMutation;
-
-  // Autosave handler for individual fields
-  const handleAutosave = useCallback(
-    (fieldName: string, value: any) => {
-      if (!autosave?.enabled || mode !== "update" || !id) return;
-
-      // Check if this field should be autosaved
-      if (autosave.fields && !autosave.fields.includes(fieldName)) return;
-
-      // Clear existing timer for this field
-      if (debounceTimers.current[fieldName]) {
-        clearTimeout(debounceTimers.current[fieldName]);
-      }
-
-      // Set field state to saving after debounce
-      setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-
-      // Create new debounced save
-      debounceTimers.current[fieldName] = setTimeout(async () => {
-        // Validate the specific field
-        const isValid = await form.trigger(fieldName as any);
-        if (!isValid) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          return;
-        }
-
-        setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saving" }));
-
-        try {
-          // Create partial update with just this field
-          const partialUpdate = { [fieldName]: value } as FlowTodoUpdate;
-          await updateMutation.mutateAsync(partialUpdate);
-
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saved" }));
-          autosave.onFieldSave?.(fieldName, value);
-
-          // Reset to idle after 2 seconds
-          setTimeout(() => {
-            setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-          }, 2000);
-        } catch (error) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          autosave.onFieldError?.(fieldName, error as Error);
-        }
-      }, autosave.debounceMs || 1000);
-    },
-    [autosave, mode, form, updateMutation, id],
+    [form],
   );
 
-  // Watch for field changes if autosave is enabled
-  useEffect(() => {
-    if (!autosave?.enabled || mode !== "update" || !id) return;
+  const resetField = useCallback(
+    (name: Path<FlowTodoCreate>) => {
+      form.resetField(name);
+    },
+    [form],
+  );
 
-    const subscription = form.watch((value, { name }) => {
-      if (name) {
-        handleAutosave(name, value[name]);
+  const setFieldValue = useCallback(
+    <T extends Path<FlowTodoCreate>>(
+      name: T,
+      value: PathValue<FlowTodoCreate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowTodoCreate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowTodoCreate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowTodoCreate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowTodoCreate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): TodoDirtyField[] => {
+    const dirtyFields: TodoDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: (form.formState.defaultValues as any)?.[key],
+          current: form.getValues(key as Path<FlowTodoCreate>),
+        });
       }
     });
-
-    return () => subscription.unsubscribe();
-  }, [form, autosave, mode, handleAutosave]);
+    return dirtyFields;
+  }, [form]);
 
   // Submit handler
   const submit = useCallback(
-    (data: FlowTodoCreate | FlowTodoUpdate) => {
-      console.log("[TodoForm] Submitting " + mode + " form:", data);
-      if (mode === "update") {
-        return updateMutation.mutate(data as FlowTodoUpdate);
-      } else {
-        return createMutation.mutate(data as FlowTodoCreate);
-      }
+    (data: FlowTodoCreate) => {
+      console.log("[TodoCreateForm] Submitting:", data);
+      return mutation.mutate(data);
     },
-    [createMutation, updateMutation, mode],
+    [mutation],
   );
 
-  // Validation error handler
   const onInvalid = useCallback((errors: any) => {
-    console.error("[TodoForm] Validation failed:", errors);
+    console.error("[TodoCreateForm] Validation failed:", errors);
   }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useTodoFormAutosave(form, mutation, autosaveConfig);
+
+  const tracking = useTodoFormFieldTracking(form);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useTodoFormHistory(form, historyConfig);
 
   return {
     form,
+    mutation,
     submit: form.handleSubmit(submit, onInvalid),
     isSubmitting: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,
-    mode,
     reset: () => form.reset(),
-    // Autosave specific
-    fieldSaveStates,
-    isAutosaving: Object.values(fieldSaveStates).some(
-      (state) => state === "saving",
-    ),
-    autosaveEnabled: autosave?.enabled || false,
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
   };
 }
 
-export function useTodoQuickForm(id?: string) {
-  return useTodoForm({ id });
+export function useUpdateTodoForm(id: string, options?: TodoUpdateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
+    options || {};
+
+  const originalRef = useRef<FlowTodo>();
+
+  // Fetch existing data
+  const { data: existingData } = useTodo(id);
+
+  // Initialize form
+  const form = useForm<FlowTodoUpdate>({
+    ...formOptions,
+    resolver: zodResolver(TodoUpdateSchema),
+    defaultValues: defaultValues as FlowTodoUpdate,
+  });
+
+  // Track autosave ref to use in useEffect
+  const autosaveRef = useRef<ReturnType<typeof useTodoFormAutosave>>();
+
+  // Update form when existing data loads
+  useEffect(() => {
+    if (existingData) {
+      originalRef.current = existingData;
+      const scalarData = extractScalarFields(existingData);
+      console.log("[TodoUpdateForm] Loading data:", scalarData);
+
+      // Pause autosave during form reset to prevent loops
+      if (autosaveRef.current?.pauseAutosave) {
+        autosaveRef.current.pauseAutosave(() => {
+          form.reset(scalarData as FlowTodoUpdate, {
+            keepDirtyValues: true,
+            keepErrors: true,
+          });
+        });
+      } else {
+        form.reset(scalarData as FlowTodoUpdate, {
+          keepDirtyValues: true,
+          keepErrors: true,
+        });
+      }
+    }
+  }, [existingData, form]);
+
+  // Update mutation
+  const mutation = useUpdateTodo(id, {
+    onSuccess,
+    onError,
+  });
+
+  // Field operations with original comparison
+  const getFieldState = useCallback(
+    (name: Path<FlowTodoUpdate>): TodoFieldState => {
+      const fieldState = form.getFieldState(name);
+      const currentValue = form.getValues(name);
+      const originalValue = originalRef.current?.[name as keyof FlowTodo];
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: currentValue,
+        original: originalValue,
+        hasChanged: currentValue !== originalValue,
+      };
+    },
+    [form],
+  );
+
+  const resetField = useCallback(
+    (name: Path<FlowTodoUpdate>) => {
+      const originalValue = originalRef.current?.[name as keyof FlowTodo];
+      form.setValue(name, originalValue as any);
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const setFieldValue = useCallback(
+    <T extends Path<FlowTodoUpdate>>(
+      name: T,
+      value: PathValue<FlowTodoUpdate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowTodoUpdate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowTodoUpdate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowTodoUpdate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowTodoUpdate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): TodoDirtyField[] => {
+    const dirtyFields: TodoDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: originalRef.current?.[key as keyof FlowTodo],
+          current: form.getValues(key as Path<FlowTodoUpdate>),
+        });
+      }
+    });
+    return dirtyFields;
+  }, [form]);
+
+  // Submit handler
+  const submit = useCallback(
+    (data: FlowTodoUpdate) => {
+      console.log("[TodoUpdateForm] Submitting:", data);
+      return mutation.mutate(data);
+    },
+    [mutation],
+  );
+
+  const onInvalid = useCallback((errors: any) => {
+    console.error("[TodoUpdateForm] Validation failed:", errors);
+  }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useTodoFormAutosave(form, mutation, autosaveConfig);
+
+  // Store autosave ref for use in useEffect
+  useEffect(() => {
+    autosaveRef.current = autosave;
+  }, [autosave]);
+
+  const tracking = useTodoFormFieldTracking(form, originalRef.current);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useTodoFormHistory(form, historyConfig);
+
+  return {
+    form,
+    mutation,
+    original: originalRef.current,
+    submit: form.handleSubmit(submit, onInvalid),
+    isSubmitting: mutation.isPending,
+    error: mutation.error,
+    isSuccess: mutation.isSuccess,
+    reset: () => form.reset(extractScalarFields(originalRef.current || {})),
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
+  };
 }
 
-export type TodoFormProps = {
-  form: UseFormReturn<FlowTodoCreate | FlowTodoUpdate>;
+export type TodoCreateFormProps = {
+  form: UseFormReturn<FlowTodoCreate>;
   onSubmit: () => void;
   isSubmitting: boolean;
   error?: Error | null;
+};
+
+export type TodoUpdateFormProps = {
+  form: UseFormReturn<FlowTodoUpdate>;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  error?: Error | null;
+  original?: FlowTodo;
 };

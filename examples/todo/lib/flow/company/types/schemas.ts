@@ -335,11 +335,6 @@ const CompanyCreateTagsInputSchema = z.object({
   color: z.string().optional(),
   companyId: z.string().optional(),
   createdAt: z.date().optional(),
-  company: z
-    .object({
-      connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
   todos: z
     .object({
       connect: z
@@ -679,11 +674,6 @@ const CompanyUpdateTagsInputSchema = z.object({
   color: z.string().optional(),
   companyId: z.string().optional(),
   createdAt: z.date().optional(),
-  company: z
-    .object({
-      connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
   todos: z
     .object({
       connect: z

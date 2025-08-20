@@ -74,17 +74,6 @@ export const TodoListUserSchema = z.object({
   createdAt: z.date(),
 });
 
-export const TodoTagsCompanySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  slug: z.string(),
-  logo: z.string().optional().nullable(),
-  plan: z.string(),
-  maxUsers: z.number().int(),
-  maxStorage: z.number().int(),
-  createdAt: z.date(),
-});
-
 export const TodoSubtasksCompanySchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -224,7 +213,6 @@ export const TodoTagsSchema = z.object({
   color: z.string(),
   companyId: z.string(),
   createdAt: z.date(),
-  company: TodoTagsCompanySchema.optional(),
 });
 
 export const TodoSubtasksSchema = z.object({
@@ -377,11 +365,6 @@ const TodoCreateTagsInputSchema = z.object({
   color: z.string().optional(),
   companyId: z.string().optional(),
   createdAt: z.date().optional(),
-  company: z
-    .object({
-      connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
   todos: z
     .object({
       connect: z
@@ -820,11 +803,6 @@ const TodoUpdateTagsInputSchema = z.object({
   color: z.string().optional(),
   companyId: z.string().optional(),
   createdAt: z.date().optional(),
-  company: z
-    .object({
-      connect: z.object({ id: z.string() }).optional(),
-    })
-    .optional(),
   todos: z
     .object({
       connect: z

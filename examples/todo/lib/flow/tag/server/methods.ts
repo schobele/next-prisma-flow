@@ -5,14 +5,15 @@
 
 import { prisma } from "../../prisma";
 import type { Prisma } from "../../prisma";
-import { FlowCtx, FlowPolicyError } from "../../core";
+import { FlowCtx, FlowPolicyError, deepMergePrismaData } from "../../core";
 import { canTag } from "../../policies";
 import { TagSelect } from "./selects";
+import type { FlowTag } from "../types/schemas";
 
 export async function findUnique(
   args: Prisma.TagFindUniqueArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag | null> {
   const policy = await canTag("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -20,13 +21,13 @@ export async function findUnique(
     select: TagSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowTag | null>;
 }
 
 export async function findUniqueOrThrow(
   args: Prisma.TagFindUniqueOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag> {
   const policy = await canTag("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -34,13 +35,13 @@ export async function findUniqueOrThrow(
     select: TagSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-  });
+  }) as Promise<FlowTag>;
 }
 
 export async function findFirst(
   args?: Prisma.TagFindFirstArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag | null> {
   const policy = await canTag("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -48,13 +49,13 @@ export async function findFirst(
     select: TagSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTag | null>;
 }
 
 export async function findFirstOrThrow(
   args?: Prisma.TagFindFirstOrThrowArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag> {
   const policy = await canTag("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,13 +63,13 @@ export async function findFirstOrThrow(
     select: TagSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTag>;
 }
 
 export async function findMany(
   args?: Prisma.TagFindManyArgs,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowTag[]> {
   const policy = await canTag("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -76,18 +77,21 @@ export async function findMany(
     select: TagSelect,
     ...args,
     where: { ...args?.where, ...policy.where },
-  });
+  }) as Promise<FlowTag[]>;
 }
 
-export async function create(args: Prisma.TagCreateArgs, ctx: FlowCtx = {}) {
+export async function create(
+  args: Prisma.TagCreateArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTag> {
   const policy = await canTag("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.tag.create({
+  const result = (await prisma.tag.create({
     select: TagSelect,
     ...args,
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Tag"),
+  })) as FlowTag;
 
   return result;
 }
@@ -99,10 +103,12 @@ export async function createMany(
   const policy = await canTag("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  // Apply policy data to each item
+  // Apply policy data to each item using deep merge
   const data = Array.isArray(args.data)
-    ? args.data.map((item) => ({ ...item, ...policy.data }))
-    : { ...args.data, ...policy.data };
+    ? args.data.map((item) =>
+        deepMergePrismaData(item, policy.data || {}, "Tag"),
+      )
+    : deepMergePrismaData(args.data, policy.data || {});
 
   return prisma.tag.createMany({
     ...args,
@@ -110,16 +116,19 @@ export async function createMany(
   });
 }
 
-export async function update(args: Prisma.TagUpdateArgs, ctx: FlowCtx = {}) {
+export async function update(
+  args: Prisma.TagUpdateArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTag> {
   const policy = await canTag("update", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const result = await prisma.tag.update({
+  const result = (await prisma.tag.update({
     select: TagSelect,
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
-  });
+    data: deepMergePrismaData(args.data, policy.data || {}, "Tag"),
+  })) as FlowTag;
 
   return result;
 }
@@ -134,11 +143,14 @@ export async function updateMany(
   return prisma.tag.updateMany({
     ...args,
     where: { ...args.where, ...policy.where },
-    data: { ...args.data, ...policy.data },
+    data: deepMergePrismaData(args.data, policy.data || {}, "Tag"),
   });
 }
 
-export async function upsert(args: Prisma.TagUpsertArgs, ctx: FlowCtx = {}) {
+export async function upsert(
+  args: Prisma.TagUpsertArgs,
+  ctx: FlowCtx = {},
+): Promise<FlowTag> {
   // Check both create and update policies
   const createPolicy = await canTag("create", ctx);
   const updatePolicy = await canTag("update", ctx);
@@ -152,9 +164,9 @@ export async function upsert(args: Prisma.TagUpsertArgs, ctx: FlowCtx = {}) {
     select: TagSelect,
     ...args,
     where: { ...args.where, ...updatePolicy.where },
-    create: { ...args.create, ...createPolicy.data },
-    update: { ...args.update, ...updatePolicy.data },
-  });
+    create: deepMergePrismaData(args.create, createPolicy.data || {}, "Tag"),
+    update: deepMergePrismaData(args.update, updatePolicy.data || {}, "Tag"),
+  }) as Promise<FlowTag>;
 }
 
 export async function deleteOne(args: Prisma.TagDeleteArgs, ctx: FlowCtx = {}) {

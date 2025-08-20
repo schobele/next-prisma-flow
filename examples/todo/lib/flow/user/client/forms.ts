@@ -8,6 +8,9 @@ import {
   useForm,
   type UseFormReturn,
   type UseFormProps,
+  type Path,
+  type PathValue,
+  type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserCreateSchema, UserUpdateSchema } from "../types/schemas";
@@ -17,6 +20,26 @@ import type {
   FlowUserUpdate,
 } from "../types/schemas";
 import { useUser, useCreateUser, useUpdateUser } from "./hooks";
+import {
+  useUserFormAutosave,
+  useUserFormFieldTracking,
+  useUserFormHistory,
+} from "./composables";
+
+export type UserFieldState = {
+  isDirty: boolean;
+  isTouched: boolean;
+  error?: any;
+  current: any;
+  original?: any;
+  hasChanged?: boolean;
+};
+
+export type UserDirtyField = {
+  field: string;
+  original?: any;
+  current: any;
+};
 
 export type UserAutosaveConfig = {
   enabled: boolean;
@@ -26,80 +49,65 @@ export type UserAutosaveConfig = {
   onFieldError?: (field: string, error: Error) => void;
 };
 
-export type UserFormOptions = {
-  id?: string;
-  defaultValues?: Partial<FlowUserCreate> | Partial<FlowUserUpdate>;
+export type UserFormFeatures = {
+  autosave?: UserAutosaveConfig | boolean;
+  tracking?: boolean;
+  history?:
+    | {
+        enabled: boolean;
+        maxHistorySize?: number;
+      }
+    | boolean;
+};
+
+// Create form options
+export type UserCreateFormOptions = {
+  defaultValues?: Partial<FlowUserCreate>;
   onSuccess?: (data: FlowUser) => void;
   onError?: (error: Error) => void;
   formOptions?: Omit<
-    UseFormProps<FlowUserCreate | FlowUserUpdate>,
+    UseFormProps<FlowUserCreate>,
     "resolver" | "defaultValues"
   >;
-  autosave?: UserAutosaveConfig;
+  features?: UserFormFeatures;
 };
 
-export function useUserForm(options?: UserFormOptions) {
-  const { id, defaultValues, onSuccess, onError, formOptions, autosave } =
+export type UserUpdateFormOptions = {
+  defaultValues?: Partial<FlowUserUpdate>;
+  onSuccess?: (data: FlowUser) => void;
+  onError?: (error: Error) => void;
+  formOptions?: Omit<
+    UseFormProps<FlowUserUpdate>,
+    "resolver" | "defaultValues"
+  >;
+  features?: UserFormFeatures;
+};
+
+function extractScalarFields(data: any): any {
+  const result: any = {};
+  Object.keys(data).forEach((key) => {
+    const value = data[key];
+    if (
+      value === null ||
+      (typeof value !== "object" && !Array.isArray(value))
+    ) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+export function useCreateUserForm(options?: UserCreateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
     options || {};
 
-  // Smart mode detection
-  const mode = id ? "update" : "create";
-
-  // Autosave state
-  const [fieldSaveStates, setFieldSaveStates] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
-  >({});
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Fetch existing data if updating
-  const { data: existingData } = useUser(id || "", {
-    enabled: !!id,
-  });
-
-  // Choose appropriate schema
-  const schema = mode === "create" ? UserCreateSchema : UserUpdateSchema;
-
-  // Initialize form with proper defaults
-  const form = useForm<FlowUserCreate | FlowUserUpdate>({
+  const form = useForm<FlowUserCreate>({
     ...formOptions,
-    resolver: zodResolver(schema),
-    defaultValues: {
-      ...defaultValues,
-      ...(existingData || {}),
-    } as FlowUserCreate | FlowUserUpdate,
+    resolver: zodResolver(UserCreateSchema),
+    defaultValues: defaultValues as FlowUserCreate,
   });
 
-  // Update form when existing data loads, preserving user changes
-  useEffect(() => {
-    if (existingData && mode === "update") {
-      // Extract only scalar fields for update forms
-      const updateData: any = {};
-
-      // Copy scalar fields only, skip relations (arrays and objects)
-      Object.keys(existingData).forEach((key) => {
-        const value = (existingData as any)[key];
-        // Include scalar values and nulls, skip arrays and objects (relations)
-        if (
-          value === null ||
-          (typeof value !== "object" && !Array.isArray(value))
-        ) {
-          updateData[key] = value;
-        }
-      });
-
-      console.log(
-        "[UserForm] Resetting form with scalar data only:",
-        updateData,
-      );
-      form.reset(updateData as FlowUserUpdate, {
-        keepDirtyValues: true, // Preserve user-modified fields
-        keepErrors: true, // Keep validation errors for dirty fields
-      });
-    }
-  }, [existingData, mode, form]);
-
-  // Get appropriate mutation
-  const createMutation = useCreateUser({
+  const mutation = useCreateUser({
     onSuccess: (data) => {
       form.reset();
       onSuccess?.(data);
@@ -107,120 +115,327 @@ export function useUserForm(options?: UserFormOptions) {
     onError,
   });
 
-  // Only create update mutation if we have a valid ID
-  const updateMutation = useUpdateUser(id || "dummy-id-never-used", {
-    onSuccess: (data) => {
-      onSuccess?.(data);
+  // Field operations
+  const getFieldState = useCallback(
+    (name: Path<FlowUserCreate>): UserFieldState => {
+      const fieldState = form.getFieldState(name);
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: form.getValues(name),
+        original: (form.formState.defaultValues as any)?.[name],
+      };
     },
-    onError,
-    enabled: !!id, // Only enable if we have a real ID
-  });
-
-  const mutation = mode === "update" ? updateMutation : createMutation;
-
-  // Autosave handler for individual fields
-  const handleAutosave = useCallback(
-    (fieldName: string, value: any) => {
-      if (!autosave?.enabled || mode !== "update" || !id) return;
-
-      // Check if this field should be autosaved
-      if (autosave.fields && !autosave.fields.includes(fieldName)) return;
-
-      // Clear existing timer for this field
-      if (debounceTimers.current[fieldName]) {
-        clearTimeout(debounceTimers.current[fieldName]);
-      }
-
-      // Set field state to saving after debounce
-      setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-
-      // Create new debounced save
-      debounceTimers.current[fieldName] = setTimeout(async () => {
-        // Validate the specific field
-        const isValid = await form.trigger(fieldName as any);
-        if (!isValid) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          return;
-        }
-
-        setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saving" }));
-
-        try {
-          // Create partial update with just this field
-          const partialUpdate = { [fieldName]: value } as FlowUserUpdate;
-          await updateMutation.mutateAsync(partialUpdate);
-
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saved" }));
-          autosave.onFieldSave?.(fieldName, value);
-
-          // Reset to idle after 2 seconds
-          setTimeout(() => {
-            setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-          }, 2000);
-        } catch (error) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          autosave.onFieldError?.(fieldName, error as Error);
-        }
-      }, autosave.debounceMs || 1000);
-    },
-    [autosave, mode, form, updateMutation, id],
+    [form],
   );
 
-  // Watch for field changes if autosave is enabled
-  useEffect(() => {
-    if (!autosave?.enabled || mode !== "update" || !id) return;
+  const resetField = useCallback(
+    (name: Path<FlowUserCreate>) => {
+      form.resetField(name);
+    },
+    [form],
+  );
 
-    const subscription = form.watch((value, { name }) => {
-      if (name) {
-        handleAutosave(name, value[name]);
+  const setFieldValue = useCallback(
+    <T extends Path<FlowUserCreate>>(
+      name: T,
+      value: PathValue<FlowUserCreate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowUserCreate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowUserCreate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowUserCreate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowUserCreate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): UserDirtyField[] => {
+    const dirtyFields: UserDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: (form.formState.defaultValues as any)?.[key],
+          current: form.getValues(key as Path<FlowUserCreate>),
+        });
       }
     });
-
-    return () => subscription.unsubscribe();
-  }, [form, autosave, mode, handleAutosave]);
+    return dirtyFields;
+  }, [form]);
 
   // Submit handler
   const submit = useCallback(
-    (data: FlowUserCreate | FlowUserUpdate) => {
-      console.log("[UserForm] Submitting " + mode + " form:", data);
-      if (mode === "update") {
-        return updateMutation.mutate(data as FlowUserUpdate);
-      } else {
-        return createMutation.mutate(data as FlowUserCreate);
-      }
+    (data: FlowUserCreate) => {
+      console.log("[UserCreateForm] Submitting:", data);
+      return mutation.mutate(data);
     },
-    [createMutation, updateMutation, mode],
+    [mutation],
   );
 
-  // Validation error handler
   const onInvalid = useCallback((errors: any) => {
-    console.error("[UserForm] Validation failed:", errors);
+    console.error("[UserCreateForm] Validation failed:", errors);
   }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useUserFormAutosave(form, mutation, autosaveConfig);
+
+  const tracking = useUserFormFieldTracking(form);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useUserFormHistory(form, historyConfig);
 
   return {
     form,
+    mutation,
     submit: form.handleSubmit(submit, onInvalid),
     isSubmitting: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,
-    mode,
     reset: () => form.reset(),
-    // Autosave specific
-    fieldSaveStates,
-    isAutosaving: Object.values(fieldSaveStates).some(
-      (state) => state === "saving",
-    ),
-    autosaveEnabled: autosave?.enabled || false,
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
   };
 }
 
-export function useUserQuickForm(id?: string) {
-  return useUserForm({ id });
+export function useUpdateUserForm(id: string, options?: UserUpdateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
+    options || {};
+
+  const originalRef = useRef<FlowUser>();
+
+  // Fetch existing data
+  const { data: existingData } = useUser(id);
+
+  // Initialize form
+  const form = useForm<FlowUserUpdate>({
+    ...formOptions,
+    resolver: zodResolver(UserUpdateSchema),
+    defaultValues: defaultValues as FlowUserUpdate,
+  });
+
+  // Track autosave ref to use in useEffect
+  const autosaveRef = useRef<ReturnType<typeof useUserFormAutosave>>();
+
+  // Update form when existing data loads
+  useEffect(() => {
+    if (existingData) {
+      originalRef.current = existingData;
+      const scalarData = extractScalarFields(existingData);
+      console.log("[UserUpdateForm] Loading data:", scalarData);
+
+      // Pause autosave during form reset to prevent loops
+      if (autosaveRef.current?.pauseAutosave) {
+        autosaveRef.current.pauseAutosave(() => {
+          form.reset(scalarData as FlowUserUpdate, {
+            keepDirtyValues: true,
+            keepErrors: true,
+          });
+        });
+      } else {
+        form.reset(scalarData as FlowUserUpdate, {
+          keepDirtyValues: true,
+          keepErrors: true,
+        });
+      }
+    }
+  }, [existingData, form]);
+
+  // Update mutation
+  const mutation = useUpdateUser(id, {
+    onSuccess,
+    onError,
+  });
+
+  // Field operations with original comparison
+  const getFieldState = useCallback(
+    (name: Path<FlowUserUpdate>): UserFieldState => {
+      const fieldState = form.getFieldState(name);
+      const currentValue = form.getValues(name);
+      const originalValue = originalRef.current?.[name as keyof FlowUser];
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: currentValue,
+        original: originalValue,
+        hasChanged: currentValue !== originalValue,
+      };
+    },
+    [form],
+  );
+
+  const resetField = useCallback(
+    (name: Path<FlowUserUpdate>) => {
+      const originalValue = originalRef.current?.[name as keyof FlowUser];
+      form.setValue(name, originalValue as any);
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const setFieldValue = useCallback(
+    <T extends Path<FlowUserUpdate>>(
+      name: T,
+      value: PathValue<FlowUserUpdate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowUserUpdate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowUserUpdate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowUserUpdate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowUserUpdate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): UserDirtyField[] => {
+    const dirtyFields: UserDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: originalRef.current?.[key as keyof FlowUser],
+          current: form.getValues(key as Path<FlowUserUpdate>),
+        });
+      }
+    });
+    return dirtyFields;
+  }, [form]);
+
+  // Submit handler
+  const submit = useCallback(
+    (data: FlowUserUpdate) => {
+      console.log("[UserUpdateForm] Submitting:", data);
+      return mutation.mutate(data);
+    },
+    [mutation],
+  );
+
+  const onInvalid = useCallback((errors: any) => {
+    console.error("[UserUpdateForm] Validation failed:", errors);
+  }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useUserFormAutosave(form, mutation, autosaveConfig);
+
+  // Store autosave ref for use in useEffect
+  useEffect(() => {
+    autosaveRef.current = autosave;
+  }, [autosave]);
+
+  const tracking = useUserFormFieldTracking(form, originalRef.current);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useUserFormHistory(form, historyConfig);
+
+  return {
+    form,
+    mutation,
+    original: originalRef.current,
+    submit: form.handleSubmit(submit, onInvalid),
+    isSubmitting: mutation.isPending,
+    error: mutation.error,
+    isSuccess: mutation.isSuccess,
+    reset: () => form.reset(extractScalarFields(originalRef.current || {})),
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
+  };
 }
 
-export type UserFormProps = {
-  form: UseFormReturn<FlowUserCreate | FlowUserUpdate>;
+export type UserCreateFormProps = {
+  form: UseFormReturn<FlowUserCreate>;
   onSubmit: () => void;
   isSubmitting: boolean;
   error?: Error | null;
+};
+
+export type UserUpdateFormProps = {
+  form: UseFormReturn<FlowUserUpdate>;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  error?: Error | null;
+  original?: FlowUser;
 };

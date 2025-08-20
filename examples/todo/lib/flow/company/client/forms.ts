@@ -8,6 +8,9 @@ import {
   useForm,
   type UseFormReturn,
   type UseFormProps,
+  type Path,
+  type PathValue,
+  type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CompanyCreateSchema, CompanyUpdateSchema } from "../types/schemas";
@@ -17,6 +20,26 @@ import type {
   FlowCompanyUpdate,
 } from "../types/schemas";
 import { useCompany, useCreateCompany, useUpdateCompany } from "./hooks";
+import {
+  useCompanyFormAutosave,
+  useCompanyFormFieldTracking,
+  useCompanyFormHistory,
+} from "./composables";
+
+export type CompanyFieldState = {
+  isDirty: boolean;
+  isTouched: boolean;
+  error?: any;
+  current: any;
+  original?: any;
+  hasChanged?: boolean;
+};
+
+export type CompanyDirtyField = {
+  field: string;
+  original?: any;
+  current: any;
+};
 
 export type CompanyAutosaveConfig = {
   enabled: boolean;
@@ -26,80 +49,65 @@ export type CompanyAutosaveConfig = {
   onFieldError?: (field: string, error: Error) => void;
 };
 
-export type CompanyFormOptions = {
-  id?: string;
-  defaultValues?: Partial<FlowCompanyCreate> | Partial<FlowCompanyUpdate>;
+export type CompanyFormFeatures = {
+  autosave?: CompanyAutosaveConfig | boolean;
+  tracking?: boolean;
+  history?:
+    | {
+        enabled: boolean;
+        maxHistorySize?: number;
+      }
+    | boolean;
+};
+
+// Create form options
+export type CompanyCreateFormOptions = {
+  defaultValues?: Partial<FlowCompanyCreate>;
   onSuccess?: (data: FlowCompany) => void;
   onError?: (error: Error) => void;
   formOptions?: Omit<
-    UseFormProps<FlowCompanyCreate | FlowCompanyUpdate>,
+    UseFormProps<FlowCompanyCreate>,
     "resolver" | "defaultValues"
   >;
-  autosave?: CompanyAutosaveConfig;
+  features?: CompanyFormFeatures;
 };
 
-export function useCompanyForm(options?: CompanyFormOptions) {
-  const { id, defaultValues, onSuccess, onError, formOptions, autosave } =
+export type CompanyUpdateFormOptions = {
+  defaultValues?: Partial<FlowCompanyUpdate>;
+  onSuccess?: (data: FlowCompany) => void;
+  onError?: (error: Error) => void;
+  formOptions?: Omit<
+    UseFormProps<FlowCompanyUpdate>,
+    "resolver" | "defaultValues"
+  >;
+  features?: CompanyFormFeatures;
+};
+
+function extractScalarFields(data: any): any {
+  const result: any = {};
+  Object.keys(data).forEach((key) => {
+    const value = data[key];
+    if (
+      value === null ||
+      (typeof value !== "object" && !Array.isArray(value))
+    ) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+export function useCreateCompanyForm(options?: CompanyCreateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
     options || {};
 
-  // Smart mode detection
-  const mode = id ? "update" : "create";
-
-  // Autosave state
-  const [fieldSaveStates, setFieldSaveStates] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
-  >({});
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Fetch existing data if updating
-  const { data: existingData } = useCompany(id || "", {
-    enabled: !!id,
-  });
-
-  // Choose appropriate schema
-  const schema = mode === "create" ? CompanyCreateSchema : CompanyUpdateSchema;
-
-  // Initialize form with proper defaults
-  const form = useForm<FlowCompanyCreate | FlowCompanyUpdate>({
+  const form = useForm<FlowCompanyCreate>({
     ...formOptions,
-    resolver: zodResolver(schema),
-    defaultValues: {
-      ...defaultValues,
-      ...(existingData || {}),
-    } as FlowCompanyCreate | FlowCompanyUpdate,
+    resolver: zodResolver(CompanyCreateSchema),
+    defaultValues: defaultValues as FlowCompanyCreate,
   });
 
-  // Update form when existing data loads, preserving user changes
-  useEffect(() => {
-    if (existingData && mode === "update") {
-      // Extract only scalar fields for update forms
-      const updateData: any = {};
-
-      // Copy scalar fields only, skip relations (arrays and objects)
-      Object.keys(existingData).forEach((key) => {
-        const value = (existingData as any)[key];
-        // Include scalar values and nulls, skip arrays and objects (relations)
-        if (
-          value === null ||
-          (typeof value !== "object" && !Array.isArray(value))
-        ) {
-          updateData[key] = value;
-        }
-      });
-
-      console.log(
-        "[CompanyForm] Resetting form with scalar data only:",
-        updateData,
-      );
-      form.reset(updateData as FlowCompanyUpdate, {
-        keepDirtyValues: true, // Preserve user-modified fields
-        keepErrors: true, // Keep validation errors for dirty fields
-      });
-    }
-  }, [existingData, mode, form]);
-
-  // Get appropriate mutation
-  const createMutation = useCreateCompany({
+  const mutation = useCreateCompany({
     onSuccess: (data) => {
       form.reset();
       onSuccess?.(data);
@@ -107,120 +115,330 @@ export function useCompanyForm(options?: CompanyFormOptions) {
     onError,
   });
 
-  // Only create update mutation if we have a valid ID
-  const updateMutation = useUpdateCompany(id || "dummy-id-never-used", {
-    onSuccess: (data) => {
-      onSuccess?.(data);
+  // Field operations
+  const getFieldState = useCallback(
+    (name: Path<FlowCompanyCreate>): CompanyFieldState => {
+      const fieldState = form.getFieldState(name);
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: form.getValues(name),
+        original: (form.formState.defaultValues as any)?.[name],
+      };
     },
-    onError,
-    enabled: !!id, // Only enable if we have a real ID
-  });
-
-  const mutation = mode === "update" ? updateMutation : createMutation;
-
-  // Autosave handler for individual fields
-  const handleAutosave = useCallback(
-    (fieldName: string, value: any) => {
-      if (!autosave?.enabled || mode !== "update" || !id) return;
-
-      // Check if this field should be autosaved
-      if (autosave.fields && !autosave.fields.includes(fieldName)) return;
-
-      // Clear existing timer for this field
-      if (debounceTimers.current[fieldName]) {
-        clearTimeout(debounceTimers.current[fieldName]);
-      }
-
-      // Set field state to saving after debounce
-      setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-
-      // Create new debounced save
-      debounceTimers.current[fieldName] = setTimeout(async () => {
-        // Validate the specific field
-        const isValid = await form.trigger(fieldName as any);
-        if (!isValid) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          return;
-        }
-
-        setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saving" }));
-
-        try {
-          // Create partial update with just this field
-          const partialUpdate = { [fieldName]: value } as FlowCompanyUpdate;
-          await updateMutation.mutateAsync(partialUpdate);
-
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saved" }));
-          autosave.onFieldSave?.(fieldName, value);
-
-          // Reset to idle after 2 seconds
-          setTimeout(() => {
-            setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-          }, 2000);
-        } catch (error) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          autosave.onFieldError?.(fieldName, error as Error);
-        }
-      }, autosave.debounceMs || 1000);
-    },
-    [autosave, mode, form, updateMutation, id],
+    [form],
   );
 
-  // Watch for field changes if autosave is enabled
-  useEffect(() => {
-    if (!autosave?.enabled || mode !== "update" || !id) return;
+  const resetField = useCallback(
+    (name: Path<FlowCompanyCreate>) => {
+      form.resetField(name);
+    },
+    [form],
+  );
 
-    const subscription = form.watch((value, { name }) => {
-      if (name) {
-        handleAutosave(name, value[name]);
+  const setFieldValue = useCallback(
+    <T extends Path<FlowCompanyCreate>>(
+      name: T,
+      value: PathValue<FlowCompanyCreate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowCompanyCreate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowCompanyCreate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowCompanyCreate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowCompanyCreate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): CompanyDirtyField[] => {
+    const dirtyFields: CompanyDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: (form.formState.defaultValues as any)?.[key],
+          current: form.getValues(key as Path<FlowCompanyCreate>),
+        });
       }
     });
-
-    return () => subscription.unsubscribe();
-  }, [form, autosave, mode, handleAutosave]);
+    return dirtyFields;
+  }, [form]);
 
   // Submit handler
   const submit = useCallback(
-    (data: FlowCompanyCreate | FlowCompanyUpdate) => {
-      console.log("[CompanyForm] Submitting " + mode + " form:", data);
-      if (mode === "update") {
-        return updateMutation.mutate(data as FlowCompanyUpdate);
-      } else {
-        return createMutation.mutate(data as FlowCompanyCreate);
-      }
+    (data: FlowCompanyCreate) => {
+      console.log("[CompanyCreateForm] Submitting:", data);
+      return mutation.mutate(data);
     },
-    [createMutation, updateMutation, mode],
+    [mutation],
   );
 
-  // Validation error handler
   const onInvalid = useCallback((errors: any) => {
-    console.error("[CompanyForm] Validation failed:", errors);
+    console.error("[CompanyCreateForm] Validation failed:", errors);
   }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useCompanyFormAutosave(form, mutation, autosaveConfig);
+
+  const tracking = useCompanyFormFieldTracking(form);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useCompanyFormHistory(form, historyConfig);
 
   return {
     form,
+    mutation,
     submit: form.handleSubmit(submit, onInvalid),
     isSubmitting: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,
-    mode,
     reset: () => form.reset(),
-    // Autosave specific
-    fieldSaveStates,
-    isAutosaving: Object.values(fieldSaveStates).some(
-      (state) => state === "saving",
-    ),
-    autosaveEnabled: autosave?.enabled || false,
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
   };
 }
 
-export function useCompanyQuickForm(id?: string) {
-  return useCompanyForm({ id });
+export function useUpdateCompanyForm(
+  id: string,
+  options?: CompanyUpdateFormOptions,
+) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
+    options || {};
+
+  const originalRef = useRef<FlowCompany>();
+
+  // Fetch existing data
+  const { data: existingData } = useCompany(id);
+
+  // Initialize form
+  const form = useForm<FlowCompanyUpdate>({
+    ...formOptions,
+    resolver: zodResolver(CompanyUpdateSchema),
+    defaultValues: defaultValues as FlowCompanyUpdate,
+  });
+
+  // Track autosave ref to use in useEffect
+  const autosaveRef = useRef<ReturnType<typeof useCompanyFormAutosave>>();
+
+  // Update form when existing data loads
+  useEffect(() => {
+    if (existingData) {
+      originalRef.current = existingData;
+      const scalarData = extractScalarFields(existingData);
+      console.log("[CompanyUpdateForm] Loading data:", scalarData);
+
+      // Pause autosave during form reset to prevent loops
+      if (autosaveRef.current?.pauseAutosave) {
+        autosaveRef.current.pauseAutosave(() => {
+          form.reset(scalarData as FlowCompanyUpdate, {
+            keepDirtyValues: true,
+            keepErrors: true,
+          });
+        });
+      } else {
+        form.reset(scalarData as FlowCompanyUpdate, {
+          keepDirtyValues: true,
+          keepErrors: true,
+        });
+      }
+    }
+  }, [existingData, form]);
+
+  // Update mutation
+  const mutation = useUpdateCompany(id, {
+    onSuccess,
+    onError,
+  });
+
+  // Field operations with original comparison
+  const getFieldState = useCallback(
+    (name: Path<FlowCompanyUpdate>): CompanyFieldState => {
+      const fieldState = form.getFieldState(name);
+      const currentValue = form.getValues(name);
+      const originalValue = originalRef.current?.[name as keyof FlowCompany];
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: currentValue,
+        original: originalValue,
+        hasChanged: currentValue !== originalValue,
+      };
+    },
+    [form],
+  );
+
+  const resetField = useCallback(
+    (name: Path<FlowCompanyUpdate>) => {
+      const originalValue = originalRef.current?.[name as keyof FlowCompany];
+      form.setValue(name, originalValue as any);
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const setFieldValue = useCallback(
+    <T extends Path<FlowCompanyUpdate>>(
+      name: T,
+      value: PathValue<FlowCompanyUpdate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowCompanyUpdate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowCompanyUpdate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowCompanyUpdate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowCompanyUpdate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): CompanyDirtyField[] => {
+    const dirtyFields: CompanyDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: originalRef.current?.[key as keyof FlowCompany],
+          current: form.getValues(key as Path<FlowCompanyUpdate>),
+        });
+      }
+    });
+    return dirtyFields;
+  }, [form]);
+
+  // Submit handler
+  const submit = useCallback(
+    (data: FlowCompanyUpdate) => {
+      console.log("[CompanyUpdateForm] Submitting:", data);
+      return mutation.mutate(data);
+    },
+    [mutation],
+  );
+
+  const onInvalid = useCallback((errors: any) => {
+    console.error("[CompanyUpdateForm] Validation failed:", errors);
+  }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useCompanyFormAutosave(form, mutation, autosaveConfig);
+
+  // Store autosave ref for use in useEffect
+  useEffect(() => {
+    autosaveRef.current = autosave;
+  }, [autosave]);
+
+  const tracking = useCompanyFormFieldTracking(form, originalRef.current);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useCompanyFormHistory(form, historyConfig);
+
+  return {
+    form,
+    mutation,
+    original: originalRef.current,
+    submit: form.handleSubmit(submit, onInvalid),
+    isSubmitting: mutation.isPending,
+    error: mutation.error,
+    isSuccess: mutation.isSuccess,
+    reset: () => form.reset(extractScalarFields(originalRef.current || {})),
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
+  };
 }
 
-export type CompanyFormProps = {
-  form: UseFormReturn<FlowCompanyCreate | FlowCompanyUpdate>;
+export type CompanyCreateFormProps = {
+  form: UseFormReturn<FlowCompanyCreate>;
   onSubmit: () => void;
   isSubmitting: boolean;
   error?: Error | null;
+};
+
+export type CompanyUpdateFormProps = {
+  form: UseFormReturn<FlowCompanyUpdate>;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  error?: Error | null;
+  original?: FlowCompany;
 };

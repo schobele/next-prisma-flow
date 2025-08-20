@@ -16,27 +16,6 @@ export function transformTagCreate(
   if ("createdAt" in input && input.createdAt !== undefined) {
     result.createdAt = input.createdAt;
   }
-  if (input.company !== undefined) {
-    const companyData = input.company;
-    if (companyData) {
-      if ("connect" in companyData && companyData.connect) {
-        result.company = { connect: companyData.connect };
-      } else if ("create" in companyData && companyData.create) {
-        result.company = { create: companyData.create as any };
-      } else if (
-        "connectOrCreate" in companyData &&
-        companyData.connectOrCreate
-      ) {
-        result.company = {
-          connectOrCreate: companyData.connectOrCreate as any,
-        };
-      }
-    }
-  }
-  // Handle foreign key field when relation is not provided
-  if (input.company === undefined && "companyId" in input && input.companyId) {
-    result.company = { connect: { id: input.companyId } };
-  }
   if (input.todos !== undefined) {
     const todosData = input.todos;
     if (todosData) {
@@ -53,6 +32,14 @@ export function transformTagCreate(
         };
       }
     }
+  }
+  // Handle company_relation foreign key when relation is not configured
+  if (
+    "companyId" in input &&
+    input.companyId !== undefined &&
+    input.companyId !== null
+  ) {
+    result.company_relation = { connect: { id: input.companyId } };
   }
 
   return result;
@@ -74,12 +61,6 @@ export function transformTagUpdate(
   const createdAtValue = input.createdAt;
   if (createdAtValue !== undefined && createdAtValue !== null) {
     result.createdAt = createdAtValue;
-  }
-  if (input.company !== undefined) {
-    const companyData = input.company;
-    if (companyData) {
-      result.company = companyData as any;
-    }
   }
   if (input.todos !== undefined) {
     const todosData = input.todos;

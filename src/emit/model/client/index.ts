@@ -17,6 +17,9 @@ export async function emitClientBarrel({
   content.push(``);
   content.push(`export * from "./hooks";`);
   content.push(`export * from "./forms";`);
+  content.push(`export * from "./composables";`);
+  content.push(`export * from "./provider";`);
+  content.push(`export * from "./field";`);
 
   const clientDir = join(modelDir, "client");
   await write(join(clientDir, "index.ts"), content.join("\n"));

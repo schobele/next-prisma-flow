@@ -10,11 +10,16 @@ import {
   FlowCtx,
   FlowPolicyError,
   FlowValidationError,
+  deepMergePrismaData,
 } from "../../core";
 import { canList } from "../../policies";
 import { ListSelect } from "./selects";
 import { ListCreateSchema, ListUpdateSchema } from "../types/schemas";
-import type { FlowListCreate, FlowListUpdate } from "../types/schemas";
+import type {
+  FlowList,
+  FlowListCreate,
+  FlowListUpdate,
+} from "../types/schemas";
 import { transformListCreate, transformListUpdate } from "../types/transforms";
 
 // Transform Prisma response to match FlowPost schema (null -> undefined for relations)
@@ -24,7 +29,10 @@ function transformResponse(item: any): any {
   return result;
 }
 
-export async function createList(data: FlowListCreate, ctx: FlowCtx = {}) {
+export async function createList(
+  data: FlowListCreate,
+  ctx: FlowCtx = {},
+): Promise<FlowList> {
   const policy = await canList("create", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -34,20 +42,20 @@ export async function createList(data: FlowListCreate, ctx: FlowCtx = {}) {
   }
 
   const createData = transformListCreate(parsed.data as any);
-  const item = await prisma.list.create({
-    data: { ...createData, ...policy.data },
+  const item = (await prisma.list.create({
+    data: deepMergePrismaData(createData, policy.data || {}, "List"),
     select: ListSelect,
-  });
+  })) as FlowList;
 
   await invalidateTags([keys.m("List").tag()]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowList;
 }
 
 export async function updateList(
   id: string,
   data: FlowListUpdate,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowList> {
   const policy = await canList("update", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -57,17 +65,17 @@ export async function updateList(
   }
 
   const updateData = transformListUpdate(parsed.data as any);
-  const item = await prisma.list.update({
+  const item = (await prisma.list.update({
     where: { id: id, ...policy.where },
-    data: { ...updateData, ...policy.data },
+    data: deepMergePrismaData(updateData, policy.data || {}, "List"),
     select: ListSelect,
-  });
+  })) as FlowList;
 
   await invalidateTags([keys.m("List").tag(), keys.m("List").tag(String(id))]);
-  return transformResponse(item);
+  return transformResponse(item) as FlowList;
 }
 
-export async function deleteList(id: string, ctx?: FlowCtx) {
+export async function deleteList(id: string, ctx?: FlowCtx): Promise<void> {
   const policy = await canList("delete", ctx || {}, id);
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 

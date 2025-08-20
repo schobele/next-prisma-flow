@@ -8,6 +8,7 @@ import { cacheTagged, FlowCtx, FlowPolicyError } from "../../core";
 import { canUser } from "../../policies";
 import { UserSelect } from "./selects";
 import type { Prisma } from "../../prisma";
+import type { FlowUser } from "../types/schemas";
 
 // Transform Prisma response to match FlowUser schema (null -> undefined for relations)
 function transformResponse(item: any): any {
@@ -23,16 +24,16 @@ function transformResponseList(items: any[]): any[] {
 export const getUserById = cacheTagged(async function (
   id: string,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowUser | null> {
   const policy = await canUser("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const item = await prisma.user.findUnique({
+  const item = (await prisma.user.findUnique({
     where: { id: id, ...policy.where },
     select: UserSelect,
-  });
+  })) as FlowUser | null;
 
-  return transformResponse(item);
+  return transformResponse(item) as FlowUser | null;
 });
 
 export type UserListParams = {
@@ -48,7 +49,7 @@ export type UserListParams = {
 export const listUsers = cacheTagged(async function (
   params: UserListParams = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowUser[]; total: number }> {
   const policy = await canUser("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,18 +63,18 @@ export const listUsers = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: UserSelect,
-    }),
+    }) as Promise<FlowUser[]>,
     prisma.user.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowUser[], total };
 });
 
 export const searchUsers = cacheTagged(async function (
   query: string,
   params: Omit<UserListParams, "where"> = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowUser[]; total: number }> {
   const policy = await canUser("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -100,9 +101,9 @@ export const searchUsers = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: UserSelect,
-    }),
+    }) as Promise<FlowUser[]>,
     prisma.user.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowUser[], total };
 });

@@ -8,6 +8,9 @@ import { emitServerSelects } from "./server/selects";
 import { emitServerBarrel } from "./server";
 import { emitClientHooks } from "./client/hooks";
 import { emitClientForms } from "./client/forms";
+import { emitClientComposables } from "./client/composables";
+import { emitClientProvider } from "./client/provider";
+import { emitClientField } from "./client/field";
 import { emitClientBarrel } from "./client";
 import { emitTypesSchemas } from "./types/schemas";
 import { emitTypesTransforms } from "./types/transforms";
@@ -37,6 +40,9 @@ export async function emitModel({
   // Emit client components
   await emitClientHooks({ modelDir, model, cfg });
   await emitClientForms({ modelDir, model, cfg });
+  await emitClientComposables({ modelDir, model, cfg });
+  await emitClientProvider({ modelDir, model, cfg });
+  await emitClientField({ modelDir, model, cfg });
   await emitClientBarrel({ modelDir, model, cfg });
 
   // Emit types

@@ -12,6 +12,7 @@ generator flow {
   models   = "all"
   prismaImport = "../prisma"
   tenantField = "companyId"
+  tenantModel = "Company"
   
   // Select configurations with company relations
   companySelect = ["id", "name", "slug", "logo", "plan", "maxUsers", "maxStorage", "createdAt", "users", "lists", "todos", "tags"]
@@ -63,6 +64,8 @@ model Company {
   
   @@index([slug])
 }
+
+
 
 model User {
   id        String   @id @default(cuid())
@@ -149,7 +152,7 @@ model Tag {
   name      String
   color     String   @default("#6b7280") // Default gray color
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company_relation   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
@@ -158,4 +161,9 @@ model Tag {
   @@unique([companyId, name])
   @@index([companyId])
   @@index([name])
+}
+
+model TodoListTemplate {
+  id        String   @id @default(cuid())
+  name      String
 }

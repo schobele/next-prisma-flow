@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { DMMF } from "@prisma/generator-helper";
 import type { FlowConfig } from "../../../config";
 import { write } from "../../fs";
-import { header, imp, impType } from "../../strings";
+import { header, imp, impType, toCamelCase } from "../../strings";
 
 export async function emitServerMethods({
   modelDir,
@@ -13,7 +13,7 @@ export async function emitServerMethods({
   model: DMMF.Model;
   cfg: FlowConfig;
 }) {
-  const modelLower = model.name.toLowerCase();
+  const modelCamel = toCamelCase(model.name);
   const idField = model.fields.find((f) => f.isId);
   const idType = idField?.type === "String" ? "string" : "number";
 
@@ -23,13 +23,15 @@ export async function emitServerMethods({
   content.push(``);
   content.push(imp("../../prisma", ["prisma"]));
   content.push(impType("../../prisma", ["Prisma"]));
-  content.push(imp("../../core", ["FlowCtx", "FlowPolicyError"]));
+  content.push(imp("../../core", ["FlowCtx", "FlowPolicyError", "deepMergePrismaData"]));
   content.push(imp("../../policies", [`can${model.name}`]));
   
   // Import the default select if configured
   if (cfg.perModelSelect[model.name]) {
     content.push(imp("./selects", [`${model.name}Select`]));
   }
+  // Import FlowType for return type annotations
+  content.push(impType("../types/schemas", [`Flow${model.name}`]));
   
   content.push(``);
 
@@ -37,22 +39,22 @@ export async function emitServerMethods({
   content.push(`export async function findUnique(`);
   content.push(`  args: Prisma.${model.name}FindUniqueArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name} | null> {`);
   content.push(`  const policy = await can${model.name}("read", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.findUnique({`);
+    content.push(`  return prisma.${modelCamel}.findUnique({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name} | null>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.findUnique({`);
+    content.push(`  return prisma.${modelCamel}.findUnique({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name} | null>;`);
   }
   
   content.push(`}`);
@@ -62,22 +64,22 @@ export async function emitServerMethods({
   content.push(`export async function findUniqueOrThrow(`);
   content.push(`  args: Prisma.${model.name}FindUniqueOrThrowArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("read", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.findUniqueOrThrow({`);
+    content.push(`  return prisma.${modelCamel}.findUniqueOrThrow({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.findUniqueOrThrow({`);
+    content.push(`  return prisma.${modelCamel}.findUniqueOrThrow({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   }
   
   content.push(`}`);
@@ -87,22 +89,22 @@ export async function emitServerMethods({
   content.push(`export async function findFirst(`);
   content.push(`  args?: Prisma.${model.name}FindFirstArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name} | null> {`);
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.findFirst({`);
+    content.push(`  return prisma.${modelCamel}.findFirst({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name} | null>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.findFirst({`);
+    content.push(`  return prisma.${modelCamel}.findFirst({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name} | null>;`);
   }
   
   content.push(`}`);
@@ -112,22 +114,22 @@ export async function emitServerMethods({
   content.push(`export async function findFirstOrThrow(`);
   content.push(`  args?: Prisma.${model.name}FindFirstOrThrowArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.findFirstOrThrow({`);
+    content.push(`  return prisma.${modelCamel}.findFirstOrThrow({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.findFirstOrThrow({`);
+    content.push(`  return prisma.${modelCamel}.findFirstOrThrow({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   }
   
   content.push(`}`);
@@ -137,22 +139,22 @@ export async function emitServerMethods({
   content.push(`export async function findMany(`);
   content.push(`  args?: Prisma.${model.name}FindManyArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}[]> {`);
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.findMany({`);
+    content.push(`  return prisma.${modelCamel}.findMany({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}[]>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.findMany({`);
+    content.push(`  return prisma.${modelCamel}.findMany({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args?.where, ...policy.where }`);
-    content.push(`  });`);
+    content.push(`  }) as Promise<Flow${model.name}[]>;`);
   }
   
   content.push(`}`);
@@ -162,22 +164,22 @@ export async function emitServerMethods({
   content.push(`export async function create(`);
   content.push(`  args: Prisma.${model.name}CreateArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("create", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  const result = await prisma.${modelLower}.create({`);
+    content.push(`  const result = await prisma.${modelCamel}.create({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
-    content.push(`    data: { ...args.data, ...policy.data }`);
-    content.push(`  });`);
+    content.push(`    data: deepMergePrismaData(args.data, policy.data || {}, "${model.name}")`);
+    content.push(`  }) as Flow${model.name};`);
   } else {
-    content.push(`  const result = await prisma.${modelLower}.create({`);
+    content.push(`  const result = await prisma.${modelCamel}.create({`);
     content.push(`    ...args,`);
-    content.push(`    data: { ...args.data, ...policy.data }`);
-    content.push(`  });`);
+    content.push(`    data: deepMergePrismaData(args.data, policy.data || {}, "${model.name}")`);
+    content.push(`  }) as Flow${model.name};`);
   }
   
   content.push(``);
@@ -193,12 +195,12 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("create", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  // Apply policy data to each item`);
+  content.push(`  // Apply policy data to each item using deep merge`);
   content.push(`  const data = Array.isArray(args.data) `);
-  content.push(`    ? args.data.map(item => ({ ...item, ...policy.data }))`);
-  content.push(`    : { ...args.data, ...policy.data };`);
+  content.push(`    ? args.data.map(item => deepMergePrismaData(item, policy.data || {}, "${model.name}"))`);
+  content.push(`    : deepMergePrismaData(args.data, policy.data || {});`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.createMany({`);
+  content.push(`  return prisma.${modelCamel}.createMany({`);
   content.push(`    ...args,`);
   content.push(`    data`);
   content.push(`  });`);
@@ -209,24 +211,24 @@ export async function emitServerMethods({
   content.push(`export async function update(`);
   content.push(`  args: Prisma.${model.name}UpdateArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  const policy = await can${model.name}("update", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  const result = await prisma.${modelLower}.update({`);
+    content.push(`  const result = await prisma.${modelCamel}.update({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where },`);
-    content.push(`    data: { ...args.data, ...policy.data }`);
-    content.push(`  });`);
+    content.push(`    data: deepMergePrismaData(args.data, policy.data || {}, "${model.name}")`);
+    content.push(`  }) as Flow${model.name};`);
   } else {
-    content.push(`  const result = await prisma.${modelLower}.update({`);
+    content.push(`  const result = await prisma.${modelCamel}.update({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...policy.where },`);
-    content.push(`    data: { ...args.data, ...policy.data }`);
-    content.push(`  });`);
+    content.push(`    data: deepMergePrismaData(args.data, policy.data || {}, "${model.name}")`);
+    content.push(`  }) as Flow${model.name};`);
   }
   
   content.push(``);
@@ -242,10 +244,10 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("update", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.updateMany({`);
+  content.push(`  return prisma.${modelCamel}.updateMany({`);
   content.push(`    ...args,`);
   content.push(`    where: { ...args.where, ...policy.where },`);
-  content.push(`    data: { ...args.data, ...policy.data }`);
+  content.push(`    data: deepMergePrismaData(args.data, policy.data || {}, "${model.name}")`);
   content.push(`  });`);
   content.push(`}`);
   content.push(``);
@@ -254,7 +256,7 @@ export async function emitServerMethods({
   content.push(`export async function upsert(`);
   content.push(`  args: Prisma.${model.name}UpsertArgs,`);
   content.push(`  ctx: FlowCtx = {}`);
-  content.push(`) {`);
+  content.push(`): Promise<Flow${model.name}> {`);
   content.push(`  // Check both create and update policies`);
   content.push(`  const createPolicy = await can${model.name}("create", ctx);`);
   content.push(`  const updatePolicy = await can${model.name}("update", ctx);`);
@@ -266,20 +268,20 @@ export async function emitServerMethods({
   content.push(``);
   
   if (cfg.perModelSelect[model.name]) {
-    content.push(`  return prisma.${modelLower}.upsert({`);
+    content.push(`  return prisma.${modelCamel}.upsert({`);
     content.push(`    select: ${model.name}Select,`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...updatePolicy.where },`);
-    content.push(`    create: { ...args.create, ...createPolicy.data },`);
-    content.push(`    update: { ...args.update, ...updatePolicy.data }`);
-    content.push(`  });`);
+    content.push(`    create: deepMergePrismaData(args.create, createPolicy.data || {}, "${model.name}"),`);
+    content.push(`    update: deepMergePrismaData(args.update, updatePolicy.data || {}, "${model.name}")`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   } else {
-    content.push(`  return prisma.${modelLower}.upsert({`);
+    content.push(`  return prisma.${modelCamel}.upsert({`);
     content.push(`    ...args,`);
     content.push(`    where: { ...args.where, ...updatePolicy.where },`);
-    content.push(`    create: { ...args.create, ...createPolicy.data },`);
-    content.push(`    update: { ...args.update, ...updatePolicy.data }`);
-    content.push(`  });`);
+    content.push(`    create: deepMergePrismaData(args.create, createPolicy.data || {}, "${model.name}"),`);
+    content.push(`    update: deepMergePrismaData(args.update, updatePolicy.data || {}, "${model.name}")`);
+    content.push(`  }) as Promise<Flow${model.name}>;`);
   }
   
   content.push(`}`);
@@ -293,7 +295,7 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("delete", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.delete({`);
+  content.push(`  return prisma.${modelCamel}.delete({`);
   content.push(`    ...args,`);
   content.push(`    where: { ...args.where, ...policy.where }`);
   content.push(`  });`);
@@ -308,7 +310,7 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("delete", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.deleteMany({`);
+  content.push(`  return prisma.${modelCamel}.deleteMany({`);
   content.push(`    ...args,`);
   content.push(`    where: { ...args?.where, ...policy.where }`);
   content.push(`  });`);
@@ -323,7 +325,7 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.count({`);
+  content.push(`  return prisma.${modelCamel}.count({`);
   content.push(`    ...args,`);
   content.push(`    where: { ...args?.where, ...policy.where }`);
   content.push(`  });`);
@@ -338,7 +340,7 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.aggregate({`);
+  content.push(`  return prisma.${modelCamel}.aggregate({`);
   content.push(`    ...args,`);
   content.push(`    where: { ...args.where, ...policy.where }`);
   content.push(`  });`);
@@ -410,7 +412,7 @@ export async function emitServerMethods({
   content.push(`  const policy = await can${model.name}("list", ctx || {});`);
   content.push(`  if (!policy.ok) throw new FlowPolicyError(policy.message);`);
   content.push(``);
-  content.push(`  return prisma.${modelLower}.groupBy({`);
+  content.push(`  return prisma.${modelCamel}.groupBy({`);
   content.push(`    ...(args as any),`);
   content.push(`    where: { ...args.where, ...policy.where }`);
   content.push(`  } as any) as any;`);

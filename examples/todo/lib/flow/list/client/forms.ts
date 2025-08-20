@@ -8,6 +8,9 @@ import {
   useForm,
   type UseFormReturn,
   type UseFormProps,
+  type Path,
+  type PathValue,
+  type FieldErrors,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ListCreateSchema, ListUpdateSchema } from "../types/schemas";
@@ -17,6 +20,26 @@ import type {
   FlowListUpdate,
 } from "../types/schemas";
 import { useList, useCreateList, useUpdateList } from "./hooks";
+import {
+  useListFormAutosave,
+  useListFormFieldTracking,
+  useListFormHistory,
+} from "./composables";
+
+export type ListFieldState = {
+  isDirty: boolean;
+  isTouched: boolean;
+  error?: any;
+  current: any;
+  original?: any;
+  hasChanged?: boolean;
+};
+
+export type ListDirtyField = {
+  field: string;
+  original?: any;
+  current: any;
+};
 
 export type ListAutosaveConfig = {
   enabled: boolean;
@@ -26,80 +49,65 @@ export type ListAutosaveConfig = {
   onFieldError?: (field: string, error: Error) => void;
 };
 
-export type ListFormOptions = {
-  id?: string;
-  defaultValues?: Partial<FlowListCreate> | Partial<FlowListUpdate>;
+export type ListFormFeatures = {
+  autosave?: ListAutosaveConfig | boolean;
+  tracking?: boolean;
+  history?:
+    | {
+        enabled: boolean;
+        maxHistorySize?: number;
+      }
+    | boolean;
+};
+
+// Create form options
+export type ListCreateFormOptions = {
+  defaultValues?: Partial<FlowListCreate>;
   onSuccess?: (data: FlowList) => void;
   onError?: (error: Error) => void;
   formOptions?: Omit<
-    UseFormProps<FlowListCreate | FlowListUpdate>,
+    UseFormProps<FlowListCreate>,
     "resolver" | "defaultValues"
   >;
-  autosave?: ListAutosaveConfig;
+  features?: ListFormFeatures;
 };
 
-export function useListForm(options?: ListFormOptions) {
-  const { id, defaultValues, onSuccess, onError, formOptions, autosave } =
+export type ListUpdateFormOptions = {
+  defaultValues?: Partial<FlowListUpdate>;
+  onSuccess?: (data: FlowList) => void;
+  onError?: (error: Error) => void;
+  formOptions?: Omit<
+    UseFormProps<FlowListUpdate>,
+    "resolver" | "defaultValues"
+  >;
+  features?: ListFormFeatures;
+};
+
+function extractScalarFields(data: any): any {
+  const result: any = {};
+  Object.keys(data).forEach((key) => {
+    const value = data[key];
+    if (
+      value === null ||
+      (typeof value !== "object" && !Array.isArray(value))
+    ) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
+
+export function useCreateListForm(options?: ListCreateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
     options || {};
 
-  // Smart mode detection
-  const mode = id ? "update" : "create";
-
-  // Autosave state
-  const [fieldSaveStates, setFieldSaveStates] = useState<
-    Record<string, "idle" | "saving" | "saved" | "error">
-  >({});
-  const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
-
-  // Fetch existing data if updating
-  const { data: existingData } = useList(id || "", {
-    enabled: !!id,
-  });
-
-  // Choose appropriate schema
-  const schema = mode === "create" ? ListCreateSchema : ListUpdateSchema;
-
-  // Initialize form with proper defaults
-  const form = useForm<FlowListCreate | FlowListUpdate>({
+  const form = useForm<FlowListCreate>({
     ...formOptions,
-    resolver: zodResolver(schema),
-    defaultValues: {
-      ...defaultValues,
-      ...(existingData || {}),
-    } as FlowListCreate | FlowListUpdate,
+    resolver: zodResolver(ListCreateSchema),
+    defaultValues: defaultValues as FlowListCreate,
   });
 
-  // Update form when existing data loads, preserving user changes
-  useEffect(() => {
-    if (existingData && mode === "update") {
-      // Extract only scalar fields for update forms
-      const updateData: any = {};
-
-      // Copy scalar fields only, skip relations (arrays and objects)
-      Object.keys(existingData).forEach((key) => {
-        const value = (existingData as any)[key];
-        // Include scalar values and nulls, skip arrays and objects (relations)
-        if (
-          value === null ||
-          (typeof value !== "object" && !Array.isArray(value))
-        ) {
-          updateData[key] = value;
-        }
-      });
-
-      console.log(
-        "[ListForm] Resetting form with scalar data only:",
-        updateData,
-      );
-      form.reset(updateData as FlowListUpdate, {
-        keepDirtyValues: true, // Preserve user-modified fields
-        keepErrors: true, // Keep validation errors for dirty fields
-      });
-    }
-  }, [existingData, mode, form]);
-
-  // Get appropriate mutation
-  const createMutation = useCreateList({
+  const mutation = useCreateList({
     onSuccess: (data) => {
       form.reset();
       onSuccess?.(data);
@@ -107,120 +115,327 @@ export function useListForm(options?: ListFormOptions) {
     onError,
   });
 
-  // Only create update mutation if we have a valid ID
-  const updateMutation = useUpdateList(id || "dummy-id-never-used", {
-    onSuccess: (data) => {
-      onSuccess?.(data);
+  // Field operations
+  const getFieldState = useCallback(
+    (name: Path<FlowListCreate>): ListFieldState => {
+      const fieldState = form.getFieldState(name);
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: form.getValues(name),
+        original: (form.formState.defaultValues as any)?.[name],
+      };
     },
-    onError,
-    enabled: !!id, // Only enable if we have a real ID
-  });
-
-  const mutation = mode === "update" ? updateMutation : createMutation;
-
-  // Autosave handler for individual fields
-  const handleAutosave = useCallback(
-    (fieldName: string, value: any) => {
-      if (!autosave?.enabled || mode !== "update" || !id) return;
-
-      // Check if this field should be autosaved
-      if (autosave.fields && !autosave.fields.includes(fieldName)) return;
-
-      // Clear existing timer for this field
-      if (debounceTimers.current[fieldName]) {
-        clearTimeout(debounceTimers.current[fieldName]);
-      }
-
-      // Set field state to saving after debounce
-      setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-
-      // Create new debounced save
-      debounceTimers.current[fieldName] = setTimeout(async () => {
-        // Validate the specific field
-        const isValid = await form.trigger(fieldName as any);
-        if (!isValid) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          return;
-        }
-
-        setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saving" }));
-
-        try {
-          // Create partial update with just this field
-          const partialUpdate = { [fieldName]: value } as FlowListUpdate;
-          await updateMutation.mutateAsync(partialUpdate);
-
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "saved" }));
-          autosave.onFieldSave?.(fieldName, value);
-
-          // Reset to idle after 2 seconds
-          setTimeout(() => {
-            setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "idle" }));
-          }, 2000);
-        } catch (error) {
-          setFieldSaveStates((prev) => ({ ...prev, [fieldName]: "error" }));
-          autosave.onFieldError?.(fieldName, error as Error);
-        }
-      }, autosave.debounceMs || 1000);
-    },
-    [autosave, mode, form, updateMutation, id],
+    [form],
   );
 
-  // Watch for field changes if autosave is enabled
-  useEffect(() => {
-    if (!autosave?.enabled || mode !== "update" || !id) return;
+  const resetField = useCallback(
+    (name: Path<FlowListCreate>) => {
+      form.resetField(name);
+    },
+    [form],
+  );
 
-    const subscription = form.watch((value, { name }) => {
-      if (name) {
-        handleAutosave(name, value[name]);
+  const setFieldValue = useCallback(
+    <T extends Path<FlowListCreate>>(
+      name: T,
+      value: PathValue<FlowListCreate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowListCreate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowListCreate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowListCreate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowListCreate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): ListDirtyField[] => {
+    const dirtyFields: ListDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: (form.formState.defaultValues as any)?.[key],
+          current: form.getValues(key as Path<FlowListCreate>),
+        });
       }
     });
-
-    return () => subscription.unsubscribe();
-  }, [form, autosave, mode, handleAutosave]);
+    return dirtyFields;
+  }, [form]);
 
   // Submit handler
   const submit = useCallback(
-    (data: FlowListCreate | FlowListUpdate) => {
-      console.log("[ListForm] Submitting " + mode + " form:", data);
-      if (mode === "update") {
-        return updateMutation.mutate(data as FlowListUpdate);
-      } else {
-        return createMutation.mutate(data as FlowListCreate);
-      }
+    (data: FlowListCreate) => {
+      console.log("[ListCreateForm] Submitting:", data);
+      return mutation.mutate(data);
     },
-    [createMutation, updateMutation, mode],
+    [mutation],
   );
 
-  // Validation error handler
   const onInvalid = useCallback((errors: any) => {
-    console.error("[ListForm] Validation failed:", errors);
+    console.error("[ListCreateForm] Validation failed:", errors);
   }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useListFormAutosave(form, mutation, autosaveConfig);
+
+  const tracking = useListFormFieldTracking(form);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useListFormHistory(form, historyConfig);
 
   return {
     form,
+    mutation,
     submit: form.handleSubmit(submit, onInvalid),
     isSubmitting: mutation.isPending,
     error: mutation.error,
     isSuccess: mutation.isSuccess,
-    mode,
     reset: () => form.reset(),
-    // Autosave specific
-    fieldSaveStates,
-    isAutosaving: Object.values(fieldSaveStates).some(
-      (state) => state === "saving",
-    ),
-    autosaveEnabled: autosave?.enabled || false,
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
   };
 }
 
-export function useListQuickForm(id?: string) {
-  return useListForm({ id });
+export function useUpdateListForm(id: string, options?: ListUpdateFormOptions) {
+  const { defaultValues, onSuccess, onError, formOptions, features } =
+    options || {};
+
+  const originalRef = useRef<FlowList>();
+
+  // Fetch existing data
+  const { data: existingData } = useList(id);
+
+  // Initialize form
+  const form = useForm<FlowListUpdate>({
+    ...formOptions,
+    resolver: zodResolver(ListUpdateSchema),
+    defaultValues: defaultValues as FlowListUpdate,
+  });
+
+  // Track autosave ref to use in useEffect
+  const autosaveRef = useRef<ReturnType<typeof useListFormAutosave>>();
+
+  // Update form when existing data loads
+  useEffect(() => {
+    if (existingData) {
+      originalRef.current = existingData;
+      const scalarData = extractScalarFields(existingData);
+      console.log("[ListUpdateForm] Loading data:", scalarData);
+
+      // Pause autosave during form reset to prevent loops
+      if (autosaveRef.current?.pauseAutosave) {
+        autosaveRef.current.pauseAutosave(() => {
+          form.reset(scalarData as FlowListUpdate, {
+            keepDirtyValues: true,
+            keepErrors: true,
+          });
+        });
+      } else {
+        form.reset(scalarData as FlowListUpdate, {
+          keepDirtyValues: true,
+          keepErrors: true,
+        });
+      }
+    }
+  }, [existingData, form]);
+
+  // Update mutation
+  const mutation = useUpdateList(id, {
+    onSuccess,
+    onError,
+  });
+
+  // Field operations with original comparison
+  const getFieldState = useCallback(
+    (name: Path<FlowListUpdate>): ListFieldState => {
+      const fieldState = form.getFieldState(name);
+      const currentValue = form.getValues(name);
+      const originalValue = originalRef.current?.[name as keyof FlowList];
+      return {
+        isDirty: fieldState.isDirty,
+        isTouched: fieldState.isTouched,
+        error: fieldState.error,
+        current: currentValue,
+        original: originalValue,
+        hasChanged: currentValue !== originalValue,
+      };
+    },
+    [form],
+  );
+
+  const resetField = useCallback(
+    (name: Path<FlowListUpdate>) => {
+      const originalValue = originalRef.current?.[name as keyof FlowList];
+      form.setValue(name, originalValue as any);
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const setFieldValue = useCallback(
+    <T extends Path<FlowListUpdate>>(
+      name: T,
+      value: PathValue<FlowListUpdate, T>,
+      options?: {
+        shouldValidate?: boolean;
+        shouldDirty?: boolean;
+        shouldTouch?: boolean;
+      },
+    ) => {
+      form.setValue(name, value, options);
+    },
+    [form],
+  );
+
+  const validateField = useCallback(
+    (name: Path<FlowListUpdate>) => {
+      return form.trigger(name);
+    },
+    [form],
+  );
+
+  const clearFieldError = useCallback(
+    (name: Path<FlowListUpdate>) => {
+      form.clearErrors(name);
+    },
+    [form],
+  );
+
+  const batchUpdate = useCallback(
+    (updates: Partial<FlowListUpdate>) => {
+      Object.entries(updates).forEach(([key, value]) => {
+        form.setValue(key as Path<FlowListUpdate>, value as any);
+      });
+    },
+    [form],
+  );
+
+  const getDirtyFields = useCallback((): ListDirtyField[] => {
+    const dirtyFields: ListDirtyField[] = [];
+    Object.keys(form.formState.dirtyFields).forEach((key) => {
+      if ((form.formState.dirtyFields as any)[key]) {
+        dirtyFields.push({
+          field: key,
+          original: originalRef.current?.[key as keyof FlowList],
+          current: form.getValues(key as Path<FlowListUpdate>),
+        });
+      }
+    });
+    return dirtyFields;
+  }, [form]);
+
+  // Submit handler
+  const submit = useCallback(
+    (data: FlowListUpdate) => {
+      console.log("[ListUpdateForm] Submitting:", data);
+      return mutation.mutate(data);
+    },
+    [mutation],
+  );
+
+  const onInvalid = useCallback((errors: any) => {
+    console.error("[ListUpdateForm] Validation failed:", errors);
+  }, []);
+
+  // Always call composables (no conditional hooks)
+  const autosaveConfig =
+    typeof features?.autosave === "object"
+      ? features.autosave
+      : { enabled: !!features?.autosave };
+  const autosave = useListFormAutosave(form, mutation, autosaveConfig);
+
+  // Store autosave ref for use in useEffect
+  useEffect(() => {
+    autosaveRef.current = autosave;
+  }, [autosave]);
+
+  const tracking = useListFormFieldTracking(form, originalRef.current);
+
+  const historyConfig =
+    typeof features?.history === "object"
+      ? features.history
+      : { enabled: !!features?.history };
+  const history = useListFormHistory(form, historyConfig);
+
+  return {
+    form,
+    mutation,
+    original: originalRef.current,
+    submit: form.handleSubmit(submit, onInvalid),
+    isSubmitting: mutation.isPending,
+    error: mutation.error,
+    isSuccess: mutation.isSuccess,
+    reset: () => form.reset(extractScalarFields(originalRef.current || {})),
+    // Field operations
+    getFieldState,
+    resetField,
+    setFieldValue,
+    validateField,
+    clearFieldError,
+    batchUpdate,
+    getDirtyFields,
+    // Include features if enabled
+    ...(autosaveConfig.enabled ? { autosave } : {}),
+    ...(features?.tracking ? { tracking } : {}),
+    ...(historyConfig.enabled ? { history } : {}),
+  };
 }
 
-export type ListFormProps = {
-  form: UseFormReturn<FlowListCreate | FlowListUpdate>;
+export type ListCreateFormProps = {
+  form: UseFormReturn<FlowListCreate>;
   onSubmit: () => void;
   isSubmitting: boolean;
   error?: Error | null;
+};
+
+export type ListUpdateFormProps = {
+  form: UseFormReturn<FlowListUpdate>;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  error?: Error | null;
+  original?: FlowList;
 };

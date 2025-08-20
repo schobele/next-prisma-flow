@@ -3,6 +3,13 @@
 
 import type { FlowCtx } from "./core";
 
+/**
+ * Policy result that controls data access
+ * - ok: Whether the operation is allowed
+ * - message: Error message if denied
+ * - where: Additional conditions for queries
+ * - data: Data to merge into mutations (uses deep merge for nested operations)
+ */
 type PolicyResult = {
   ok: boolean;
   message?: string;
@@ -12,13 +19,25 @@ type PolicyResult = {
 
 type PolicyAction = "list" | "read" | "create" | "update" | "delete";
 
+/**
+ * Multi-tenancy configuration
+ * Tenant field: companyId
+ * Tenant model: Company
+ *
+ * The policy data is deeply merged with operation data, ensuring
+ * tenant isolation even for nested creates and updates.
+ *
+ * Example: When creating a Todo with a nested List creation,
+ * both the Todo AND the nested List will receive the tenant connection.
+ */
+
 export async function canCompany(
   action: PolicyAction,
   ctx: FlowCtx,
   id?: string,
 ): Promise<PolicyResult> {
   // Default: allow all for authenticated users
-  if (!ctx.user) {
+  if (!ctx.userId) {
     return { ok: false, message: "Authentication required" };
   }
 
@@ -32,6 +51,9 @@ export async function canCompany(
       return { ok: true, data: {} };
 
     case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return { ok: true, where: {}, data: {} };
+
     case "delete":
       // Ownership check could be added here
       return { ok: true, where: {} };
@@ -47,7 +69,7 @@ export async function canUser(
   id?: string,
 ): Promise<PolicyResult> {
   // Default: allow all for authenticated users
-  if (!ctx.user) {
+  if (!ctx.userId) {
     return { ok: false, message: "Authentication required" };
   }
 
@@ -61,12 +83,24 @@ export async function canUser(
       };
 
     case "create":
+      // Tenant connection will be deep-merged into nested creates as well
       return {
         ok: true,
-        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
       };
 
     case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
+      };
+
     case "delete":
       // Ownership check could be added here
       return {
@@ -85,7 +119,7 @@ export async function canList(
   id?: string,
 ): Promise<PolicyResult> {
   // Default: allow all for authenticated users
-  if (!ctx.user) {
+  if (!ctx.userId) {
     return { ok: false, message: "Authentication required" };
   }
 
@@ -99,12 +133,24 @@ export async function canList(
       };
 
     case "create":
+      // Tenant connection will be deep-merged into nested creates as well
       return {
         ok: true,
-        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
       };
 
     case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
+      };
+
     case "delete":
       // Ownership check could be added here
       return {
@@ -123,7 +169,7 @@ export async function canTodo(
   id?: string,
 ): Promise<PolicyResult> {
   // Default: allow all for authenticated users
-  if (!ctx.user) {
+  if (!ctx.userId) {
     return { ok: false, message: "Authentication required" };
   }
 
@@ -137,12 +183,24 @@ export async function canTodo(
       };
 
     case "create":
+      // Tenant connection will be deep-merged into nested creates as well
       return {
         ok: true,
-        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
       };
 
     case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company: { connect: { id: ctx.tenantId } } }
+          : {},
+      };
+
     case "delete":
       // Ownership check could be added here
       return {
@@ -161,7 +219,7 @@ export async function canTag(
   id?: string,
 ): Promise<PolicyResult> {
   // Default: allow all for authenticated users
-  if (!ctx.user) {
+  if (!ctx.userId) {
     return { ok: false, message: "Authentication required" };
   }
 
@@ -175,18 +233,62 @@ export async function canTag(
       };
 
     case "create":
+      // Tenant connection will be deep-merged into nested creates as well
       return {
         ok: true,
-        data: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company_relation: { connect: { id: ctx.tenantId } } }
+          : {},
       };
 
     case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return {
+        ok: true,
+        where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
+        data: ctx.tenantId
+          ? { company_relation: { connect: { id: ctx.tenantId } } }
+          : {},
+      };
+
     case "delete":
       // Ownership check could be added here
       return {
         ok: true,
         where: ctx.tenantId ? { companyId: ctx.tenantId } : {},
       };
+
+    default:
+      return { ok: false, message: "Unknown action" };
+  }
+}
+
+export async function canTodoListTemplate(
+  action: PolicyAction,
+  ctx: FlowCtx,
+  id?: string,
+): Promise<PolicyResult> {
+  // Default: allow all for authenticated users
+  if (!ctx.userId) {
+    return { ok: false, message: "Authentication required" };
+  }
+
+  switch (action) {
+    case "list":
+    case "read":
+      // Tenant filtering if model has tenant field
+      return { ok: true, where: {} };
+
+    case "create":
+      return { ok: true, data: {} };
+
+    case "update":
+      // For update, provide both where (for filtering) and data (for nested creates)
+      return { ok: true, where: {}, data: {} };
+
+    case "delete":
+      // Ownership check could be added here
+      return { ok: true, where: {} };
 
     default:
       return { ok: false, message: "Unknown action" };

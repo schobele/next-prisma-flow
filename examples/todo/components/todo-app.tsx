@@ -47,7 +47,7 @@ import { useTenant, useUser } from "@/lib/auth-context";
 import { useFlowCtx } from "@/lib/flow/core/provider";
 import { useListList } from "@/lib/flow/list/client/hooks";
 import { useTagList } from "@/lib/flow/tag/client/hooks";
-import { useTodoForm } from "@/lib/flow/todo/client/forms";
+import { useCreateTodoForm, useUpdateTodoForm } from "@/lib/flow/todo/client";
 import {
 	useCreateTodo,
 	useDeleteTodo,
@@ -97,9 +97,8 @@ export default function TodoApp() {
 
 	// Get user context
 	const flowCtx = useFlowCtx();
-	const userId = flowCtx.user?.id || "";
+	const userId = flowCtx.userId || "";
 	const tenant = useTenant();
-	const user = useUser();
 
 	// Debounce search query
 	useEffect(() => {
@@ -211,51 +210,47 @@ export default function TodoApp() {
 	const activeListId = selectedListId || defaultList?.id;
 	const activeList = listsData?.items.find((list) => list.id === activeListId);
 
-	// Form for creating/editing todos
-	const { form: createForm, reset: resetCreate } = useTodoForm({
+	// Form for creating todos
+	const createForm = useCreateTodoForm({
 		onSuccess: () => {
 			setIsCreateDialogOpen(false);
-			resetCreate();
+			createForm.reset();
 			refetchTodos();
 		},
 	});
 
-	// Only create edit form when we have a todo to edit
-	const { form: editForm, reset: resetEditForm } = useTodoForm(
-		editingTodo
-			? {
-					id: editingTodo.id,
-					autosave: {
-						enabled: true,
-						debounceMs: 1000,
-						fields: ["title", "description", "status", "priority"],
-						onFieldSave: (field) => {
-							toast.success(`${field} saved`);
-							refetchTodos();
-						},
-						onFieldError: (field, error) => {
-							if (error.message?.includes("not found")) {
-								toast.error("Task no longer exists");
-								setEditingTodo(null);
-							} else {
-								toast.error(`Failed to save ${field}`);
-							}
-						},
+	// Edit form - always call the hook, but only enable features when editing
+	const editForm = useUpdateTodoForm(
+		editingTodo?.id || 'dummy-id', // Always provide an ID
+		{
+			features: {
+				autosave: {
+					enabled: !!editingTodo, // Only enable when actually editing
+					debounceMs: 1000,
+					fields: ["title", "description", "status", "priority"],
+					onFieldSave: (field: string) => {
+						toast.success(`${field} saved`);
+						refetchTodos();
 					},
-				}
-			: {
-					// Provide a dummy config when not editing to avoid hook issues
-					id: undefined,
-					autosave: undefined,
+					onFieldError: (field: string, error: Error) => {
+						if (error.message?.includes("not found")) {
+							toast.error("Task no longer exists");
+							setEditingTodo(null);
+						} else {
+							toast.error(`Failed to save ${field}`);
+						}
+					},
 				},
+			},
+		}
 	);
 
 	// Reset edit form when switching to a different todo
 	useEffect(() => {
 		if (editingTodo) {
-			resetEditForm();
+			editForm.reset();
 		}
-	}, [editingTodo?.id, resetEditForm]);
+	}, [editingTodo?.id]); // editForm.reset is stable, no need in deps
 
 	const handleToggleComplete = async (todo: FlowTodo) => {
 		const newStatus =
@@ -281,21 +276,20 @@ export default function TodoApp() {
 
 	const handleCreateTodo = async (e: React.FormEvent) => {
 		e.preventDefault();
-		const formData = createForm.getValues();
 
 		if (!activeListId && !defaultList?.id) {
 			toast.error("No list selected");
 			return;
 		}
 
-		await createTodoMutation.mutateAsync({
-			title: formData.title || "",
-			description: formData.description || undefined,
-			priority: formData.priority || TodoPriority.MEDIUM,
-			status: TodoStatus.TODO,
-			listId: activeListId || defaultList?.id || "",
-			userId: userId,
-		});
+		// Set required fields for create
+		// Note: companyId is automatically added by the policy layer
+		createForm.form.setValue("listId", activeListId || defaultList?.id || "");
+		createForm.form.setValue("userId", userId);
+		createForm.form.setValue("status", TodoStatus.TODO);
+		
+		// Use the form's submit method which handles the data properly
+		await createForm.submit();
 	};
 
 	const stats = {
@@ -468,7 +462,7 @@ export default function TodoApp() {
 													<Label htmlFor="title">Title</Label>
 													<Input
 														id="title"
-														{...createForm.register("title")}
+														{...createForm.form.register("title")}
 														placeholder="Enter task title"
 													/>
 												</div>
@@ -476,7 +470,7 @@ export default function TodoApp() {
 													<Label htmlFor="description">Description</Label>
 													<Textarea
 														id="description"
-														{...createForm.register("description")}
+														{...createForm.form.register("description")}
 														placeholder="Enter task description"
 													/>
 												</div>
@@ -484,11 +478,11 @@ export default function TodoApp() {
 													<Label htmlFor="priority">Priority</Label>
 													<Select
 														value={
-															createForm.watch("priority") ||
+															createForm.form.watch("priority") ||
 															TodoPriority.MEDIUM
 														}
 														onValueChange={(value) =>
-															createForm.setValue("priority", value)
+															createForm.form.setValue("priority", value)
 														}
 													>
 														<SelectTrigger>
@@ -674,7 +668,7 @@ export default function TodoApp() {
 								<Label htmlFor="edit-title">Title</Label>
 								<Input
 									id="edit-title"
-									{...editForm.register("title")}
+									{...editForm.form.register("title")}
 									placeholder="Enter task title"
 								/>
 							</div>
@@ -682,7 +676,7 @@ export default function TodoApp() {
 								<Label htmlFor="edit-description">Description</Label>
 								<Textarea
 									id="edit-description"
-									{...editForm.register("description")}
+									{...editForm.form.register("description")}
 									placeholder="Enter task description"
 								/>
 							</div>
@@ -690,9 +684,9 @@ export default function TodoApp() {
 								<div>
 									<Label>Status</Label>
 									<Select
-										value={editForm.watch("status")}
+										value={editForm.form.watch("status")}
 										onValueChange={(value) =>
-											editForm.setValue("status", value)
+											editForm.form.setValue("status", value)
 										}
 									>
 										<SelectTrigger>
@@ -710,9 +704,9 @@ export default function TodoApp() {
 								<div>
 									<Label>Priority</Label>
 									<Select
-										value={editForm.watch("priority")}
+										value={editForm.form.watch("priority")}
 										onValueChange={(value) =>
-											editForm.setValue("priority", value)
+											editForm.form.setValue("priority", value)
 										}
 									>
 										<SelectTrigger>

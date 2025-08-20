@@ -8,6 +8,7 @@ import { cacheTagged, FlowCtx, FlowPolicyError } from "../../core";
 import { canCompany } from "../../policies";
 import { CompanySelect } from "./selects";
 import type { Prisma } from "../../prisma";
+import type { FlowCompany } from "../types/schemas";
 
 // Transform Prisma response to match FlowCompany schema (null -> undefined for relations)
 function transformResponse(item: any): any {
@@ -23,16 +24,16 @@ function transformResponseList(items: any[]): any[] {
 export const getCompanyById = cacheTagged(async function (
   id: string,
   ctx: FlowCtx = {},
-) {
+): Promise<FlowCompany | null> {
   const policy = await canCompany("read", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
-  const item = await prisma.company.findUnique({
+  const item = (await prisma.company.findUnique({
     where: { id: id, ...policy.where },
     select: CompanySelect,
-  });
+  })) as FlowCompany | null;
 
-  return transformResponse(item);
+  return transformResponse(item) as FlowCompany | null;
 });
 
 export type CompanyListParams = {
@@ -48,7 +49,7 @@ export type CompanyListParams = {
 export const listCompanys = cacheTagged(async function (
   params: CompanyListParams = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowCompany[]; total: number }> {
   const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -62,18 +63,18 @@ export const listCompanys = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: CompanySelect,
-    }),
+    }) as Promise<FlowCompany[]>,
     prisma.company.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowCompany[], total };
 });
 
 export const searchCompanys = cacheTagged(async function (
   query: string,
   params: Omit<CompanyListParams, "where"> = {},
   ctx: FlowCtx = {},
-) {
+): Promise<{ items: FlowCompany[]; total: number }> {
   const policy = await canCompany("list", ctx || {});
   if (!policy.ok) throw new FlowPolicyError(policy.message);
 
@@ -99,9 +100,9 @@ export const searchCompanys = cacheTagged(async function (
       take: params.take || 50,
       cursor: params.cursor,
       select: CompanySelect,
-    }),
+    }) as Promise<FlowCompany[]>,
     prisma.company.count({ where }),
   ]);
 
-  return { items: transformResponseList(items), total };
+  return { items: transformResponseList(items) as FlowCompany[], total };
 });

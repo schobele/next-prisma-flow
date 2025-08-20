@@ -68,12 +68,10 @@ export const ListTagScalarSelect = {
 // Nested relation selects
 export const ListCompanyUsersTodosTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyUsersTodosSubtasksTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyUsersTodosSubtasksSelect = {
@@ -90,7 +88,6 @@ export const ListCompanyUsersTodosSubtasksSelect = {
 } as Prisma.TodoSelect;
 export const ListCompanyUsersTodosParentTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyUsersTodosParentSelect = {
@@ -131,12 +128,10 @@ export const ListCompanyUsersSelect = {
 } as Prisma.UserSelect;
 export const ListCompanyTodosTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyTodosSubtasksTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyTodosSubtasksUserSelect = {
@@ -159,7 +154,6 @@ export const ListCompanyTodosSubtasksSelect = {
 } as Prisma.TodoSelect;
 export const ListCompanyTodosParentTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListCompanyTodosParentUserSelect = {
@@ -251,7 +245,6 @@ export const ListCompanyTagsTodosSelect = {
 } as Prisma.TodoSelect;
 export const ListCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: {
     select: ListCompanyTagsTodosSelect,
     take: 50,
@@ -281,7 +274,6 @@ export const ListTodosCompanyUsersSelect = {
 } as Prisma.UserSelect;
 export const ListTodosCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosCompanySelect = {
@@ -297,25 +289,8 @@ export const ListTodosCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListTodosTagsCompanyUsersSelect = {
-  ...ListUserScalarSelect,
-  company: false,
-  lists: false,
-  todos: false,
-} as Prisma.UserSelect;
-export const ListTodosTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: {
-    select: ListTodosTagsCompanyUsersSelect,
-    take: 50,
-  },
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListTodosTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListTodosTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosSubtasksCompanyUsersSelect = {
@@ -326,7 +301,6 @@ export const ListTodosSubtasksCompanyUsersSelect = {
 } as Prisma.UserSelect;
 export const ListTodosSubtasksCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosSubtasksCompanySelect = {
@@ -342,30 +316,12 @@ export const ListTodosSubtasksCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListTodosSubtasksTagsCompanyUsersSelect = {
-  ...ListUserScalarSelect,
-  company: false,
-  lists: false,
-  todos: false,
-} as Prisma.UserSelect;
-export const ListTodosSubtasksTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: {
-    select: ListTodosSubtasksTagsCompanyUsersSelect,
-    take: 50,
-  },
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListTodosSubtasksTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListTodosSubtasksTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosSubtasksUserCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosSubtasksUserCompanySelect = {
@@ -404,7 +360,6 @@ export const ListTodosParentCompanyUsersSelect = {
 } as Prisma.UserSelect;
 export const ListTodosParentCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosParentCompanySelect = {
@@ -420,30 +375,12 @@ export const ListTodosParentCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListTodosParentTagsCompanyUsersSelect = {
-  ...ListUserScalarSelect,
-  company: false,
-  lists: false,
-  todos: false,
-} as Prisma.UserSelect;
-export const ListTodosParentTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: {
-    select: ListTodosParentTagsCompanyUsersSelect,
-    take: 50,
-  },
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListTodosParentTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListTodosParentTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosParentUserCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosParentUserCompanySelect = {
@@ -476,7 +413,6 @@ export const ListTodosParentSelect = {
 } as Prisma.TodoSelect;
 export const ListTodosUserCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListTodosUserCompanySelect = {
@@ -512,12 +448,10 @@ export const ListTodosSelect = {
 } as Prisma.TodoSelect;
 export const ListUserCompanyTodosTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserCompanyTodosSubtasksTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserCompanyTodosSubtasksSelect = {
@@ -534,7 +468,6 @@ export const ListUserCompanyTodosSubtasksSelect = {
 } as Prisma.TodoSelect;
 export const ListUserCompanyTodosParentTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserCompanyTodosParentSelect = {
@@ -596,7 +529,6 @@ export const ListUserCompanyTagsTodosSelect = {
 } as Prisma.TodoSelect;
 export const ListUserCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: {
     select: ListUserCompanyTagsTodosSelect,
     take: 50,
@@ -617,7 +549,6 @@ export const ListUserCompanySelect = {
 } as Prisma.CompanySelect;
 export const ListUserTodosCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosCompanySelect = {
@@ -630,21 +561,12 @@ export const ListUserTodosCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListUserTodosTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: false,
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListUserTodosTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListUserTodosTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosSubtasksCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosSubtasksCompanySelect = {
@@ -657,16 +579,8 @@ export const ListUserTodosSubtasksCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListUserTodosSubtasksTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: false,
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListUserTodosSubtasksTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListUserTodosSubtasksTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosSubtasksSelect = {
@@ -683,7 +597,6 @@ export const ListUserTodosSubtasksSelect = {
 } as Prisma.TodoSelect;
 export const ListUserTodosParentCompanyTagsSelect = {
   ...ListTagScalarSelect,
-  company: false,
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosParentCompanySelect = {
@@ -696,16 +609,8 @@ export const ListUserTodosParentCompanySelect = {
     take: 50,
   },
 } as Prisma.CompanySelect;
-export const ListUserTodosParentTagsCompanySelect = {
-  ...ListCompanyScalarSelect,
-  users: false,
-  lists: false,
-  todos: false,
-  tags: false,
-} as Prisma.CompanySelect;
 export const ListUserTodosParentTagsSelect = {
   ...ListTagScalarSelect,
-  company: { select: ListUserTodosParentTagsCompanySelect },
   todos: false,
 } as Prisma.TagSelect;
 export const ListUserTodosParentSelect = {
